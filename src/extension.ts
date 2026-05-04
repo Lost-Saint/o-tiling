@@ -1866,11 +1866,26 @@ export class Ext extends Ecs.System<ExtEvent> {
         }
     }
 
-    on_workspace_added(number: number) {
+    on_workspace_added(workspace: any) {
         this.ignore_display_update = true;
+        const index = typeof workspace === 'number' ? workspace : workspace.index();
         if (!this.settings.new_workspaces_tiled()) {
-            this.disabled_workspaces.add(number);
+            this.disabled_workspaces.add(index);
         }
+        if (typeof workspace !== 'number') {
+            this.setup_workspace_signals(workspace);
+        }
+    }
+
+    setup_workspace_signals(ws: any) {
+        let index = ws.index();
+        this.connect(ws, 'notify::workspace-index', () => {
+            if (ws !== null) {
+                const new_index = ws.index();
+                this.on_workspace_index_changed(index, new_index);
+                index = new_index;
+            }
+        });
     }
 
     /** Handle workspace change events */
@@ -1970,9 +1985,21 @@ export class Ext extends Ecs.System<ExtEvent> {
 
             for (const e of to_delete) this.delete_entity(e);
         }
+
+        // Update disabled workspaces
+        const next_disabled = new Set<number>();
+        for (const ws of this.disabled_workspaces) {
+            if (condition(ws)) {
+                next_disabled.add(modify(ws));
+            } else {
+                next_disabled.add(ws);
+            }
+        }
+        this.disabled_workspaces = next_disabled;
     }
 
     on_workspace_removed(number: number) {
+        this.disabled_workspaces.delete(number);
         this.on_workspace_modify(
             (current) => current > number,
             (prev) => prev - 1,
@@ -2032,15 +2059,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         const workspace_manager = wom;
 
         for (const [, ws] of iter_workspaces(workspace_manager)) {
-            let index = ws.index();
-
-            this.connect(ws, 'notify::workspace-index', () => {
-                if (ws !== null) {
-                    const new_index = ws.index();
-                    this.on_workspace_index_changed(index, new_index);
-                    index = new_index;
-                }
-            });
+            this.setup_workspace_signals(ws);
         }
 
         this.connect(display as any, 'workareas-changed', () => {
@@ -2493,7 +2512,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         this.button.icon.gicon = this.button_gio_icon_auto_on; // type: Gio.Icon
 
         for (const window of this.windows.values()) {
-            if (window.is_tilable(this)) {
+            if (window.is_tilable(this) && this.is_workspace_tiled(window.workspace_id())) {
                 const actor = window.meta.get_compositor_private();
                 if (actor) {
                     if (!window.meta.minimized) {
