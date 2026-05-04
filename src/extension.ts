@@ -1,35 +1,35 @@
-import * as Config from './config.js';
-import * as Forest from './forest.js';
-import * as Ecs from './ecs.js';
-import * as Events from './events.js';
-import * as Focus from './focus.js';
-import * as Geom from './geom.js';
-import * as GrabOp from './grab_op.js';
-import * as Keybindings from './keybindings.js';
-import * as Lib from './lib.js';
-import * as log from './log.js';
-import * as PanelSettings from './panel_settings.js';
-import * as Rect from './rectangle.js';
-import * as Settings from './settings.js';
-import * as Tiling from './tiling.js';
-import * as Window from './window.js';
-import * as auto_tiler from './auto_tiler.js';
-import * as node from './node.js';
-import * as utils from './utils.js';
-import * as Executor from './executor.js';
+import * as Config from './system/config.js';
+import * as Forest from './engine/forest.js';
+import * as Ecs from './core/ecs.js';
+import * as Events from './core/events.js';
+import * as Focus from './window/focus.js';
+import * as Geom from './utils/geom.js';
+import * as GrabOp from './window/grab_op.js';
+import * as Keybindings from './system/keybindings.js';
+import * as Lib from './utils/lib.js';
+import * as log from './utils/log.js';
+import * as PanelSettings from './ui/panel_settings.js';
+import * as Rect from './utils/rectangle.js';
+import * as Settings from './system/settings.js';
+import * as Tiling from './engine/tiling.js';
+import * as Window from './window/window.js';
+import * as auto_tiler from './engine/auto_tiler.js';
+import * as node from './engine/node.js';
+import * as utils from './utils/utils.js';
+import * as Executor from './system/executor.js';
 const exec = Executor;
-import * as movement from './movement.js';
-import * as stack from './stack.js';
-import * as add_exception from './dialog_add_exception.js';
-import * as dbus_service from './dbus_service.js';
-import * as scheduler from './scheduler.js';
+import * as movement from './window/movement.js';
+import * as stack from './engine/stack.js';
+import * as add_exception from './ui/dialog_add_exception.js';
+import * as dbus_service from './system/dbus_service.js';
+import * as scheduler from './system/scheduler.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
-import type { Entity } from './ecs.js';
-import type { ExtEvent } from './events.js';
-import { Rectangle } from './rectangle.js';
-import type { Indicator } from './panel_settings.js';
+import type { Entity } from './core/ecs.js';
+import type { ExtEvent } from './core/events.js';
+import { Rectangle } from './utils/rectangle.js';
+import type { Indicator } from './ui/panel_settings.js';
 
-import { Fork } from './fork.js';
+import { Fork } from './engine/fork.js';
 
 const display = (global as any).display;
 const wim = (global as any).window_manager;
@@ -84,8 +84,8 @@ import { Workspace } from 'resource:///org/gnome/shell/ui/workspace.js';
 import { WorkspaceThumbnail } from 'resource:///org/gnome/shell/ui/workspaceThumbnail.js';
 import { WindowPreview } from 'resource:///org/gnome/shell/ui/windowPreview.js';
 import { PACKAGE_VERSION } from 'resource:///org/gnome/shell/misc/config.js';
-import * as Tags from './tags.js';
-import { get_current_path } from './paths.js';
+import * as Tags from './utils/tags.js';
+import { get_current_path } from './utils/paths.js';
 
 const STYLESHEET_PATHS = ['light', 'dark', 'highcontrast'].map(stylesheet_path);
 const STYLESHEETS = STYLESHEET_PATHS.map((path) => Gio.File.new_for_path(path));
@@ -639,7 +639,7 @@ export class Ext extends Ecs.System<ExtEvent> {
     }
 
     exception_dialog() {
-        const path = get_current_path() + '/floating_exceptions/main.js';
+        const path = get_current_path() + '/ui/floating_exceptions/main.js';
 
         const event_handler = (event: string): boolean => {
             switch (event) {

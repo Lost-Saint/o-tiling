@@ -1,17 +1,17 @@
-import * as arena from './arena.js';
-import * as Ecs from './ecs.js';
-import * as Lib from './lib.js';
-import * as log from './log.js';
-import * as movement from './movement.js';
-import * as Rect from './rectangle.js';
+import * as arena from '../core/arena.js';
+import * as Ecs from '../core/ecs.js';
+import * as Lib from '../utils/lib.js';
+import * as log from '../utils/log.js';
+import * as movement from '../window/movement.js';
+import * as Rect from '../utils/rectangle.js';
 import * as Node from './node.js';
 import * as Fork from './fork.js';
-import * as geom from './geom.js';
+import * as geom from '../utils/geom.js';
 
-import type { Entity } from './ecs.js';
-import type { Rectangle } from './rectangle.js';
-import type { ShellWindow } from './window.js';
-import type { Ext } from './extension.js';
+import type { Entity } from '../core/ecs.js';
+import type { Rectangle } from '../utils/rectangle.js';
+import type { ShellWindow } from '../window/window.js';
+import type { Ext } from '../extension.js';
 import { Stack } from './stack.js';
 
 const { Arena } = arena;

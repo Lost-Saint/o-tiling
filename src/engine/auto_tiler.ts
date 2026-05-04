@@ -1,24 +1,24 @@
-import * as ecs from './ecs.js';
-import * as lib from './lib.js';
-import * as log from './log.js';
+import * as ecs from '../core/ecs.js';
+import * as lib from '../utils/lib.js';
+import * as log from '../utils/log.js';
 import * as node from './node.js';
-import * as result from './result.js';
+import * as result from '../utils/result.js';
 import * as stack from './stack.js';
-import * as geom from './geom.js';
+import * as geom from '../utils/geom.js';
 import * as tiling from './tiling.js';
 
-import type { Entity } from './ecs.js';
-import type { Ext } from './extension.js';
+import type { Entity } from '../core/ecs.js';
+import type { Ext } from '../extension.js';
 import type { Forest, MoveBy, MoveByCursor } from './forest.js';
 import type { Fork } from './fork.js';
-import type { Rectangle } from './rectangle.js';
-import type { Result } from './result.js';
-import type { ShellWindow } from './window.js';
+import type { Rectangle } from '../utils/rectangle.js';
+import type { Result } from '../utils/result.js';
+import type { ShellWindow } from '../window/window.js';
 
 const { Stack } = stack;
 const { Ok, Err, ERR } = result;
 const { NodeKind } = node;
-import * as Tags from './tags.js';
+import * as Tags from '../utils/tags.js';
 
 export class AutoTiler {
     forest: Forest;

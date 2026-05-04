@@ -1,5 +1,5 @@
-import * as lib from './lib.js';
-import * as utils from './utils.js';
+import * as lib from '../utils/lib.js';
+import * as utils from '../utils/utils.js';
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';

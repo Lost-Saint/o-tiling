@@ -1,4 +1,4 @@
-import * as Lib from './lib.js';
+import * as Lib from '../utils/lib.js';
 import St from 'gi://St';
 import Clutter from 'gi://Clutter';
 

@@ -1,4 +1,4 @@
-import type { Ext } from './extension.js';
+import type { Ext } from '../extension.js';
 
 import { wm } from 'resource:///org/gnome/shell/ui/main.js';
 import Shell from 'gi://Shell';

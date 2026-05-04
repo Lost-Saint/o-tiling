@@ -1,7 +1,7 @@
-import * as Geom from './geom.js';
+import * as Geom from '../utils/geom.js';
 
 import type { ShellWindow } from './window.js';
-import type { Ext } from './extension.js';
+import type { Ext } from '../extension.js';
 
 export enum FocusPosition {
     TopLeft = 'Top Left',

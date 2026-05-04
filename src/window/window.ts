@@ -1,15 +1,15 @@
 // FIXED: BUG 4 — SCHEDULED_RESTACK module singleton corrupts border stacking for all but the last window per frame
-import * as lib from './lib.js';
-import * as log from './log.js';
-import * as once_cell from './once_cell.js';
-import * as Rect from './rectangle.js';
-import * as Tags from './tags.js';
-import * as utils from './utils.js';
-import * as xprop from './xprop.js';
-import type { Entity } from './ecs.js';
-import type { Ext } from './extension.js';
-import type { Rectangle } from './rectangle.js';
-import * as scheduler from './scheduler.js';
+import * as lib from '../utils/lib.js';
+import * as log from '../utils/log.js';
+import * as once_cell from '../utils/once_cell.js';
+import * as Rect from '../utils/rectangle.js';
+import * as Tags from '../utils/tags.js';
+import * as utils from '../utils/utils.js';
+import * as xprop from '../system/xprop.js';
+import type { Entity } from '../core/ecs.js';
+import type { Ext } from '../extension.js';
+import type { Rectangle } from '../utils/rectangle.js';
+import * as scheduler from '../system/scheduler.js';
 import * as focus from './focus.js';
 
 import Meta from 'gi://Meta';

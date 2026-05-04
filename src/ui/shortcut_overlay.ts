@@ -2,7 +2,7 @@ import GObject from 'gi://GObject';
 import St from 'gi://St';
 import Clutter from 'gi://Clutter';
 
-import * as Lib from './lib.js';
+import * as Lib from '../utils/lib.js';
 
 const { separator } = Lib;
 

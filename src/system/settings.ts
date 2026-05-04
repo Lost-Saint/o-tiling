@@ -1,7 +1,7 @@
 import Gio from 'gi://Gio';
 import GObject from 'gi://GObject';
-import { get_current_path } from './paths.js';
-import * as utils from './utils.js';
+import { get_current_path } from '../utils/paths.js';
+import * as utils from '../utils/utils.js';
 
 const DARK = ['dark', 'adapta', 'plata', 'dracula'];
 

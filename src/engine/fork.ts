@@ -1,14 +1,14 @@
 import type { Forest } from './forest.js';
-import type { Entity } from './ecs.js';
-import type { Ext } from './extension.js';
-import type { Rectangle } from './rectangle.js';
+import type { Entity } from '../core/ecs.js';
+import type { Ext } from '../extension.js';
+import type { Rectangle } from '../utils/rectangle.js';
 import type { Node } from './node.js';
 
-import * as Ecs from './ecs.js';
-import * as Lib from './lib.js';
+import * as Ecs from '../core/ecs.js';
+import * as Lib from '../utils/lib.js';
 import * as node from './node.js';
-import * as Rect from './rectangle.js';
-import { ShellWindow } from './window.js';
+import * as Rect from '../utils/rectangle.js';
+import { ShellWindow } from '../window/window.js';
 import Meta from 'gi://Meta';
 
 export function get_primary_monitor_index(): number {

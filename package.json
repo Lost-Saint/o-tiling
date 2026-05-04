@@ -16,9 +16,12 @@
     "@eslint/js": "^10.0.1",
     "@girs/gjs": "latest",
     "@girs/gnome-shell": "latest",
+    "@types/node": "^25.6.0",
     "@typescript-eslint/eslint-plugin": "^8.26.0",
     "@typescript-eslint/parser": "^8.26.0",
     "eslint": "^9.21.0",
+    "ts-morph": "^28.0.0",
+    "ts-node": "^10.9.2",
     "typescript": "^5.8.2",
     "typescript-eslint": "^8.26.0"
   }

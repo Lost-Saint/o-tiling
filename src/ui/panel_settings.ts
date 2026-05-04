@@ -1,8 +1,8 @@
 import { gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import * as Utils from './utils.js';
+import * as Utils from '../utils/utils.js';
 
-import type { Ext } from './extension.js';
+import type { Ext } from '../extension.js';
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
@@ -19,7 +19,7 @@ import GObject from 'gi://GObject';
 import GLib from 'gi://GLib';
 
 
-import { get_current_path } from './paths.js';
+import { get_current_path } from '../utils/paths.js';
 
 export class Indicator {
     button: any;

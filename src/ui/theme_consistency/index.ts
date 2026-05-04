@@ -1,5 +1,5 @@
 import GLib from 'gi://GLib';
-import * as log from '../log.js';
+import * as log from '../../utils/log.js';
 import { gtkCss } from './gtk.js';
 import { gnomeShellCss } from './gnome_shell.js';
 

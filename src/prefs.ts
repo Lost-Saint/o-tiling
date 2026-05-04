@@ -5,9 +5,9 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import { ExtensionPreferences, gettext as _ } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
-import * as log from './log.js';
-import * as focus from './focus.js';
-import { applyThemeConsistency } from './theme_consistency/index.js';
+import * as log from './utils/log.js';
+import * as focus from './window/focus.js';
+import { applyThemeConsistency } from './ui/theme_consistency/index.js';
 
 export default class OTilingPreferences extends ExtensionPreferences {
     async fillPreferencesWindow(window: Adw.PreferencesWindow) {
