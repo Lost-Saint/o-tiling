@@ -2,10 +2,12 @@ import Gtk from 'gi://Gtk';
 import Adw from 'gi://Adw';
 // Gdk dynamically imported
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 import { ExtensionPreferences, gettext as _ } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 import * as log from './log.js';
 import * as focus from './focus.js';
+import { applyThemeConsistency } from './theme_consistency/index.js';
 
 export default class OTilingPreferences extends ExtensionPreferences {
     async fillPreferencesWindow(window: Adw.PreferencesWindow) {
@@ -114,6 +116,23 @@ export default class OTilingPreferences extends ExtensionPreferences {
             const rgba = colorButton.rgba;
             settings.set_string('hint-color-rgba', rgba.to_string());
         });
+
+        const themesConsistencyRow = new Adw.ActionRow({
+            title: _('Themes Consistency (FlatCorners)'),
+            subtitle: _('Applies rounded corners to GTK and GNOME Shell elements'),
+        });
+        
+        const applyBtn = new Gtk.Button({
+            label: _('Apply'),
+            valign: Gtk.Align.CENTER,
+        });
+        
+        applyBtn.connect('clicked', () => {
+            applyThemeConsistency();
+        });
+        
+        themesConsistencyRow.add_suffix(applyBtn);
+        appearanceGroup.add(themesConsistencyRow);
 
         // Behavior Group
         const behaviorGroup = new Adw.PreferencesGroup({
