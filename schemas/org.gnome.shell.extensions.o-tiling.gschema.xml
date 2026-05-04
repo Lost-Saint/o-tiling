@@ -94,6 +94,11 @@
             <summary>Tile launched windows by default</summary>
         </key>
 
+        <key type="b" name="new-workspaces-tiled">
+            <default>true</default>
+            <summary>Automatically tile windows on new workspaces</summary>
+        </key>
+
         <key type="b" name="stacking-with-mouse">
             <default>true</default>
             <summary>Allow for stacking windows as a result of dragging a window with mouse</summary>

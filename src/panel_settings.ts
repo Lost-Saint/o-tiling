@@ -25,6 +25,8 @@ export class Indicator {
     button: any;
 
     toggle_tiled: any;
+    toggle_workspace_tiled: any;
+    toggle_new_workspaces_tiled: any;
     toggle_active: any;
     border_radius: any;
 
@@ -56,12 +58,29 @@ export class Indicator {
 
         this.button.add_child(this.button.icon);
 
+        this.button.connect('button-press-event', (actor: any, event: any) => {
+            if (event.get_button() === 1) { // Left click
+                if (ext.auto_tiler) ext.auto_tile_off();
+                else ext.auto_tile_on();
+                return Clutter.EVENT_STOP;
+            }
+            return Clutter.EVENT_PROPAGATE;
+        });
+
         const bm = this.button.menu;
         bm.box.add_style_class_name('o-tiling-menu');
 
         // ── Tiling ──────────────────────────────────────────────
-        this.toggle_tiled = tiled(ext);
-        bm.addMenuItem(this.toggle_tiled);
+        this.toggle_workspace_tiled = workspace_tiled(ext);
+        bm.addMenuItem(this.toggle_workspace_tiled);
+
+        this.toggle_new_workspaces_tiled = toggle(
+            _('Auto-Tile New Workspaces'),
+            ext.settings.new_workspaces_tiled(),
+            'window-new-symbolic',
+            (state) => ext.settings.set_new_workspaces_tiled(state),
+        );
+        bm.addMenuItem(this.toggle_new_workspaces_tiled);
 
         bm.addMenuItem(floating_window_exceptions(ext, bm, this.signals));
 
@@ -146,7 +165,27 @@ export class Indicator {
 
         bm.addMenuItem(new PopupSeparatorMenuItem());
 
-        bm.addMenuItem(restart_button(bm));
+        this.toggle_tiled = tiled(ext);
+        bm.addMenuItem(this.toggle_tiled);
+    }
+
+    update_workspace_tiling_state() {
+        const ext = (globalThis as any).oTilingExtension?.ext;
+        if (ext && this.toggle_workspace_tiled) {
+            const workspace = ext.active_workspace();
+            const tiled = ext.is_workspace_tiled(workspace);
+            this.toggle_workspace_tiled.setToggleState(tiled);
+            if (this.toggle_workspace_tiled.updateIcon) {
+                this.toggle_workspace_tiled.updateIcon(tiled);
+            }
+
+            // Update panel icon to reflect current workspace tiling state
+            if (ext.auto_tiler && tiled) {
+                this.button.icon.gicon = ext.button_gio_icon_auto_on;
+            } else {
+                this.button.icon.gicon = ext.button_gio_icon_auto_off;
+            }
+        }
     }
 
     destroy() {
@@ -311,25 +350,43 @@ function number_entry(
 }
 
 
-function toggle(desc: string, active: boolean, icon_name: string | null, callback: (state: boolean) => void): any {
+function toggle(
+    desc: string,
+    active: boolean,
+    icon_names: string | { on: string; off: string } | null,
+    callback: (state: boolean) => void,
+): any {
     const item = new PopupSwitchMenuItem(desc, active);
 
-    if (icon_name) {
+    if (icon_names) {
+        const icon_name = typeof icon_names === 'string'
+            ? icon_names
+            : (active ? icon_names.on : icon_names.off);
+
         const icon = new St.Icon({
             icon_name: icon_name,
             icon_size: 16,
-            style_class: 'popup-menu-icon'
+            style_class: 'popup-menu-icon',
         });
-    if (typeof (item as any).insert_child_at_index === 'function') {
-        (item as any).insert_child_at_index(icon, 1);
-    } else {
-        item.add_child(icon);
-    }
-    }
 
+        if (typeof (item as any).insert_child_at_index === 'function') {
+            (item as any).insert_child_at_index(icon, 1);
+        } else {
+            item.add_child(icon);
+        }
+
+        if (typeof icon_names !== 'string') {
+            (item as any).updateIcon = (state: boolean) => {
+                icon.icon_name = state ? icon_names.on : icon_names.off;
+            };
+
+            item.connect('toggled', (_, state) => {
+                (item as any).updateIcon(state);
+            });
+        }
+    }
 
     item.connect('toggled', (_, state) => {
-
         callback(state);
     });
 
@@ -337,44 +394,27 @@ function toggle(desc: string, active: boolean, icon_name: string | null, callbac
 }
 
 function tiled(ext: Ext): any {
-    return toggle(_('Tile Windows'), null != ext.auto_tiler, 'view-grid-symbolic', (shouldTile) => {
-        if (shouldTile) ext.auto_tile_on();
-        else ext.auto_tile_off();
-    });
-}
-
-
-
-function restart_button(menu: any): any {
-    const item = new PopupMenuItem(_('Restart Extension'));
-    const icon = new St.Icon({
-        icon_name: 'view-refresh-symbolic',
-        icon_size: 16,
-        style_class: 'popup-menu-icon'
-    });
-    if (typeof (item as any).insert_child_at_index === 'function') {
-        (item as any).insert_child_at_index(icon, 0);
-    } else {
-        item.add_child(icon);
-    }
-
-
-
-    item.connect('activate', () => {
-        const uuid = 'o-tiling@oliwebd.github.com';
-        const extMgr = (Main as any).extensionManager;
-        if (extMgr) {
-            extMgr.disableExtension(uuid);
-            // Re-enable after a short idle to allow cleanup to complete
-            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
-                extMgr.enableExtension(uuid);
-                return GLib.SOURCE_REMOVE;
-            });
-        } else {
-            (global as any).log('O-Tiling: extensionManager unavailable, cannot restart');
+    return toggle(
+        _('Extension On/Off'),
+        null != ext.auto_tiler,
+        { on: 'view-grid-symbolic', off: 'view-module-symbolic' },
+        (shouldTile) => {
+            if (shouldTile) ext.auto_tile_on();
+            else ext.auto_tile_off();
         }
-        menu.close();
-    });
-
-    return item;
+    );
 }
+
+function workspace_tiled(ext: Ext): any {
+    return toggle(
+        _('Tile This Workspace'),
+        ext.is_workspace_tiled(ext.active_workspace()),
+        { on: 'view-quilt-symbolic', off: 'view-compact-symbolic' },
+        (shouldTile) => {
+            ext.workspace_tiling_set(ext.active_workspace(), shouldTile);
+        }
+    );
+}
+
+
+

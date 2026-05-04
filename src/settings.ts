@@ -58,6 +58,7 @@ const SHOW_TITLE = 'show-title';
 const SMART_GAPS = 'smart-gaps';
 const SNAP_TO_GRID = 'snap-to-grid';
 const TILE_BY_DEFAULT = 'tile-by-default';
+const NEW_WORKSPACES_TILED = 'new-workspaces-tiled';
 const HINT_COLOR_RGBA = 'hint-color-rgba';
 const DEFAULT_RGBA_COLOR = 'rgba(53, 132, 228, 1)'; // Aura Blue
 const LOG_LEVEL = 'log-level';
@@ -182,6 +183,10 @@ export class ExtensionSettings {
         return this.ext.get_boolean(TILE_BY_DEFAULT);
     }
 
+    new_workspaces_tiled(): boolean {
+        return this.ext.get_boolean(NEW_WORKSPACES_TILED);
+    }
+
     workspaces_only_on_primary(): boolean {
         return this.mutter ? this.mutter.get_boolean('workspaces-only-on-primary') : false;
     }
@@ -284,6 +289,10 @@ export class ExtensionSettings {
 
     set_tile_by_default(set: boolean) {
         this.ext.set_boolean(TILE_BY_DEFAULT, set);
+    }
+
+    set_new_workspaces_tiled(set: boolean) {
+        this.ext.set_boolean(NEW_WORKSPACES_TILED, set);
     }
 
     set_log_level(set: number) {

@@ -162,6 +162,9 @@ export class Ext extends Ecs.System<ExtEvent> {
     /** The known display configuration, for tracking monitor removals and changes */
     displays: [number, Map<number, Display>] = [0, new Map()];
 
+    /** Workspaces where tiling is manually disabled */
+    disabled_workspaces: Set<number> = new Set();
+
     /** The current scaling factor in GNOME Shell */
     dpi: number = St.ThemeContext.get_for_stage(((global as any).stage as any)).scale_factor;
 
@@ -858,11 +861,15 @@ export class Ext extends Ecs.System<ExtEvent> {
             const workspace_id = this.active_workspace();
             const active = this.workspace_active.get(workspace_id);
             if (active) {
-                const window = this.windows.get(active);
-                if (window && window.meta.get_workspace().index() == workspace_id && !window.meta.minimized) {
-                    activate_window(window);
+                const win = this.windows.get(active);
+                if (win && win.actor_exists() && win.same_workspace()) {
+                    activate_window(win);
                     return;
                 }
+            }
+
+            if (indicator) {
+                indicator.update_workspace_tiling_state();
             }
 
             // If window was not found, activate the first window on workspace.
@@ -877,6 +884,38 @@ export class Ext extends Ecs.System<ExtEvent> {
                 }
             }
         });
+    }
+
+    is_workspace_tiled(id: number): boolean {
+        return !this.disabled_workspaces.has(id);
+    }
+
+    workspace_tiling_set(id: number, tiled: boolean) {
+        if (tiled) {
+            this.disabled_workspaces.delete(id);
+            if (this.auto_tiler) {
+                for (const window of this.windows.values()) {
+                    if (window.workspace_id() === id && window.is_tilable(this)) {
+                        if (!this.auto_tiler.attached.contains(window.entity)) {
+                            this.auto_tiler.auto_tile(this, window, true);
+                        }
+                    }
+                }
+            }
+        } else {
+            this.disabled_workspaces.add(id);
+            if (this.auto_tiler) {
+                for (const window of this.windows.values()) {
+                    if (window.workspace_id() === id) {
+                        this.auto_tiler.detach_window(this, window.entity);
+                    }
+                }
+            }
+        }
+
+        if (indicator) {
+            indicator.update_workspace_tiling_state();
+        }
     }
 
     on_destroy(win: Entity) {
@@ -1799,8 +1838,11 @@ export class Ext extends Ecs.System<ExtEvent> {
         }
     }
 
-    on_workspace_added(_number: number) {
+    on_workspace_added(number: number) {
         this.ignore_display_update = true;
+        if (!this.settings.new_workspaces_tiled()) {
+            this.disabled_workspaces.add(number);
+        }
     }
 
     /** Handle workspace change events */
@@ -2375,7 +2417,10 @@ export class Ext extends Ecs.System<ExtEvent> {
                 this.settings.set_tile_by_default(false);
             }
 
-            if (indicator) indicator.toggle_tiled.setToggleState(false);
+            if (indicator) {
+                indicator.toggle_tiled.setToggleState(false);
+                if (indicator.toggle_tiled.updateIcon) indicator.toggle_tiled.updateIcon(false);
+            }
 
             this.button.icon.gicon = this.button_gio_icon_auto_off; // type: Gio.Icon
 
@@ -2389,7 +2434,10 @@ export class Ext extends Ecs.System<ExtEvent> {
         this.settings.set_edge_tiling(false);
         this.hide_all_borders();
 
-        if (indicator) indicator.toggle_tiled.setToggleState(true);
+        if (indicator) {
+            indicator.toggle_tiled.setToggleState(true);
+            if (indicator.toggle_tiled.updateIcon) indicator.toggle_tiled.updateIcon(true);
+        }
 
         const original = this.active_workspace();
 
@@ -2769,7 +2817,7 @@ export class Ext extends Ecs.System<ExtEvent> {
                 });
             };
 
-            if (this.auto_tiler && !win.meta.minimized && win.is_tilable(this)) {
+            if (this.auto_tiler && !win.meta.minimized && win.is_tilable(this) && this.is_workspace_tiled(win.workspace_id())) {
                 const id = actor.connect('first-frame', () => {
                     this.auto_tiler?.auto_tile(this, win, this.init);
                     grab_focus();
@@ -2834,8 +2882,8 @@ export class Ext extends Ecs.System<ExtEvent> {
     }
 }
 
-let ext: Ext | null = null;
-let indicator: Indicator | null = null;
+export let ext: Ext | null = null;
+export let indicator: Indicator | null = null;
 
 declare global {
     var oTilingExtension: any;
