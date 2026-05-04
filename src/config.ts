@@ -84,6 +84,21 @@ export interface FloatRule {
     title?: string;
 }
 
+/** Compiled rule with pre-built RegExp for hot-path matching. */
+interface CompiledRule {
+    classRe: RegExp | null;
+    titleRe: RegExp | null;
+    disabled?: boolean;
+}
+
+function compile_rules(rules: Array<FloatRule | WindowRule>): CompiledRule[] {
+    return rules.map(rule => ({
+        classRe: rule.class ? new RegExp(rule.class, 'i') : null,
+        titleRe: rule.title ? new RegExp(rule.title, 'i') : null,
+        disabled: rule.disabled,
+    }));
+}
+
 export class Config {
     /** List of windows that should float, regardless of their WM hints */
     float: Array<FloatRule> = [];
@@ -97,6 +112,17 @@ export class Config {
     /** Logs window details on focus of window */
     log_on_focus: boolean = false;
 
+    /** Pre-compiled float rules for hot-path matching */
+    private _compiled_float: CompiledRule[] = compile_rules(DEFAULT_FLOAT_RULES);
+    /** Pre-compiled skip-taskbar rules for hot-path matching */
+    private _compiled_skip: CompiledRule[] = compile_rules(SKIPTASKBAR_EXCEPTIONS);
+
+    /** Rebuild compiled rule caches after any mutation */
+    private _rebuild_caches() {
+        this._compiled_float = compile_rules(this.float.concat(DEFAULT_FLOAT_RULES));
+        this._compiled_skip = compile_rules(this.skiptaskbarhidden.concat(SKIPTASKBAR_EXCEPTIONS));
+    }
+
     /** Add a floating exception which matches by wm_class */
     add_app_exception(wmclass: string) {
         for (const r of this.float) {
@@ -104,6 +130,7 @@ export class Config {
         }
 
         this.float.push({ class: wmclass });
+        this._rebuild_caches();
         this.sync_to_disk();
     }
 
@@ -114,19 +141,20 @@ export class Config {
         }
 
         this.float.push({ class: wmclass, title });
+        this._rebuild_caches();
         this.sync_to_disk();
     }
 
     window_shall_float(wclass: string, title: string): boolean {
-        for (const rule of this.float.concat(DEFAULT_FLOAT_RULES)) {
-            if (rule.class) {
-                if (!new RegExp(rule.class, 'i').test(wclass)) {
+        for (const rule of this._compiled_float) {
+            if (rule.classRe) {
+                if (!rule.classRe.test(wclass)) {
                     continue;
                 }
             }
 
-            if (rule.title) {
-                if (!new RegExp(rule.title, 'i').test(title)) {
+            if (rule.titleRe) {
+                if (!rule.titleRe.test(title)) {
                     continue;
                 }
             }
@@ -144,15 +172,15 @@ export class Config {
         const isSkip = typeof meta_window.is_skip_taskbar === 'function' ? meta_window.is_skip_taskbar() : !!meta_window.skip_taskbar;
         if (!isSkip) return false;
 
-        for (const rule of this.skiptaskbarhidden.concat(SKIPTASKBAR_EXCEPTIONS)) {
-            if (rule.class) {
-                if (!new RegExp(rule.class, 'i').test(wmclass)) {
+        for (const rule of this._compiled_skip) {
+            if (rule.classRe) {
+                if (!rule.classRe.test(wmclass)) {
                     continue;
                 }
             }
 
-            if (rule.title) {
-                if (!new RegExp(rule.title, 'i').test(wmtitle)) {
+            if (rule.titleRe) {
+                if (!rule.titleRe.test(wmtitle)) {
                     continue;
                 }
             }
@@ -173,6 +201,8 @@ export class Config {
         } else {
             log(`error loading conf: ${conf.why}`);
         }
+
+        this._rebuild_caches();
     }
 
     rule_disabled(rule: FloatRule): boolean {
@@ -195,6 +225,7 @@ export class Config {
                 if (value.class === wmclass && value.title === wmtitle) {
                     value.disabled = disabled;
                     this.float.push(value);
+                    this._rebuild_caches();
                     this.sync_to_disk();
                     return;
                 }
@@ -213,6 +244,7 @@ export class Config {
 
         if (found) swap_remove(this.float, index);
 
+        this._rebuild_caches();
         this.sync_to_disk();
     }
 
@@ -230,6 +262,7 @@ export class Config {
         if (found.length !== 0) {
             for (const idx of found) swap_remove(this.float, idx);
 
+            this._rebuild_caches();
             this.sync_to_disk();
         }
     }

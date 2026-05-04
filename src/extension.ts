@@ -157,6 +157,9 @@ export class Ext extends Ecs.System<ExtEvent> {
     private _resume_timeout: number | null = null;
     private _resuming: boolean = false;
     private _signals_attached: boolean = false;
+    private _restack_source: number | null = null;
+    private _schedule_idle_sources: Set<number> = new Set();
+    private _settings_signal_ids: Array<[any, number]> = [];
 
 
     /** The known display configuration, for tracking monitor removals and changes */
@@ -280,19 +283,22 @@ export class Ext extends Ecs.System<ExtEvent> {
         this.conf.reload();
 
         if (this.settings.int) {
-            this.settings.int.connect("changed::gtk-theme", () => {
+            const id1 = this.settings.int.connect("changed::gtk-theme", () => {
                 this.register(Events.global(GlobalEvent.GtkThemeChanged));
             });
+            this._settings_signal_ids.push([this.settings.int, id1]);
 
-            this.settings.int.connect("changed::accent-color", () => {
+            const id2 = this.settings.int.connect("changed::accent-color", () => {
                 this.register(Events.global(GlobalEvent.GtkThemeChanged));
             });
+            this._settings_signal_ids.push([this.settings.int, id2]);
         }
 
         if (this.settings.shell) {
-            this.settings.shell.connect("changed::name", () => {
+            const id3 = this.settings.shell.connect("changed::name", () => {
                 this.register(Events.global(GlobalEvent.GtkShellChanged));
             });
+            this._settings_signal_ids.push([this.settings.shell, id3]);
         }
 
         this.dbus.FocusUp = () => this.focus_up();
@@ -331,6 +337,12 @@ export class Ext extends Ecs.System<ExtEvent> {
         this.hide_all_borders();
         this.keybindings.disable(this.keybindings.global).disable(this.keybindings.window_focus);
 
+        // Disconnect settings signals (EGO: all signals must be disconnected in disable)
+        for (const [obj, id] of this._settings_signal_ids) {
+            try { obj.disconnect(id); } catch (_) { }
+        }
+        this._settings_signal_ids = [];
+
         if (this.auto_tiler) {
             this.auto_tiler.destroy(this);
             this.auto_tiler = null;
@@ -359,6 +371,24 @@ export class Ext extends Ecs.System<ExtEvent> {
             GLib.source_remove(this.workareas_update);
             this.workareas_update = null;
         }
+
+        // Clean up restack timeout source
+        if (this._restack_source !== null) {
+            GLib.source_remove(this._restack_source);
+            this._restack_source = null;
+        }
+
+        // Clean up schedule_idle timeout sources
+        for (const src of this._schedule_idle_sources) {
+            try { GLib.source_remove(src); } catch (_) { }
+        }
+        this._schedule_idle_sources.clear();
+
+        // Clean up pending size request timers
+        for (const [, src] of this.size_requests) {
+            try { GLib.source_remove(src); } catch (_) { }
+        }
+        this.size_requests.clear();
     }
 
     // System interface
@@ -845,6 +875,11 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.hide_all_borders();
             this.restack();
 
+            // Always update the workspace tiling toggle when switching workspaces
+            if (indicator) {
+                indicator.update_workspace_tiling_state();
+            }
+
             const activate_window = (window: Window.ShellWindow) => {
                 this.on_focused(window);
                 window.activate(true);
@@ -866,10 +901,6 @@ export class Ext extends Ecs.System<ExtEvent> {
                     activate_window(win);
                     return;
                 }
-            }
-
-            if (indicator) {
-                indicator.update_workspace_tiling_state();
             }
 
             // If window was not found, activate the first window on workspace.
@@ -1111,7 +1142,6 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         if (current != prev_gap) {
             this.update_inner_gap();
-            Gio.Settings.sync();
         }
     }
 
@@ -1167,8 +1197,6 @@ export class Ext extends Ecs.System<ExtEvent> {
         if (diff != 0) {
             this.set_gap_outer(current);
             this.update_outer_gap(diff);
-
-            Gio.Settings.sync();
         }
     }
 
@@ -1953,8 +1981,11 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     restack() {
         // NOTE: Workaround for GNOME Shell showing our hidden windows on a workspace switch
+        if (this._restack_source !== null) {
+            GLib.source_remove(this._restack_source);
+        }
         let attempts = 0;
-        GLib.timeout_add(GLib.PRIORITY_LOW, 50, () => {
+        this._restack_source = GLib.timeout_add(GLib.PRIORITY_LOW, 100, () => {
             if (this.auto_tiler) {
                 for (const container of this.auto_tiler.forest.stacks.values()) {
                     container.restack();
@@ -1963,7 +1994,8 @@ export class Ext extends Ecs.System<ExtEvent> {
 
             const x = attempts;
             attempts += 1;
-            return x < 10;
+            if (x >= 3) this._restack_source = null;
+            return x < 3;
         });
     }
 
@@ -2201,7 +2233,7 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.prev_focused = [null, null];
         });
 
-        St.ThemeContext.get_for_stage(((global as any).stage as any)).connect('notify::scale-factor', () => this.update_scale());
+        this.connect(St.ThemeContext.get_for_stage(((global as any).stage as any)) as any, 'notify::scale-factor', () => this.update_scale());
 
         // Modes
 
@@ -2477,10 +2509,12 @@ export class Ext extends Ecs.System<ExtEvent> {
     /** Calls a function once windows are no longer queued for movement. */
     schedule_idle(func: () => boolean): boolean {
         if (!this.movements.is_empty()) {
-            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
+            const src = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
                 if (!this.movements.is_empty()) return true;
+                this._schedule_idle_sources.delete(src);
                 return func();
             });
+            this._schedule_idle_sources.add(src);
         } else {
             func();
         }

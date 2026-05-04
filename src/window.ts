@@ -490,7 +490,7 @@ export class ShellWindow {
                     // Ensure that the border is shown
                     if (ACTIVE_HINT_SHOW_ID !== null) GLib.source_remove(ACTIVE_HINT_SHOW_ID);
                     ACTIVE_HINT_SHOW_ID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
-                        if (!permitted() || applications >= 10) {
+                        if (!permitted() || applications >= 5) {
                             ACTIVE_HINT_SHOW_ID = null;
                             if (!permitted()) border.hide();
                             return GLib.SOURCE_REMOVE;
@@ -558,7 +558,8 @@ export class ShellWindow {
 
                 // Honor always-top windows: if any always-top window is ABOVE our border, 
                 // we must stay below it.
-                for (const above_actor of this.always_top_windows) {
+                for (const above_actor of (global as any).get_window_actors()) {
+                    if (!above_actor?.get_meta_window()?.is_above()) continue;
                     const above_parent = above_actor.get_parent();
                     if (actor !== above_actor && above_parent === parent) {
                         parent.set_child_below_sibling(border, above_actor);
@@ -589,16 +590,6 @@ export class ShellWindow {
         } else {
             this._restack_id = utils.later_add(Meta.LaterType.BEFORE_REDRAW, action);
         }
-    }
-
-    get always_top_windows(): Clutter.Actor[] {
-        const above_windows: Clutter.Actor[] = [];
-
-        for (const actor of (global as any).get_window_actors()) {
-            if (actor && actor.get_meta_window() && actor.get_meta_window().is_above()) above_windows.push(actor);
-        }
-
-        return above_windows;
     }
 
     hide_border() {
