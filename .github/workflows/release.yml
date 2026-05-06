@@ -39,8 +39,11 @@ jobs:
           echo "metadata.json version: ${META_VERSION}"
 
           PKG_MAJOR_MINOR=$(echo "${PKG_VERSION}" | cut -d. -f1,2)
+          PKG_INT=$(echo "${PKG_MAJOR_MINOR}" | tr -d .)
 
-          if [ "${META_VERSION}" != "${PKG_MAJOR_MINOR}" ] && [ "${META_VERSION}" != "${PKG_VERSION}" ]; then
+          if [ "${META_VERSION}" != "${PKG_MAJOR_MINOR}" ] && \
+             [ "${META_VERSION}" != "${PKG_VERSION}" ] && \
+             [ "${META_VERSION}" != "${PKG_INT}" ]; then
             echo "::error::Version mismatch — package.json (${PKG_VERSION}) does not align with metadata.json (${META_VERSION})"
             exit 1
           fi
