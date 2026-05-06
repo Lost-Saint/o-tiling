@@ -70,6 +70,7 @@ const ACTIVE_HINT_OVERLAY_OPACITY = 'active-hint-overlay-opacity';
 const ACTIVE_HINT_GLOW_OPACITY = 'active-hint-glow-opacity';
 const ACTIVE_HINT_GLOW = 'active-hint-glow';
 const WORKSPACE_SWITCHER_STYLE = 'workspace-switcher-style';
+const WORKSPACE_THUMBNAIL_HEIGHT = 'workspace-thumbnail-height';
 
 
 export class ExtensionSettings {
@@ -228,6 +229,10 @@ export class ExtensionSettings {
         return this.ext.get_boolean(WORKSPACE_SWITCHER_STYLE);
     }
 
+    workspace_thumbnail_height(): number {
+        return this.ext.get_uint(WORKSPACE_THUMBNAIL_HEIGHT);
+    }
+
 
     // Setters
 
@@ -332,6 +337,10 @@ export class ExtensionSettings {
 
     set_workspace_switcher_style(set: boolean) {
         this.ext.set_boolean(WORKSPACE_SWITCHER_STYLE, set);
+    }
+
+    set_workspace_thumbnail_height(set: number) {
+        this.ext.set_uint(WORKSPACE_THUMBNAIL_HEIGHT, set);
     }
 
 

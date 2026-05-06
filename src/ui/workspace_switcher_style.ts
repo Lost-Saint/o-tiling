@@ -1,18 +1,3 @@
-/**
- * workspace_switcher_style.ts
- *
- * Optional workspace-switcher re-styling for GNOME Shell 50+.
- *
- * Design:
- *   - Entirely CSS-based injection via St.ThemeContext / Gio.File — no JS
- *     monkey-patching of Shell internals. This keeps the feature EGO-compliant
- *     and trivially reversible.
- *   - All logic is encapsulated in `WorkspaceSwitcherStyle` so the main
- *     extension just calls enable() / disable() / updateAccentColor().
- *   - The `isGnome50()` guard is exported so callers can gate UI items without
- *     duplicating the version parse.
- */
-
 import St from 'gi://St';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
@@ -41,14 +26,8 @@ export function isGnome50(): boolean {
  *   .workspace-thumbnails         – the horizontal strip container
  *   .workspace-thumbnail          – individual workspace preview cards
  *   .workspace-thumbnail:focus    – active / focused card
- *
- * The accent color is used for the active card border so it follows
- * the user's existing O-Tiling active-hint colour automatically.
  */
-function buildCss(accentColor: string): string {
-    // Parse accent color into a semi-transparent version for the background tint
-    // We use a fixed alpha reduction — Clutter colour math is not available at
-    // CSS-string-build time, so we approximate with a fixed opacity value.
+function buildCss(accentColor: string, thumbnailHeight: number): string {
     const bgTint = accentColorToTint(accentColor, 0.08);
     const glowTint = accentColorToTint(accentColor, 0.22);
 
@@ -62,10 +41,12 @@ function buildCss(accentColor: string): string {
     padding: 10px 14px;
     spacing: 12px;
     border: 1px solid rgba(255, 255, 255, 0.08);
+    height: auto;
 }
 
 /* ── Individual workspace cards ────────────────────────── */
 .workspace-thumbnail {
+    height: ${thumbnailHeight}px;
     border-radius: 10px;
     border: 2px solid transparent;
     transition-duration: 180ms;
@@ -98,15 +79,12 @@ function buildCss(accentColor: string): string {
 
 /**
  * Converts an rgba() or hex color string into a rgba() with the given alpha.
- * Falls back to a neutral translucent white on parse failure.
  */
 function accentColorToTint(rgba: string, alpha: number): string {
-    // Try to extract r,g,b from "rgba(r, g, b, a)" or "rgb(r, g, b)"
     const match = rgba.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
     if (match) {
         return `rgba(${match[1]}, ${match[2]}, ${match[3]}, ${alpha})`;
     }
-    // Hex fallback — just return a neutral tint
     return `rgba(255, 255, 255, ${alpha})`;
 }
 
@@ -115,34 +93,53 @@ function accentColorToTint(rgba: string, alpha: number): string {
 export class WorkspaceSwitcherStyle {
     private _provider: any | null = null;
     private _accentColor: string;
+    private _thumbnailHeight: number;
 
-    constructor(accentColor: string) {
+    constructor(accentColor: string, thumbnailHeight: number) {
         this._accentColor = accentColor;
+        this._thumbnailHeight = thumbnailHeight;
     }
 
     /** Injects custom CSS into the Shell theme. No-op if already enabled. */
     enable(): void {
         if (this._provider) return;
 
-        this._provider = new (St as any).CssProvider();
-        const css = buildCss(this._accentColor);
-
+        // Try standard constructor
         try {
-            this._provider.load_from_data(css, css.length);
-        } catch (_) {
-            // GNOME 46+ uses load_from_string
-            try {
-                (this._provider as any).load_from_string(css);
-            } catch (e) {
-                logError(e as Error, 'WorkspaceSwitcherStyle: failed to load CSS');
-                this._provider = null;
-                return;
-            }
+            this._provider = new (St as any).CssProvider();
+        } catch (e) {
+            console.error('WorkspaceSwitcherStyle: failed to create CssProvider', e);
+            return;
         }
 
-        (St.ThemeContext.get_for_stage(
-            (global as any).stage as Clutter.Stage,
-        ).get_theme() as any)?.add_provider(this._provider, 800 /* priority */);
+        const css = buildCss(this._accentColor, this._thumbnailHeight);
+
+        try {
+            // Modern GNOME uses load_from_string
+            if (typeof this._provider.load_from_string === 'function') {
+                this._provider.load_from_string(css);
+            } else {
+                this._provider.load_from_data(css, css.length);
+            }
+        } catch (e) {
+            console.error('WorkspaceSwitcherStyle: failed to load CSS', e);
+            this._provider = null;
+            return;
+        }
+
+        try {
+            const theme = St.ThemeContext.get_for_stage(
+                (global as any).stage as Clutter.Stage,
+            ).get_theme() as any;
+            
+            if (theme) {
+                theme.add_provider(this._provider, 999 /* Higher priority */);
+            } else {
+                console.warn('WorkspaceSwitcherStyle: could not find theme to add provider');
+            }
+        } catch (e) {
+            console.error('WorkspaceSwitcherStyle: failed to add provider to theme', e);
+        }
     }
 
     /** Removes the injected CSS from the Shell theme. */
@@ -150,17 +147,31 @@ export class WorkspaceSwitcherStyle {
         if (!this._provider) return;
 
         try {
-            (St.ThemeContext.get_for_stage(
+            const theme = St.ThemeContext.get_for_stage(
                 (global as any).stage as Clutter.Stage,
-            ).get_theme() as any)?.remove_provider(this._provider);
+            ).get_theme() as any;
+            
+            if (theme) {
+                theme.remove_provider(this._provider);
+            }
         } catch (_) { /* best-effort */ }
 
         this._provider = null;
     }
 
-    /** Hot-updates the accent colour without a full disable → enable cycle. */
+    /** Hot-updates the accent colour. */
     updateAccentColor(rgba: string): void {
         this._accentColor = rgba;
+        this._refresh();
+    }
+
+    /** Hot-updates the thumbnail height. */
+    updateThumbnailHeight(height: number): void {
+        this._thumbnailHeight = height;
+        this._refresh();
+    }
+
+    private _refresh(): void {
         if (this._provider) {
             this.disable();
             this.enable();

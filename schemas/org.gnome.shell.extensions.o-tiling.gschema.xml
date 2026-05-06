@@ -41,6 +41,12 @@
             <summary>Style the workspace switcher bar (GNOME 50+ only)</summary>
         </key>
 
+        <key type="u" name="workspace-thumbnail-height">
+            <default>92</default>
+            <range min="40" max="300"/>
+            <summary>Height of workspace thumbnails, in pixels (GNOME 50+ only)</summary>
+        </key>
+
 
         <key type="u" name="gap-inner">
             <default>4</default>

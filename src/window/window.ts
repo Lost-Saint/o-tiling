@@ -82,6 +82,7 @@ export class ShellWindow {
     });
 
     private _restack_id: number | null = null;
+    private _update_id: number | null = null;
 
     prev_rect: null | Rectangle = null;
 
@@ -461,8 +462,7 @@ export class ShellWindow {
     show_border() {
         if (!this.border) return;
 
-        this.restack();
-        this.update_border_style();
+        this.queue_update();
         if (this.ext.settings.active_hint()) {
             const border = this.border;
 
@@ -482,27 +482,30 @@ export class ShellWindow {
 
             if (permitted()) {
                 if (this.meta.appears_focused) {
-                    border.show();
+                    if (!border.visible) border.show();
 
-                    // Focus will be re-applied to fix windows moving across workspaces
-                    let applications = 0;
+                    // Ensure that the border is shown (workaround for certain windows)
+                    if (ACTIVE_HINT_SHOW_ID === null) {
+                        let applications = 0;
+                        ACTIVE_HINT_SHOW_ID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
+                            if (!permitted() || applications >= 5) {
+                                ACTIVE_HINT_SHOW_ID = null;
+                                if (!permitted()) border.hide();
+                                return GLib.SOURCE_REMOVE;
+                            }
 
-                    // Ensure that the border is shown
-                    if (ACTIVE_HINT_SHOW_ID !== null) GLib.source_remove(ACTIVE_HINT_SHOW_ID);
-                    ACTIVE_HINT_SHOW_ID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
-                        if (!permitted() || applications >= 5) {
-                            ACTIVE_HINT_SHOW_ID = null;
-                            if (!permitted()) border.hide();
-                            return GLib.SOURCE_REMOVE;
-                        }
-
-                        applications += 1;
-                        border.show();
-                        return GLib.SOURCE_CONTINUE;
-                    });
+                            applications += 1;
+                            if (!border.visible) border.show();
+                            return GLib.SOURCE_CONTINUE;
+                        });
+                    }
                 }
             } else {
                 border.hide();
+                if (ACTIVE_HINT_SHOW_ID !== null) {
+                    GLib.source_remove(ACTIVE_HINT_SHOW_ID);
+                    ACTIVE_HINT_SHOW_ID = null;
+                }
             }
         }
     }
@@ -518,6 +521,21 @@ export class ShellWindow {
 
     same_monitor() {
         return this.meta.get_monitor() === ((global as any).backend.get_current_logical_monitor()?.get_number() ?? 0);
+    }
+
+    /** Queues a layout and style update to run before the next redraw */
+    queue_update() {
+        if (this._update_id !== null) return;
+
+        this._update_id = utils.later_add(Meta.LaterType.BEFORE_REDRAW, () => {
+            this._update_id = null;
+            if (this.actor_exists()) {
+                this.update_border_style();
+                this.update_border_layout();
+                this.restack(RESTACK_STATE.NORMAL, true);
+            }
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     /**
@@ -718,7 +736,7 @@ export class ShellWindow {
     }
 
     private window_changed() {
-        this.update_border_layout();
+        this.queue_update();
         this.ext.show_border_on_focused();
     }
 
@@ -744,6 +762,10 @@ export class ShellWindow {
         if (this._restack_id !== null) {
             utils.later_remove(this._restack_id);
             this._restack_id = null;
+        }
+        if (this._update_id !== null) {
+            utils.later_remove(this._update_id);
+            this._update_id = null;
         }
         if (this.border) {
             this.border.destroy();

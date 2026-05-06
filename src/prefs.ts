@@ -62,6 +62,23 @@ export default class OTilingPreferences extends ExtensionPreferences {
         appearanceGroup.add(workspaceSwitcherStyle);
         settings.bind('workspace-switcher-style', workspaceSwitcherStyle as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
+        const thumbnailHeight = new Adw.ActionRow({
+            title: _('Workspace Thumbnail Height'),
+            subtitle: _('GNOME 50+ only — set the height of workspace previews'),
+        });
+        const scale = new Gtk.Scale({
+            orientation: Gtk.Orientation.HORIZONTAL,
+            adjustment: new Gtk.Adjustment({ lower: 40, upper: 300, step_increment: 1, page_increment: 10 }),
+            draw_value: true,
+            value_pos: Gtk.PositionType.RIGHT,
+            hexpand: true,
+            valign: Gtk.Align.CENTER,
+        });
+        scale.set_size_request(200, -1);
+        thumbnailHeight.add_suffix(scale);
+        appearanceGroup.add(thumbnailHeight);
+        settings.bind('workspace-thumbnail-height', scale.get_adjustment() as any, 'value', Gio.SettingsBindFlags.DEFAULT);
+
 
         const activeHint = new Adw.SwitchRow({
             title: _('Show Active Hint (Aura)'),

@@ -215,6 +215,9 @@ export class Ext extends Ecs.System<ExtEvent> {
     /** Record of misc. global objects and their attached signals */
     private signals: Map<GObject.Object, Array<SignalID>> = new Map();
 
+    /** Signals specifically attached to workspaces, for easy cleanup */
+    private workspace_signals: Map<any, Array<SignalID>> = new Map();
+
     private size_requests: Map<GObject.Object, SignalID> = new Map();
 
     /** Stores windows that were focused on a workspace */
@@ -315,6 +318,11 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.workspace_switcher_style_handler?.updateAccentColor(this.settings.hint_color_rgba());
         });
         this._settings_signal_ids.push([this.settings.ext, id_ws_accent]);
+
+        const id_ws_height = this.settings.ext.connect('changed::workspace-thumbnail-height', () => {
+            this.workspace_switcher_style_handler?.updateThumbnailHeight(this.settings.workspace_thumbnail_height());
+        });
+        this._settings_signal_ids.push([this.settings.ext, id_ws_height]);
 
         this.dbus.FocusUp = () => this.focus_up();
         this.dbus.FocusDown = () => this.focus_down();
@@ -573,6 +581,19 @@ export class Ext extends Ecs.System<ExtEvent> {
             entry.push(signal);
         } else {
             this.signals.set(object, [signal]);
+        }
+
+        return signal;
+    }
+
+    /** Connects a callback signal to a workspace, and records it for later removal. */
+    connect_workspace(ws: any, property: string, callback: (...args: any) => boolean | void): SignalID {
+        const signal = ws.connect(property, callback);
+        const entry = this.workspace_signals.get(ws);
+        if (entry) {
+            entry.push(signal);
+        } else {
+            this.workspace_signals.set(ws, [signal]);
         }
 
         return signal;
@@ -984,6 +1005,12 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         const window = this.windows.get(win);
         if (!window) return;
+
+        const old_size_request = this.size_requests.get(window.meta);
+        if (old_size_request) {
+            try { GLib.source_remove(old_size_request); } catch (_) { }
+            this.size_requests.delete(window.meta);
+        }
 
         const stack = window.stack;
 
@@ -1899,7 +1926,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     setup_workspace_signals(ws: any) {
         let index = ws.index();
-        this.connect(ws, 'notify::workspace-index', () => {
+        this.connect_workspace(ws, 'notify::workspace-index', () => {
             if (ws !== null) {
                 const new_index = ws.index();
                 this.on_workspace_index_changed(index, new_index);
@@ -2020,6 +2047,17 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     on_workspace_removed(number: number) {
         this.disabled_workspaces.delete(number);
+
+        // Disconnect all signals for the removed workspace
+        for (const [ws, signals] of this.workspace_signals) {
+            if (ws.index() === -1) { // -1 means it's being/has been removed
+                for (const signal of signals) {
+                    try { ws.disconnect(signal); } catch (_) { }
+                }
+                this.workspace_signals.delete(ws);
+            }
+        }
+
         this.on_workspace_modify(
             (current) => current > number,
             (prev) => prev - 1,
@@ -2303,6 +2341,14 @@ export class Ext extends Ecs.System<ExtEvent> {
         this.tiler.queue.stop();
 
         this.signals.clear();
+
+        for (const [ws, signals] of this.workspace_signals) {
+            for (const signal of signals) {
+                try { ws.disconnect(signal); } catch (_) { }
+            }
+        }
+        this.workspace_signals.clear();
+
         this._signals_attached = false;
     }
 
@@ -2508,7 +2554,8 @@ export class Ext extends Ecs.System<ExtEvent> {
         if (enabled) {
             if (!this.workspace_switcher_style_handler) {
                 this.workspace_switcher_style_handler = new WorkspaceSwitcherStyle(
-                    this.settings.hint_color_rgba()
+                    this.settings.hint_color_rgba(),
+                    this.settings.workspace_thumbnail_height()
                 );
             }
             this.workspace_switcher_style_handler.enable();

@@ -98,16 +98,7 @@ export class Indicator {
         );
         bm.addMenuItem(this.toggle_active);
 
-        // ── Workspace Switcher Style (GNOME 50+ only) ───────────
-        if (isGnome50()) {
-            this.toggle_workspace_switcher = toggle(
-                _('Workspace Switcher Style'),
-                ext.settings.workspace_switcher_style(),
-                { on: 'view-paged-symbolic', off: 'view-dual-symbolic' },
-                (state) => ext.toggle_workspace_switcher_style(state),
-            );
-            bm.addMenuItem(this.toggle_workspace_switcher);
-        }
+
 
 
         bm.addMenuItem(new PopupSeparatorMenuItem());
