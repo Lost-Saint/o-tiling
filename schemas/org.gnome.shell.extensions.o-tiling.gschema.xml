@@ -41,10 +41,33 @@
             <summary>Style the workspace switcher bar (GNOME 50+ only)</summary>
         </key>
 
-        <key type="u" name="workspace-thumbnail-height">
-            <default>92</default>
-            <range min="40" max="300"/>
-            <summary>Height of workspace thumbnails, in pixels (GNOME 50+ only)</summary>
+        <key type="u" name="workspace-thumbnail-corner-radius">
+            <default>10</default>
+            <range min="0" max="60"/>
+            <summary>Corner radius of workspace thumbnails, in pixels (GNOME 50+ only)</summary>
+        </key>
+
+        <key type="u" name="workspace-switcher-size">
+            <default>15</default>
+            <range min="5" max="25"/>
+            <summary>Scale of the workspace switcher as a percentage of screen height (GNOME 50+ only)</summary>
+        </key>
+
+        <key type="u" name="workspace-background-corner-size">
+            <default>12</default>
+            <range min="0" max="60"/>
+            <summary>Corner radius of workspace background in the overview, in pixels (GNOME 50+ only)</summary>
+        </key>
+
+
+        <key type="b" name="skip-overview">
+            <default>false</default>
+            <summary>Skip the activities overview on startup</summary>
+        </key>
+
+        <key type="b" name="theme-consistency">
+            <default>false</default>
+            <summary>Apply rounded corners consistency to Shell elements (no User Themes extension required)</summary>
         </key>
 
 

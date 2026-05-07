@@ -34,18 +34,22 @@ export function unblock_signal(object: GObject.Object, signal: SignalID) {
     GObject.signal_handler_unblock(object, signal);
 }
 
-export function read_to_string(path: string): result.Result<string, error.Error> {
+export function read_to_string(path: string): Promise<result.Result<string, error.Error>> {
     const file = Gio.File.new_for_path(path);
-    try {
-        const [ok, contents] = file.load_contents(null);
-        if (ok) {
-            return Ok(new TextDecoder().decode(contents));
-        } else {
-            return Err(new Error(`failed to load contents of ${path}`));
-        }
-    } catch (e) {
-        return Err(new Error(String(e)).context(`failed to load contents of ${path}`));
-    }
+    return new Promise((resolve) => {
+        file.load_contents_async(null, (obj: any, res: any) => {
+            try {
+                const [ok, contents] = obj.load_contents_finish(res);
+                if (ok) {
+                    resolve(Ok(new TextDecoder().decode(contents)));
+                } else {
+                    resolve(Err(new Error(`failed to load contents of ${path}`)));
+                }
+            } catch (e) {
+                resolve(Err(new Error(String(e)).context(`failed to load contents of ${path}`)));
+            }
+        });
+    });
 }
 
 export function source_remove(id: SignalID): boolean {
@@ -183,19 +187,7 @@ export function map_eq<K, V>(map1: Map<K, V>, map2: Map<K, V>) {
     return true;
 }
 
-export function os_release(): null | string {
-    const [ok, bytes] = GLib.file_get_contents('/etc/os-release');
-    if (!ok) return null;
 
-    const contents: string = new TextDecoder().decode(bytes);
-    for (const line of contents.split('\n')) {
-        if (line.startsWith('VERSION_ID')) {
-            return line.split('"')[1];
-        }
-    }
-
-    return null;
-}
 export function maximize(
     window: Meta.Window,
     flags: number = 3 // Meta.MaximizeFlags.BOTH

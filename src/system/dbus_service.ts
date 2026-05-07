@@ -30,6 +30,7 @@ export class Service {
     FocusUp: () => void = () => {};
     FocusDown: () => void = () => {};
     WindowFocus: (window: [number, number]) => void = () => {};
+    WindowHighlight: (window: [number, number]) => void = () => {};
     WindowList: () => Array<[[number, number], string, string, string]> = () => [];
     WindowQuit: (window: [number, number]) => void = () => {};
 

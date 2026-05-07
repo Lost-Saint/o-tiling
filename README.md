@@ -24,6 +24,10 @@
 
 **Panel indicator** — A status-area button with a live panel menu: toggle tiling, adjust gaps and border settings, restart the extension, and more — all without opening the preferences window.
 
+**Workspace Switcher Styling (GNOME 50+)** — Premium customization for the workspace overview. Adjust thumbnail scale (percentage-based), corner radii, and background blur intensity for a modern, tailored look.
+
+**Theme Consistency (RoundedShell)** — Programmatically applies uniform rounded corners to GTK apps and GNOME Shell elements (panel, session menus, popovers). Achieve a cohesive "Rounded Shell" aesthetic without needing external theme extensions.
+
 **Multi-monitor & dynamic workspaces** — Full support for hotplug monitor changes, workspaces-only-on-primary, and GNOME's dynamic workspace model.
 
 **Wayland-first, X11-guarded** — All X11-specific code paths (xprop, decoration hints) are guarded by runtime Wayland detection.
@@ -203,6 +207,8 @@ Key source files:
 | `src/stack.ts` | Stack container — tabbed windows in one tile slot |
 | `src/utils.ts` | GNOME version shims (`later_add`, `maximize`, `is_maximized`) |
 | `src/shell.ts` | `monitor_neighbor_index` with GNOME 50 fallback |
+| `src/ui/workspace_switcher_style.ts` | GNOME 50+ workspace overview styling and thumbnail scaling |
+| `src/ui/theme_consistency/index.ts` | Rounded corners logic for GTK and Shell elements |
 
 See `agent.md` for the full technical reference including the API change map, mandatory shims, EGO reviewer requirements, and historical bug fixes.
 

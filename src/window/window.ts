@@ -5,7 +5,6 @@ import * as once_cell from '../utils/once_cell.js';
 import * as Rect from '../utils/rectangle.js';
 import * as Tags from '../utils/tags.js';
 import * as utils from '../utils/utils.js';
-import * as xprop from '../system/xprop.js';
 import type { Entity } from '../core/ecs.js';
 import type { Ext } from '../extension.js';
 import type { Rectangle } from '../utils/rectangle.js';
@@ -220,7 +219,7 @@ export class ShellWindow {
         this.update_border_style();
     }
 
-    cmdline(): string | null {
+    async cmdline(): Promise<string | null> {
         let pid = this.meta.get_pid(),
             out = null;
         if (-1 === pid) return out;
@@ -228,11 +227,11 @@ export class ShellWindow {
         const path = '/proc/' + pid + '/cmdline';
         if (!utils.exists(path)) return out;
 
-        const result = utils.read_to_string(path);
-        if (result.kind == 1) {
+        const result = await utils.read_to_string(path);
+        if (result.kind === 1) {
             out = result.value.trim();
         } else {
-            log.error(`failed to fetch cmdline: ${result.value.format()}`);
+            log.error(`failed to fetch cmdline: ${(result as any).value.format ? (result as any).value.format() : result.value}`);
         }
 
         return out;
@@ -247,16 +246,11 @@ export class ShellWindow {
 
     decoration_hide(ext: Ext): void {
         if (this.ignore_decoration()) return;
-
         this.was_hidden = true;
-
-        this.decoration(ext, (xid) => xprop.set_hint(xid, xprop.MOTIF_HINTS, xprop.HIDE_FLAGS));
     }
 
     decoration_show(ext: Ext): void {
         if (!this.was_hidden) return;
-
-        this.decoration(ext, (xid) => xprop.set_hint(xid, xprop.MOTIF_HINTS, xprop.SHOW_FLAGS));
     }
 
     icon(_ext: Ext, size: number): any {
@@ -284,13 +278,6 @@ export class ShellWindow {
         // If it's not decorated and it's a normal window, it's CSD.
         if (!this.meta.decorated && this.meta.window_type === Meta.WindowType.NORMAL) {
             return true;
-        }
-
-        // Fallback for X11/XWayland
-        const xid = this.xid();
-        if (xid) {
-            const extents = xprop.get_frame_extents(xid);
-            if (extents) return true;
         }
 
         return false;
@@ -364,8 +351,7 @@ export class ShellWindow {
     }
 
     may_decorate(): boolean {
-        const xid = this.xid();
-        return xid ? xprop.may_decorate(xid) : false;
+        return false;
     }
 
     move(ext: Ext, rect: Rectangle, on_complete?: () => void) {
@@ -416,10 +402,7 @@ export class ShellWindow {
     }
 
     size_hint(): lib.SizeHint | null {
-        return this.extra.normal_hints.get_or_init(() => {
-            const xid = this.xid();
-            return xid ? xprop.get_size_hints(xid) : null;
-        });
+        return this.extra.normal_hints.get_or_init(() => null);
     }
 
     swap(ext: Ext, other: ShellWindow): void {
@@ -437,8 +420,7 @@ export class ShellWindow {
 
     wm_role(): string | null {
         return this.extra.wm_role_.get_or_init(() => {
-            const xid = this.xid();
-            return xid ? xprop.get_window_role(xid) : null;
+            return this.meta.get_role() || null;
         });
     }
 
@@ -455,7 +437,10 @@ export class ShellWindow {
     xid(): string | null {
         return this.extra.xid_.get_or_init(() => {
             if (utils.is_wayland()) return null;
-            return xprop.get_xid(this.meta);
+            const desc = this.meta.get_description();
+            if (!desc) return null;
+            const match = desc.match(/0x[a-f0-9]+/i);
+            return match ? match[0] : null;
         });
     }
 

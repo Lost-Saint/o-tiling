@@ -23,7 +23,7 @@ $(UUID).zip: $(DIST)/extension.js $(DIST)/prefs.js schemas/gschemas.compiled
 	@cp *.css $(DIST)/ 2>/dev/null || true
 	@cp -r icons $(DIST)/ 2>/dev/null || true
 	@cp -r keybindings $(DIST)/ 2>/dev/null || true
-	@(cd $(DIST) && zip ../$(UUID).zip -9r .)
+	@(cd $(DIST) && zip ../$(UUID).zip -9r . -x "schemas/gschemas.compiled" "agent.md" "bugReport/*" "scratch/*" "scripts/*" ".git/*" ".github/*")
 	@echo "Created '$(UUID).zip'"
 
 ## pack    : Create a zip package for distribution

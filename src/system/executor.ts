@@ -42,6 +42,14 @@ export class GLibExecutor<T> implements Executor<T> {
             this.#event_loop = GLib.idle_add(GLib.PRIORITY_DEFAULT, action);
         }
     }
+
+    stop(): void {
+        if (this.#event_loop !== null) {
+            try { GLib.source_remove(this.#event_loop as number); } catch (_) {}
+            this.#event_loop = null;
+        }
+        this.#events = [];
+    }
 }
 
 export class OnceExecutor<X, T extends Iterable<X>> {
@@ -61,13 +69,14 @@ export class OnceExecutor<X, T extends Iterable<X>> {
             const next: X = iterator.next().value;
 
             if (typeof next === 'undefined') {
-                if (then)
-                    GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
+                if (then) {
+                    this.#signal = GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
+                        this.#signal = null;
                         then();
-                        return false;
+                        return GLib.SOURCE_REMOVE;
                     });
-
-                return false;
+                }
+                return GLib.SOURCE_REMOVE;
             }
 
             return apply(next);
@@ -75,7 +84,10 @@ export class OnceExecutor<X, T extends Iterable<X>> {
     }
 
     stop() {
-        if (this.#signal !== null) GLib.source_remove(this.#signal);
+        if (this.#signal !== null) {
+            GLib.source_remove(this.#signal);
+            this.#signal = null;
+        }
     }
 }
 

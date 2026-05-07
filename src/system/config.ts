@@ -191,15 +191,15 @@ export class Config {
         return false;
     }
 
-    reload() {
-        const conf = Config.from_config();
+    async reload() {
+        const conf = await Config.from_config();
 
         if (conf.tag === 0) {
             const c = conf.value;
             this.float = c.float;
             this.log_on_focus = c.log_on_focus;
         } else {
-            log(`error loading conf: ${conf.why}`);
+            console.error(`error loading conf: ${conf.why}`);
         }
 
         this._rebuild_caches();
@@ -275,8 +275,8 @@ export class Config {
         }
     }
 
-    private static from_config(): Result<Config> {
-        const stream = Config.read();
+    private static async from_config(): Promise<Result<Config>> {
+        const stream = await Config.read();
         if (stream.tag === 1) return stream;
         const value = Config.from_json(stream.value);
         return { tag: 0, value };
@@ -304,14 +304,21 @@ export class Config {
         }
     }
 
-    private static read(): Result<string> {
+    private static async read(): Promise<Result<string>> {
         try {
             const file = Config.gio_file();
             if (file.tag === 1) return file;
 
-            const [, buffer] = file.value.load_contents(null);
-
-            return { tag: 0, value: new TextDecoder().decode(buffer) };
+            return new Promise((resolve) => {
+                file.value.load_contents_async(null, (obj: any, res: any) => {
+                    try {
+                        const [, buffer] = obj.load_contents_finish(res);
+                        resolve({ tag: 0, value: new TextDecoder().decode(buffer) });
+                    } catch (e) {
+                        resolve({ tag: 1, why: `failed to read config: ${e}` });
+                    }
+                });
+            });
         } catch (why) {
             return { tag: 1, why: `failed to read o-tiling config: ${why}` };
         }

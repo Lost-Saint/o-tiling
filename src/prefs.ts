@@ -6,8 +6,7 @@ import GLib from 'gi://GLib';
 import { ExtensionPreferences, gettext as _ } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 import * as log from './utils/log.js';
-import * as focus from './window/focus.js';
-import { applyThemeConsistency } from './ui/theme_consistency/index.js';
+import { applyThemeConsistency } from './ui/theme_consistency/apply.js';
 
 export default class OTilingPreferences extends ExtensionPreferences {
     async fillPreferencesWindow(window: Adw.PreferencesWindow) {
@@ -45,7 +44,7 @@ export default class OTilingPreferences extends ExtensionPreferences {
 
         // Appearance Group
         const appearanceGroup = new Adw.PreferencesGroup({
-            title: _('Appearance'),
+            title: _('Appearance — General'),
         });
         page.add(appearanceGroup);
 
@@ -55,69 +54,107 @@ export default class OTilingPreferences extends ExtensionPreferences {
         appearanceGroup.add(showTitle);
         settings.bind('show-title', showTitle as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
+        const themesConsistencyRow = new Adw.SwitchRow({
+            title: _('Themes Consistency (RoundedShell)'),
+            subtitle: _('Applies rounded corners to GTK (files) and GNOME Shell (session)'),
+        });
+        appearanceGroup.add(themesConsistencyRow);
+        settings.bind('theme-consistency', themesConsistencyRow as any, 'active', Gio.SettingsBindFlags.DEFAULT);
+
+        themesConsistencyRow.connect('notify::active', () => {
+            if (themesConsistencyRow.active) {
+                applyThemeConsistency();
+            }
+        });
+
+        // Overview Group
+        const overviewGroup = new Adw.PreferencesGroup({
+            title: _('Appearance — Workspace Overview'),
+        });
+        page.add(overviewGroup);
+
+        const skipOverview = new Adw.SwitchRow({
+            title: _('Skip Overview on Startup'),
+            subtitle: _('Go directly to the desktop after logging in'),
+        });
+        overviewGroup.add(skipOverview);
+        settings.bind('skip-overview', skipOverview as any, 'active', Gio.SettingsBindFlags.DEFAULT);
+
         const workspaceSwitcherStyle = new Adw.SwitchRow({
             title: _('Workspace Switcher Style'),
             subtitle: _('GNOME 50+ only — styles the workspace thumbnails bar'),
         });
-        appearanceGroup.add(workspaceSwitcherStyle);
+        overviewGroup.add(workspaceSwitcherStyle);
         settings.bind('workspace-switcher-style', workspaceSwitcherStyle as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
-        const thumbnailHeight = new Adw.ActionRow({
-            title: _('Workspace Thumbnail Height'),
-            subtitle: _('GNOME 50+ only — set the height of workspace previews'),
+        const thumbnailCornerRadius = new Adw.SpinRow({
+            title: _('Workspace Thumbnail Corner Radius'),
+            subtitle: _('GNOME 50+ only — set the roundness of workspace previews'),
+            adjustment: new Gtk.Adjustment({ lower: 0, upper: 60, step_increment: 1 }),
         });
-        const scale = new Gtk.Scale({
-            orientation: Gtk.Orientation.HORIZONTAL,
-            adjustment: new Gtk.Adjustment({ lower: 40, upper: 300, step_increment: 1, page_increment: 10 }),
-            draw_value: true,
-            value_pos: Gtk.PositionType.RIGHT,
-            hexpand: true,
-            valign: Gtk.Align.CENTER,
-        });
-        scale.set_size_request(200, -1);
-        thumbnailHeight.add_suffix(scale);
-        appearanceGroup.add(thumbnailHeight);
-        settings.bind('workspace-thumbnail-height', scale.get_adjustment() as any, 'value', Gio.SettingsBindFlags.DEFAULT);
+        overviewGroup.add(thumbnailCornerRadius);
+        settings.bind('workspace-thumbnail-corner-radius', thumbnailCornerRadius as any, 'value', Gio.SettingsBindFlags.DEFAULT);
 
+        const switcherSizeRow = new Adw.SpinRow({
+            title: _('Workspace Switcher Size'),
+            subtitle: _('GNOME 50+ only — size of workspace switcher as a percentage of screen height'),
+            adjustment: new Gtk.Adjustment({ lower: 5, upper: 25, step_increment: 1 }),
+        });
+        overviewGroup.add(switcherSizeRow);
+        settings.bind('workspace-switcher-size', switcherSizeRow as any, 'value', Gio.SettingsBindFlags.DEFAULT);
+
+        const bgCornerSizeRow = new Adw.SpinRow({
+            title: _('Workspace Background Corner Size'),
+            subtitle: _('Workspace background corner size in overview'),
+            adjustment: new Gtk.Adjustment({ lower: 0, upper: 60, step_increment: 1 }),
+        });
+        overviewGroup.add(bgCornerSizeRow);
+        settings.bind('workspace-background-corner-size', bgCornerSizeRow as any, 'value', Gio.SettingsBindFlags.DEFAULT);
+
+        // Aura Group
+        const auraGroup = new Adw.PreferencesGroup({
+            title: _('Appearance — Active Hint (Aura)'),
+        });
+        page.add(auraGroup);
 
         const activeHint = new Adw.SwitchRow({
             title: _('Show Active Hint (Aura)'),
         });
-        appearanceGroup.add(activeHint);
+        auraGroup.add(activeHint);
         settings.bind('active-hint', activeHint as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
         const borderRadius = new Adw.SpinRow({
             title: _('Active Border Radius'),
             adjustment: new Gtk.Adjustment({ lower: 0, upper: 30, step_increment: 1 }),
         });
-        appearanceGroup.add(borderRadius);
+        auraGroup.add(borderRadius);
         settings.bind('active-hint-border-radius', borderRadius as any, 'value', Gio.SettingsBindFlags.DEFAULT);
 
         const borderWidth = new Adw.SpinRow({
             title: _('Active Border Width'),
             adjustment: new Gtk.Adjustment({ lower: 1, upper: 10, step_increment: 1 }),
         });
-        appearanceGroup.add(borderWidth);
+        auraGroup.add(borderWidth);
         settings.bind('active-hint-border-width', borderWidth as any, 'value', Gio.SettingsBindFlags.DEFAULT);
 
         const overlayOpacity = new Adw.SpinRow({
             title: _('Active Hint Overlay Opacity (%)'),
             adjustment: new Gtk.Adjustment({ lower: 0, upper: 100, step_increment: 1 }),
         });
-        appearanceGroup.add(overlayOpacity);
+        auraGroup.add(overlayOpacity);
         settings.bind('active-hint-overlay-opacity', overlayOpacity as any, 'value', Gio.SettingsBindFlags.DEFAULT);
 
         const glowOpacity = new Adw.SpinRow({
             title: _('Active Hint Glow Opacity (%)'),
             adjustment: new Gtk.Adjustment({ lower: 0, upper: 100, step_increment: 1 }),
         });
-        appearanceGroup.add(glowOpacity);
+        auraGroup.add(glowOpacity);
         settings.bind('active-hint-glow-opacity', glowOpacity as any, 'value', Gio.SettingsBindFlags.DEFAULT);
 
         const colorRow = new Adw.ActionRow({
             title: _('Active Border Color'),
         });
-        appearanceGroup.add(colorRow);
+        auraGroup.add(colorRow);
 
         const colorDialog = new Gtk.ColorDialog({ with_alpha: true });
         const colorButton = new Gtk.ColorDialogButton({
@@ -141,23 +178,6 @@ export default class OTilingPreferences extends ExtensionPreferences {
             const rgba = colorButton.rgba;
             settings.set_string('hint-color-rgba', rgba.to_string());
         });
-
-        const themesConsistencyRow = new Adw.ActionRow({
-            title: _('Themes Consistency (FlatCorners)'),
-            subtitle: _('Applies rounded corners to GTK and GNOME Shell elements'),
-        });
-        
-        const applyBtn = new Gtk.Button({
-            label: _('Apply'),
-            valign: Gtk.Align.CENTER,
-        });
-        
-        applyBtn.connect('clicked', () => {
-            applyThemeConsistency();
-        });
-        
-        themesConsistencyRow.add_suffix(applyBtn);
-        appearanceGroup.add(themesConsistencyRow);
 
         // Behavior Group
         const behaviorGroup = new Adw.PreferencesGroup({

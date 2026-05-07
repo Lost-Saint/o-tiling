@@ -30,7 +30,6 @@ export class Indicator {
     toggle_workspace_tiled: any;
     toggle_new_workspaces_tiled: any;
     toggle_active: any;
-    toggle_workspace_switcher: any;
     border_radius: any;
 
     entry_gaps: any;
@@ -85,7 +84,7 @@ export class Indicator {
         );
         bm.addMenuItem(this.toggle_new_workspaces_tiled);
 
-        bm.addMenuItem(floating_window_exceptions(ext, bm, this.signals));
+
 
         bm.addMenuItem(new PopupSeparatorMenuItem());
 
@@ -136,7 +135,6 @@ export class Indicator {
 
         // ── Actions ─────────────────────────────────────────────
         bm.addMenuItem(settings_button(bm));
-        bm.addMenuItem(shortcuts_button(bm));
 
         const reset_item = new PopupMenuItem(_('Reset All Settings'));
         const reset_icon = new St.Icon({
@@ -223,64 +221,8 @@ function settings_button(menu: any): any {
     return item;
 }
 
-function shortcuts_button(menu: any): any {
-    const item = new PopupMenuItem(_('Shortcuts'));
-    const icon = new St.Icon({
-        icon_name: 'input-keyboard-symbolic',
-        icon_size: 16,
-        style_class: 'popup-menu-icon'
-    });
-    if (typeof (item as any).insert_child_at_index === 'function') {
-        (item as any).insert_child_at_index(icon, 0);
-    } else {
-        item.add_child(icon);
-    }
 
 
-
-    item.connect('activate', () => {
-        const ext = (globalThis as any).oTilingExtension;
-        if (ext && typeof ext.openPreferences === 'function') {
-            ext.openPreferences();
-        }
-
-        menu.close();
-    });
-
-    return item;
-}
-
-function floating_window_exceptions(ext: Ext, menu: any, signals: Array<[any, number]>): any {
-    const item = new PopupMenuItem(_('Floating Exceptions'));
-    const icon = new St.Icon({
-        icon_name: 'window-new-symbolic',
-        icon_size: 16,
-        style_class: 'popup-menu-icon'
-    });
-    if (typeof (item as any).insert_child_at_index === 'function') {
-        (item as any).insert_child_at_index(icon, 0);
-    } else {
-        item.add_child(icon);
-    }
-
-
-    const arrow = new St.Icon({
-        icon_name: 'go-next-symbolic',
-        icon_size: 16,
-
-        y_align: Clutter.ActorAlign.CENTER,
-        x_align: Clutter.ActorAlign.END,
-        x_expand: true,
-    });
-    (item as any).add_child(arrow);
-
-    item.connect('activate', () => {
-        ext.exception_dialog();
-        menu.close();
-    });
-
-    return item;
-}
 
 function number_entry(
     label_text: string,

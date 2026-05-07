@@ -70,7 +70,11 @@ const ACTIVE_HINT_OVERLAY_OPACITY = 'active-hint-overlay-opacity';
 const ACTIVE_HINT_GLOW_OPACITY = 'active-hint-glow-opacity';
 const ACTIVE_HINT_GLOW = 'active-hint-glow';
 const WORKSPACE_SWITCHER_STYLE = 'workspace-switcher-style';
-const WORKSPACE_THUMBNAIL_HEIGHT = 'workspace-thumbnail-height';
+const WORKSPACE_THUMBNAIL_CORNER_RADIUS = 'workspace-thumbnail-corner-radius';
+const WORKSPACE_SWITCHER_SIZE = 'workspace-switcher-size';
+const WORKSPACE_BACKGROUND_CORNER_SIZE = 'workspace-background-corner-size';
+const THEME_CONSISTENCY = 'theme-consistency';
+const SKIP_OVERVIEW = 'skip-overview';
 
 
 export class ExtensionSettings {
@@ -229,8 +233,25 @@ export class ExtensionSettings {
         return this.ext.get_boolean(WORKSPACE_SWITCHER_STYLE);
     }
 
-    workspace_thumbnail_height(): number {
-        return this.ext.get_uint(WORKSPACE_THUMBNAIL_HEIGHT);
+
+    workspace_thumbnail_corner_radius(): number {
+        return this.ext.get_uint(WORKSPACE_THUMBNAIL_CORNER_RADIUS);
+    }
+
+    workspace_switcher_size(): number {
+        return this.ext.get_uint(WORKSPACE_SWITCHER_SIZE);
+    }
+
+    workspace_background_corner_size(): number {
+        return this.ext.get_uint(WORKSPACE_BACKGROUND_CORNER_SIZE);
+    }
+
+    theme_consistency(): boolean {
+        return this.ext.get_boolean(THEME_CONSISTENCY);
+    }
+
+    skip_overview(): boolean {
+        return this.ext.get_boolean(SKIP_OVERVIEW);
     }
 
 
@@ -339,8 +360,25 @@ export class ExtensionSettings {
         this.ext.set_boolean(WORKSPACE_SWITCHER_STYLE, set);
     }
 
-    set_workspace_thumbnail_height(set: number) {
-        this.ext.set_uint(WORKSPACE_THUMBNAIL_HEIGHT, set);
+
+    set_workspace_thumbnail_corner_radius(set: number) {
+        this.ext.set_uint(WORKSPACE_THUMBNAIL_CORNER_RADIUS, set);
+    }
+
+    set_workspace_switcher_size(set: number) {
+        this.ext.set_uint(WORKSPACE_SWITCHER_SIZE, set);
+    }
+
+    set_workspace_background_corner_size(set: number) {
+        this.ext.set_uint(WORKSPACE_BACKGROUND_CORNER_SIZE, set);
+    }
+
+    set_theme_consistency(set: boolean) {
+        this.ext.set_boolean(THEME_CONSISTENCY, set);
+    }
+
+    set_skip_overview(set: boolean) {
+        this.ext.set_boolean(SKIP_OVERVIEW, set);
     }
 
 
