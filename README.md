@@ -1,6 +1,6 @@
 **O-tiling** is a lightweight, keyboard-driven auto-tiling engine for GNOME Shell 49 and 50. It brings an auto-tiling experience to any modern GNOME environment without proprietary dependencies.
 
-![O-tiling Preview](./screenshot.webp)
+![O-tiling Preview](./preview.png)
 
 ---
 
@@ -8,25 +8,17 @@
 
 **Auto-tiling engine** — Windows are arranged automatically as they open using a binary tree layout. Every monitor and workspace has its own independent tree. Layouts recalculate fully on every window event.
 
-**Aura focus border** — A premium active-window indicator with smooth animations. It automatically integrates with your **GNOME System Accent Color**, respecting your desktop theme (Blue, Teal, Green, etc.) out of the box. Configurable border width, radius, and glow intensity.
+**Aura focus border** — A premium active-window indicator with smooth animations. It automatically integrates with your **GNOME System Accent Color**, respecting your desktop theme (Blue, Teal, Green, etc.) out of the box. Features configurable border width, radius, and glow intensity for a high-end feel.
+
+**Theme Consistency (RoundedShell)** — Programmatically applies uniform rounded corners to GTK apps and GNOME Shell elements (panel, session menus, popovers). This creates a cohesive "Rounded Shell" aesthetic that feels native and polished across the entire desktop.
+
+**Workspace Switcher Styling (GNOME 50+)** — Advanced customization for the workspace overview. Adjust thumbnail scale (percentage-based), corner radii, and background blur intensity. Includes a specialized fix for "auto" accent colors and hex values to ensure perfect visual consistency.
 
 **Keyboard-first navigation** — Move focus and windows with `Super+h/j/k/l` or arrow keys. Swap, resize, and reorient tiles without touching the mouse.
 
 **Stacking / tabbed mode** — Multiple windows can share one tile slot displayed as a tab bar. Tabs inherit the Aura color, respect the active border radius, and stack order is maintained correctly across workspace switches.
 
 **Smart gaps** — When only one window is tiled, outer gaps collapse to zero. Configurable inner and outer gap sizes.
-
-**Floating exceptions** — A click-to-select dialog lets you exclude specific apps or windows from tiling. Rules are stored in `~/.config/o-tiling/config.json` and reloaded live.
-
-**D-Bus service** — Exports `org.gnome.shell.extensions.OTiling` at `/org/gnome/shell/extensions/OTiling` for programmatic focus control and window listing from external tools.
-
-**Libadwaita preferences** — A full preferences window (two pages: General and Shortcuts) that integrates with GNOME Settings. All keybindings are editable in-app.
-
-**Panel indicator** — A status-area button with a live panel menu: toggle tiling, adjust gaps and border settings, restart the extension, and more — all without opening the preferences window.
-
-**Workspace Switcher Styling (GNOME 50+)** — Premium customization for the workspace overview. Adjust thumbnail scale (percentage-based), corner radii, and background blur intensity for a modern, tailored look.
-
-**Theme Consistency (RoundedShell)** — Programmatically applies uniform rounded corners to GTK apps and GNOME Shell elements (panel, session menus, popovers). Achieve a cohesive "Rounded Shell" aesthetic without needing external theme extensions.
 
 **Multi-monitor & dynamic workspaces** — Full support for hotplug monitor changes, workspaces-only-on-primary, and GNOME's dynamic workspace model.
 
@@ -229,8 +221,8 @@ GitHub Actions builds and tests the extension against GNOME 49 and 50 on every p
 To cut a release:
 
 ```bash
-git tag v2.3.1
-git push origin v2.3.1
+git tag v2.4.1
+git push origin v2.4.1
 ```
 
 ---
