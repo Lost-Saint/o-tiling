@@ -45,6 +45,7 @@ function buildCss(accentColor: string, thumbnailCornerRadius: number, bgCornerSi
     spacing: 12px;
     border-radius: 0px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    /* Programmatic expansion used instead of 9999px hack */
 }
 
 .thumbnails-box {
@@ -105,7 +106,11 @@ export class WorkspaceSwitcherStyle {
     private _bgCornerSize: number;       // pixels (0-60)
     private _blurEffect: any = null;
     private _origMaxThumbnailScale: number | null = null;
+    private _origMinThumbnailScale: number | null = null;
     private _workspaceChangedId: number | null = null;
+    private _workspaceAddedId: number | null = null;
+    private _workspaceRemovedId: number | null = null;
+    private _overviewShowingId: number | null = null;
 
     constructor(
         accentColor: string,
@@ -162,6 +167,7 @@ export class WorkspaceSwitcherStyle {
                 theme.unload_stylesheet(this._file);
                 this._removeBlur();
                 this._restoreThumbnailScale();
+                this._teardownSignals();
             }
             this._file.delete(null);
         } catch (_) { /* best-effort */ }
@@ -210,7 +216,7 @@ export class WorkspaceSwitcherStyle {
         if (!isGnome50()) return;
 
         try {
-            const thumbnailsBox = (Main as any).overview?._overview?._controls?._thumbnailsBox;
+            const thumbnailsBox = this._getThumbnailsBox();
             if (thumbnailsBox && !this._blurEffect) {
                 this._blurEffect = new Shell.BlurEffect({
                     brightness: 0.6,
@@ -227,13 +233,19 @@ export class WorkspaceSwitcherStyle {
     private _removeBlur(): void {
         if (this._blurEffect) {
             try {
-                const thumbnailsBox = (Main as any).overview?._overview?._controls?._thumbnailsBox;
+                const thumbnailsBox = this._getThumbnailsBox();
                 if (thumbnailsBox) {
                     thumbnailsBox.remove_effect_by_name('o-tiling-blur');
                 }
             } catch (_) { }
             this._blurEffect = null;
         }
+    }
+
+    private _getThumbnailsBox(): any {
+        return (Main as any).overview?._controls?._thumbnailsBox ||
+            (Main as any).overview?._overview?._controls?._thumbnailsBox ||
+            null;
     }
 
     /**
@@ -243,18 +255,56 @@ export class WorkspaceSwitcherStyle {
     private _applyThumbnailScale(): void {
         if (!isGnome50()) return;
         try {
-            const thumbnailsBox = (Main as any).overview?._overview?._controls?._thumbnailsBox;
+            const thumbnailsBox = this._getThumbnailsBox();
             if (!thumbnailsBox) return;
 
-            const scale = this._switcherSize / 100;
+            // 1. Force expansion to take up available space
+            thumbnailsBox.set_x_expand(true);
+            thumbnailsBox.set_x_align(Clutter.ActorAlign.FILL);
+
+            const parent = thumbnailsBox.get_parent();
+            if (parent) {
+                parent.set_x_expand(true);
+                parent.set_x_align(Clutter.ActorAlign.FILL);
+            }
+
+            // 2. Dynamic scale calculation ("Auto Small") to fit all thumbnails
+            const monitor = (Main as any).layoutManager.primaryMonitor;
+            if (!monitor) return;
+
+            const availWidth = monitor.width - 64; // Account for safe margins
+            const nWorkspaces = (global as any).workspace_manager.n_workspaces;
+            const aspectRatio = monitor.width / monitor.height;
+            const spacing = 12; // Matching CSS spacing
+
+            // Calculate scale based on user preference
+            let scale = this._switcherSize / 100;
+
+            // Calculate total width if we used the preferred scale
+            const preferredWidth = (monitor.height * scale * aspectRatio + spacing) * nWorkspaces - spacing;
+
+            if (preferredWidth > availWidth) {
+                // Shrink scale so all thumbnails fit on screen
+                const maxThumbWidth = (availWidth + spacing) / nWorkspaces - spacing;
+                scale = (maxThumbWidth / aspectRatio) / monitor.height;
+                // Minimum usable scale
+                scale = Math.max(scale, 0.02); // Allow very small thumbnails if many workspaces
+            }
 
             if (this._origMaxThumbnailScale === null) {
                 this._origMaxThumbnailScale = thumbnailsBox._maxThumbnailScale ?? null;
             }
+            if (this._origMinThumbnailScale === null) {
+                this._origMinThumbnailScale = thumbnailsBox._minThumbnailScale ?? null;
+            }
 
+            // Overriding both ensures it can shrink below default 0.05
             thumbnailsBox._maxThumbnailScale = scale;
+            thumbnailsBox._minThumbnailScale = scale;
+
             // Force a layout update
             thumbnailsBox.queue_relayout?.();
+            thumbnailsBox.get_parent()?.queue_relayout?.();
         } catch (e) {
             console.warn('WorkspaceSwitcherStyle: failed to set thumbnail scale', e);
         }
@@ -264,13 +314,18 @@ export class WorkspaceSwitcherStyle {
     private _restoreThumbnailScale(): void {
         if (!isGnome50()) return;
         try {
-            const thumbnailsBox = (Main as any).overview?._overview?._controls?._thumbnailsBox;
-            if (thumbnailsBox && this._origMaxThumbnailScale !== null) {
-                thumbnailsBox._maxThumbnailScale = this._origMaxThumbnailScale;
+            const thumbnailsBox = this._getThumbnailsBox();
+            if (thumbnailsBox) {
+                if (this._origMaxThumbnailScale !== null)
+                    thumbnailsBox._maxThumbnailScale = this._origMaxThumbnailScale;
+                if (this._origMinThumbnailScale !== null)
+                    thumbnailsBox._minThumbnailScale = this._origMinThumbnailScale;
+
                 thumbnailsBox.queue_relayout?.();
             }
         } catch (_) { }
         this._origMaxThumbnailScale = null;
+        this._origMinThumbnailScale = null;
     }
 
     private _setupAutoScroll(): void {
@@ -281,11 +336,24 @@ export class WorkspaceSwitcherStyle {
                 return GLib.SOURCE_REMOVE;
             });
         });
+
+        // 1. Rescale when workspaces are added/removed
+        this._workspaceAddedId = workspace_manager.connect('workspace-added', () => {
+            this._applyThumbnailScale();
+        });
+        this._workspaceRemovedId = workspace_manager.connect('workspace-removed', () => {
+            this._applyThumbnailScale();
+        });
+
+        // 2. Rescale when overview shows (ensures state is fresh)
+        this._overviewShowingId = Main.overview.connect('showing', () => {
+            this._applyThumbnailScale();
+        });
     }
 
     private _scrollToActiveWorkspace(): void {
         try {
-            const thumbnailsBox = (Main as any).overview?._overview?._controls?._thumbnailsBox;
+            const thumbnailsBox = this._getThumbnailsBox();
             if (!thumbnailsBox) return;
 
             const workspace_manager = (global as any).workspace_manager;
@@ -314,10 +382,28 @@ export class WorkspaceSwitcherStyle {
         }
     }
 
+    private _teardownSignals(): void {
+        this._teardownAutoScroll();
+    }
+
     private _teardownAutoScroll(): void {
+        const workspace_manager = (global as any).workspace_manager;
+
         if (this._workspaceChangedId !== null) {
-            (global as any).workspace_manager.disconnect(this._workspaceChangedId);
+            workspace_manager.disconnect(this._workspaceChangedId);
             this._workspaceChangedId = null;
+        }
+        if (this._workspaceAddedId !== null) {
+            workspace_manager.disconnect(this._workspaceAddedId);
+            this._workspaceAddedId = null;
+        }
+        if (this._workspaceRemovedId !== null) {
+            workspace_manager.disconnect(this._workspaceRemovedId);
+            this._workspaceRemovedId = null;
+        }
+        if (this._overviewShowingId !== null) {
+            Main.overview.disconnect(this._overviewShowingId);
+            this._overviewShowingId = null;
         }
     }
 }
