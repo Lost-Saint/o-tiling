@@ -529,8 +529,13 @@ export class ShellWindow {
      */
     restack(_updateState: RESTACK_STATE = RESTACK_STATE.NORMAL, immediate: boolean = false) {
         this.update_border_layout();
-        if (this.meta.is_fullscreen() || (this.is_single_max_screen() && !this.is_snap_edge()) || this.meta.minimized) {
+        if (
+            this.meta.is_fullscreen() ||
+            (this.is_single_max_screen() && !this.is_snap_edge()) ||
+            this.meta.minimized
+        ) {
             this.hide_border();
+            return; // ADD THIS EARLY RETURN — no need to restack a hidden border
         }
 
         const action = () => {
@@ -541,46 +546,48 @@ export class ShellWindow {
 
             const border = this.border;
             const actor = (this.meta.get_compositor_private() as any);
-            if (actor && border) {
-                const parent = actor.get_parent();
-                if (!parent) return GLib.SOURCE_REMOVE;
+            if (!actor || !border) return GLib.SOURCE_REMOVE;
 
-                this.update_border_layout();
+            const parent = actor.get_parent();
+            if (!parent) return GLib.SOURCE_REMOVE;
 
-                // Ensure the border shares the same parent as the window actor
-                // so it pans correctly during workspace switches.
-                if (border.get_parent() !== parent) {
-                    if (border.get_parent()) {
-                        border.get_parent()!.remove_child(border);
-                    }
-                    parent.add_child(border);
+            this.update_border_layout();
+
+            // Ensure the border shares the same parent as the window actor
+            // so it pans correctly during workspace switches.
+            if (border.get_parent() !== parent) {
+                if (border.get_parent()) {
+                    border.get_parent()!.remove_child(border);
                 }
+                parent.add_child(border);
+            }
 
-                // Move the border above the current window actor
-                parent.set_child_above_sibling(border, actor);
+            // Move the border above the current window actor
+            parent.set_child_above_sibling(border, actor);
 
-                // Honor always-top windows: if any always-top window is ABOVE our border, 
-                // we must stay below it.
-                for (const above_actor of (global as any).get_window_actors()) {
-                    if (!above_actor?.get_meta_window()?.is_above()) continue;
-                    const above_parent = above_actor.get_parent();
-                    if (actor !== above_actor && above_parent === parent) {
-                        parent.set_child_below_sibling(border, above_actor);
-                    }
+            // Honor always-top windows: if any always-top window is ABOVE our border, 
+            // we must stay below it.
+            for (const above_actor of (global as any).get_window_actors()) {
+                const meta = above_actor?.get_meta_window?.();
+                if (!meta || !meta.is_above()) continue;
+                const above_parent = above_actor.get_parent();
+                if (above_actor !== actor && above_parent === parent) {
+                    parent.set_child_below_sibling(border, above_actor);
+                    break; // only need to go below the topmost always-on-top window
                 }
+            }
 
-                // Honor transient windows: the border of the parent must stay below its children.
-                for (const window of this.ext.windows.values()) {
-                    const trans_parent = window.meta.get_transient_for();
-                    if (!trans_parent) continue;
+            // Honor transient windows: the border of the parent must stay below its children.
+            for (const window of this.ext.windows.values()) {
+                const trans_parent = window.meta.get_transient_for();
+                if (!trans_parent) continue;
 
-                    const parent_actor = trans_parent.get_compositor_private() as any;
-                    if (parent_actor !== actor) continue;
+                const parent_actor = trans_parent.get_compositor_private() as any;
+                if (parent_actor !== actor) continue;
 
-                    const window_actor = window.meta.get_compositor_private() as any;
-                    if (window_actor && window_actor.get_parent() === parent) {
-                        parent.set_child_below_sibling(border, window_actor);
-                    }
+                const window_actor = window.meta.get_compositor_private() as any;
+                if (window_actor && window_actor.get_parent() === parent) {
+                    parent.set_child_below_sibling(border, window_actor);
                 }
             }
 
@@ -644,8 +651,6 @@ export class ShellWindow {
                 const workspace = this.meta.get_workspace();
 
                 if (workspace === null) return;
-
-                const screen = workspace.get_work_area_for_monitor(this.meta.get_monitor());
 
                 // Removed screen-edge clipping that was cutting off rounded bottom corners
 

@@ -45,7 +45,9 @@ export class GLibExecutor<T> implements Executor<T> {
 
     stop(): void {
         if (this.#event_loop !== null) {
-            try { GLib.source_remove(this.#event_loop as number); } catch (_) {}
+            try { utils.later_remove(this.#event_loop); } catch (_) {}
+            // also guard the GLib idle path
+            try { GLib.source_remove(this.#event_loop); } catch (_) {}
             this.#event_loop = null;
         }
         this.#events = [];

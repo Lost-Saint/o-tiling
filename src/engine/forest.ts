@@ -94,10 +94,14 @@ export class Forest extends Ecs.World {
     }
 
     /** Place all windows into their calculated positions. */
-    arrange(ext: Ext, _workspace: number, _ignore_reset: boolean = false) {
+    arrange(ext: Ext, workspace: number, _ignore_reset: boolean = false) {
         for (const [entity, r] of this.requested) {
             const window = ext.windows.get(entity);
             if (!window) continue;
+
+            // Only arrange windows on the target workspace
+            // (-1 can be used as a sentinel to arrange all)
+            if (workspace >= 0 && window.workspace_id() !== workspace) continue;
 
             let on_complete = () => {
                 if (!window.actor_exists()) return;

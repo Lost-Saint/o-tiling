@@ -35,60 +35,61 @@ function buildCss(accentColor: string, thumbnailCornerRadius: number, bgCornerSi
         ? '#3584e4'
         : accentColor;
 
-    const bgTint = Utils.set_alpha(activeColor, 0.08);
-    const hoverTint = Utils.set_alpha(activeColor, 0.20);
-
     return `
-/* === O-Tiling: Workspace Switcher Style (GNOME 50) === */
+/* === O-Tiling: COSMIC-style Workspace Switcher (GNOME 50) === */
 
-/* ── Workspace background corner (overview) ────────────── */
-.workspace-background {
-    border-radius: ${bgCornerSize}px !important;
-}
-
-/* ── Thumbnails container ──────────────────────────────── */
+/* Full-width top bar */
 .workspace-thumbnails {
-    background-color: rgba(0, 0, 0, 0.25);
-    border-radius: 16px;
-    padding: 6px 12px;
+    background-color: rgba(18, 18, 24, 0.92);
+    padding: 12px 16px;
     spacing: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .thumbnails-box {
-    /* Critical for clipping the blur effect and ensuring clean corners */
-    border-radius: 16px;
-    background-clip: padding-box;
-    overflow: hidden;
+    background-color: transparent;
 }
 
-/* ── Individual workspace cards ────────────────────────── */
+/* Individual workspace card */
 .workspace-thumbnail {
-    border-radius: ${thumbnailCornerRadius}px;
-    border: 2px solid transparent;
-    transition-duration: 150ms;
+    border-radius: ${thumbnailCornerRadius}px !important;
+    border: 3px solid transparent;
+    transition-duration: 200ms;
 }
 
 .workspace-thumbnail-background {
-    border-radius: ${thumbnailCornerRadius}px;
+    border-radius: ${thumbnailCornerRadius}px !important;
+    /* Do NOT set background-color here — it hides the wallpaper render.
+       Leave it transparent so the actual workspace wallpaper shows through. */
+    background-color: transparent;
 }
 
-/* ── Interaction states ────────────────────────────────── */
-.workspace-thumbnail:hover {
-    background-color: ${bgTint};
-}
-
+/* Active card gets accent color border */
 .workspace-thumbnail:focus,
 .workspace-thumbnail.selected {
-    border-color: ${activeColor};
-    background-color: ${hoverTint};
+    border-color: ${activeColor} !important;
+    border-width: 3px !important;
 }
 
-/* ── Workspace label ───────────────────────────────────── */
-.workspace-thumbnail .workspace-label {
-    font-size: 11px;
+/* Hover state */
+.workspace-thumbnail:hover {
+    border-color: rgba(255, 255, 255, 0.25) !important;
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+/* Workspace label always visible below each card */
+.workspace-label {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 12px;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.75);
+    text-align: center;
+    padding-top: 6px;
+}
+
+/* Overview workspace background corner */
+.workspace-background {
+    border-radius: ${bgCornerSize}px !important;
 }
 `;
 }
@@ -104,6 +105,7 @@ export class WorkspaceSwitcherStyle {
     private _bgCornerSize: number;       // pixels (0-60)
     private _blurEffect: any = null;
     private _origMaxThumbnailScale: number | null = null;
+    private _workspaceChangedId: number | null = null;
 
     constructor(
         accentColor: string,
@@ -120,7 +122,7 @@ export class WorkspaceSwitcherStyle {
     /** Injects custom CSS into the Shell theme. No-op if already enabled. */
     enable(): void {
         if (this._file) return;
- 
+
         const css = buildCss(this._accentColor, this._thumbnailCornerRadius, this._bgCornerSize);
         const path = `/tmp/o-tiling-ws-style-${GLib.get_monotonic_time()}.css`;
 
@@ -135,6 +137,7 @@ export class WorkspaceSwitcherStyle {
                 theme.load_stylesheet(this._file);
                 this._applyBlur();
                 this._applyThumbnailScale();
+                this._setupAutoScroll();
             } else {
                 console.warn('WorkspaceSwitcherStyle: could not find theme to load stylesheet');
                 this._file = null;
@@ -147,6 +150,7 @@ export class WorkspaceSwitcherStyle {
 
     /** Removes the injected CSS from the Shell theme. */
     disable(): void {
+        this._teardownAutoScroll();
         if (!this._file) return;
 
         try {
@@ -171,7 +175,7 @@ export class WorkspaceSwitcherStyle {
         this._refresh();
     }
 
- 
+
     /** Hot-updates the thumbnail corner radius. */
     updateThumbnailCornerRadius(radius: number): void {
         this._thumbnailCornerRadius = radius;
@@ -227,7 +231,7 @@ export class WorkspaceSwitcherStyle {
                 if (thumbnailsBox) {
                     thumbnailsBox.remove_effect_by_name('o-tiling-blur');
                 }
-            } catch (_) {}
+            } catch (_) { }
             this._blurEffect = null;
         }
     }
@@ -265,7 +269,55 @@ export class WorkspaceSwitcherStyle {
                 thumbnailsBox._maxThumbnailScale = this._origMaxThumbnailScale;
                 thumbnailsBox.queue_relayout?.();
             }
-        } catch (_) {}
+        } catch (_) { }
         this._origMaxThumbnailScale = null;
+    }
+
+    private _setupAutoScroll(): void {
+        const workspace_manager = (global as any).workspace_manager;
+        this._workspaceChangedId = workspace_manager.connect('active-workspace-changed', () => {
+            GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                this._scrollToActiveWorkspace();
+                return GLib.SOURCE_REMOVE;
+            });
+        });
+    }
+
+    private _scrollToActiveWorkspace(): void {
+        try {
+            const thumbnailsBox = (Main as any).overview?._overview?._controls?._thumbnailsBox;
+            if (!thumbnailsBox) return;
+
+            const workspace_manager = (global as any).workspace_manager;
+            const activeIndex = workspace_manager.get_active_workspace_index();
+
+            if (typeof thumbnailsBox._scrollToActive === 'function') {
+                thumbnailsBox._scrollToActive();
+                return;
+            }
+
+            const children = thumbnailsBox.get_children();
+            const child = children[activeIndex];
+            if (!child) return;
+
+            const box = child.get_allocation_box();
+            const childCenter = (box.x1 + box.x2) / 2;
+
+            const scroll = thumbnailsBox.get_parent();
+            if (!scroll || !scroll.get_hadjustment) return;
+
+            const adjustment = scroll.get_hadjustment();
+            const pageSize = adjustment.page_size;
+            adjustment.value = childCenter - pageSize / 2;
+        } catch (e) {
+            console.warn('WorkspaceSwitcherStyle: _scrollToActiveWorkspace failed', e);
+        }
+    }
+
+    private _teardownAutoScroll(): void {
+        if (this._workspaceChangedId !== null) {
+            (global as any).workspace_manager.disconnect(this._workspaceChangedId);
+            this._workspaceChangedId = null;
+        }
     }
 }

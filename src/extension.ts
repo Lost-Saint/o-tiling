@@ -159,6 +159,7 @@ export class Ext extends Ecs.System<ExtEvent> {
     private _resume_timeout: number | null = null;
     private _resuming: boolean = false;
     private _signals_attached: boolean = false;
+    private _focused_signal_connected: boolean = false;
     private _restack_source: number | null = null;
     private _schedule_idle_sources: Set<number> = new Set();
     private _settings_signal_ids: Array<[any, number]> = [];
@@ -1778,6 +1779,13 @@ export class Ext extends Ecs.System<ExtEvent> {
                     if (fork_ent) {
                         const fork = this.auto_tiler.forest.forks.get(fork_ent);
                         if (fork) this.auto_tiler.tile(this, fork, fork.area);
+                    } else if (
+                        win.is_tilable(this) &&
+                        !this.contains_tag(win.entity, Tags.Floating) &&
+                        this.is_workspace_tiled(win.workspace_id())
+                    ) {
+                        // Window was detached during maximize — re-tile it
+                        this.auto_tiler.auto_tile(this, win, false);
                     }
                 }
             });
@@ -2208,6 +2216,10 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         // We have to connect this signal in an idle_add; otherwise work areas stop being calculated
         this.register_fn(() => {
+            if (!this._signals_attached) return; // guard re-entry
+            if (this._focused_signal_connected) return; // ADD this flag
+            this._focused_signal_connected = true;
+
             if ((Main as any).sessionMode?.isLocked) this.update_display_configuration(false);
 
             this.connect((global as any).display, 'notify::focus-window', (display: any, window: any) => {
@@ -2361,6 +2373,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         this.workspace_signals.clear();
 
         this._signals_attached = false;
+        this._focused_signal_connected = false;
     }
 
     suspend() {
@@ -2373,6 +2386,11 @@ export class Ext extends Ecs.System<ExtEvent> {
         if (this._resume_timeout) {
             GLib.source_remove(this._resume_timeout);
             this._resume_timeout = null;
+        }
+
+        if (this._resume_timeout_source !== null) {
+            GLib.source_remove(this._resume_timeout_source);
+            this._resume_timeout_source = null;
         }
 
         this._resuming = false;
@@ -2527,7 +2545,7 @@ export class Ext extends Ecs.System<ExtEvent> {
     }
 
     toggle_tiling() {
-        if (this.settings.tile_by_default()) {
+        if (this.auto_tiler !== null) {
             this.auto_tile_off();
         } else {
             this.auto_tile_on();
