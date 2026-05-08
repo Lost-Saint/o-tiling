@@ -38,18 +38,18 @@ function buildCss(accentColor: string, thumbnailCornerRadius: number, bgCornerSi
     return `
 /* === O-Tiling: COSMIC-style Workspace Switcher (GNOME 50) === */
 
-/* Full-width top bar */
+.workspace-thumbnails,
+.thumbnails-box,
+.workspace-thumbnails-container {
+    background-color: transparent !important;
+    background: transparent !important;
+}
+
 .workspace-thumbnails {
-    background-color: rgba(18, 18, 24, 0.92);
     padding: 12px 16px;
     spacing: 12px;
     border-radius: 0px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    /* Programmatic expansion used instead of 9999px hack */
-}
-
-.thumbnails-box {
-    background-color: transparent;
+    border: none !important;
 }
 
 /* Individual workspace card */
@@ -213,6 +213,8 @@ export class WorkspaceSwitcherStyle {
     }
 
     private _applyBlur(): void {
+        // Disabled to keep the switcher fully transparent as requested.
+        /*
         if (!isGnome50()) return;
 
         try {
@@ -228,6 +230,7 @@ export class WorkspaceSwitcherStyle {
         } catch (e) {
             console.warn('WorkspaceSwitcherStyle: failed to apply blur effect', e);
         }
+        */
     }
 
     private _removeBlur(): void {
@@ -258,14 +261,16 @@ export class WorkspaceSwitcherStyle {
             const thumbnailsBox = this._getThumbnailsBox();
             if (!thumbnailsBox) return;
 
-            // 1. Force expansion to take up available space
-            thumbnailsBox.set_x_expand(true);
-            thumbnailsBox.set_x_align(Clutter.ActorAlign.FILL);
+            // 1. Center the thumbnails strip horizontally
+            // Setting x_expand to false allows the box to take its natural width,
+            // while x_align CENTER centers that width within the parent.
+            thumbnailsBox.set_x_expand(false);
+            thumbnailsBox.set_x_align(Clutter.ActorAlign.CENTER);
 
             const parent = thumbnailsBox.get_parent();
             if (parent) {
                 parent.set_x_expand(true);
-                parent.set_x_align(Clutter.ActorAlign.FILL);
+                parent.set_x_align(Clutter.ActorAlign.FILL); 
             }
 
             // 2. Dynamic scale calculation ("Auto Small") to fit all thumbnails
