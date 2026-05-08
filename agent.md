@@ -9,23 +9,23 @@ Technical reference for AI agents and contributors working on the **O-tiling** G
 | Field | Value |
 |---|---|
 | Name | O-tiling |
-| Version | 2.4.2 |
+| Version | 2.4.5 |
 | UUID | `o-tiling@oliwebd.github.com` |
 | GSettings Schema | `org.gnome.shell.extensions.o-tiling` |
 | D-Bus Interface | `org.gnome.shell.extensions.OTiling` |
 | D-Bus Path | `/org/gnome/shell/extensions/OTiling` |
-| GNOME Shell Support | **49, 50** (Fedora 43 / 44) |
+| GNOME Shell Support | **48, 49, 50** (Fedora 42 / 43 / 44) |
 | Fork Heritage | System76 `pop-shell` |
 | License | GPLv3 |
 | Repository | https://github.com/oliwebd/o-tiling |
 
-**Mission:** A distro-agnostic, EGO-compliant auto-tiling engine for modern GNOME Shell. All System76-specific dependencies (`pop-launcher`, `pop-desktop`, system76-specific D-Bus services) have been removed. The extension runs natively on Fedora, Arch, Debian, Ubuntu, and any other GNOME-based distribution.
+**Mission:** Auto-tiling engine for modern GNOME Shell. All System76-specific dependencies (`pop-launcher`, `pop-desktop`, system76-specific D-Bus services) have been removed. The extension runs natively on Fedora, Arch, Debian, Ubuntu, and any other GNOME-based distribution.
 
 ---
 
 ## 2. GNOME Version Compatibility
 
-This is the most critical section. The codebase supports GNOME **49 and 50** by using runtime-detection shims for every API that changed across this range. When adding new code, never call a version-specific API directly — always use the shim or add one.
+This is the most critical section. The codebase supports GNOME **48, 49 and 50** by using runtime-detection shims for every API that changed across this range. When adding new code, never call a version-specific API directly — always use the shim or add one.
 
 ### 2.1 API Change Map
 
@@ -42,7 +42,7 @@ This is the most critical section. The codebase supports GNOME **49 and 50** by 
 | `backend.get_current_logical_monitor()` | ❌ absent | ✅ added | ✅ | All call sites use `?.get_number() ?? 0` — falls back to monitor 0 on GNOME 48 |
 | `get_logical_monitors().is_primary` | ✅ (property always existed) | ✅ | ✅ | Accessed via `(m: any).is_primary` — safe on all targets |
 | `Main.modalCount` | deprecated | removed | removed | `is_modal_blocking_focus()` helper in `extension.ts` checks `modalActorFocusStack` first, then `_modalCount`, then returns false |
-| `get_monitor_neighbor_index()` | ✅ | ✅ | ❌ removed | `shell.ts` wraps it with a full manual adjacency fallback for GNOME 50 |
+| `get_monitor_neighbor_index()` | ✅ | ✅ | ❌ removed | `src/engine/tiling.ts` wraps it with a full manual adjacency fallback for GNOME 50 |
 | X11 session | ✅ | disabled by default | ❌ removed | `utils.is_wayland()` gate on all X11-specific signal paths |
 
 ### 2.2 The Three Mandatory Shims
