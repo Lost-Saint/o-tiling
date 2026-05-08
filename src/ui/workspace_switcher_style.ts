@@ -93,6 +93,8 @@ function buildCss(accentColor: string, thumbnailCornerRadius: number, bgCornerSi
 .workspace-background-content,
 .workspace-background-bin {
     border-radius: ${bgCornerSize}px !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
 }
 `;
 }
@@ -356,6 +358,11 @@ export class WorkspaceSwitcherStyle {
                 const bg = ws._background;
                 if (bg) {
                     bg.clip_to_allocation = radius > 0;
+                    // Also clip the first child if it exists, as it usually holds the actual background actor
+                    const child = bg.get_first_child?.();
+                    if (child) {
+                        child.clip_to_allocation = radius > 0;
+                    }
                 }
             }
         }
@@ -372,6 +379,10 @@ export class WorkspaceSwitcherStyle {
                 const bg = ws._background;
                 if (bg) {
                     bg.clip_to_allocation = false;
+                    const child = bg.get_first_child?.();
+                    if (child) {
+                        child.clip_to_allocation = false;
+                    }
                 }
             }
         }
