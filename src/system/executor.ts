@@ -121,6 +121,10 @@ export class ChannelExecutor<X> {
     }
 
     stop() {
-        if (this.#signal !== null) GLib.source_remove(this.#signal);
+        if (this.#signal !== null) {
+            GLib.source_remove(this.#signal);
+            this.#signal = null;
+        }
+        this.#channel.splice(0);
     }
 }

@@ -30,6 +30,7 @@ export default class OTilingPreferences extends ExtensionPreferences {
         tilingGroup.add(tileByDefault);
         settings.bind('tile-by-default', tileByDefault as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
+
         const snapToGrid = new Adw.SwitchRow({
             title: _('Snap to Grid (Floating Mode)'),
         });
@@ -53,6 +54,24 @@ export default class OTilingPreferences extends ExtensionPreferences {
         });
         appearanceGroup.add(showTitle);
         settings.bind('show-title', showTitle as any, 'active', Gio.SettingsBindFlags.DEFAULT);
+
+        const showMin = new Adw.SwitchRow({
+            title: _('Show Minimize Button'),
+        });
+        appearanceGroup.add(showMin);
+        settings.bind('show-minimize-button', showMin as any, 'active', Gio.SettingsBindFlags.DEFAULT);
+
+        const showMax = new Adw.SwitchRow({
+            title: _('Show Maximize Button'),
+        });
+        appearanceGroup.add(showMax);
+        settings.bind('show-maximize-button', showMax as any, 'active', Gio.SettingsBindFlags.DEFAULT);
+
+        const showClose = new Adw.SwitchRow({
+            title: _('Show Close Button'),
+        });
+        appearanceGroup.add(showClose);
+        settings.bind('show-close-button', showClose as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
         const themesConsistencyRow = new Adw.SwitchRow({
             title: _('Themes Consistency (RoundedShell)'),
@@ -286,6 +305,36 @@ export default class OTilingPreferences extends ExtensionPreferences {
         this._addShortcutRow(workspaceGroup, settings, 'pop-monitor-right', _('Move to Right Monitor'));
         this._addShortcutRow(workspaceGroup, settings, 'pop-monitor-up', _('Move to Upper Monitor'));
         this._addShortcutRow(workspaceGroup, settings, 'pop-monitor-down', _('Move to Lower Monitor'));
+
+        // Reset Group
+        const resetGroup = new Adw.PreferencesGroup({
+            title: _('Danger Zone'),
+        });
+        page.add(resetGroup);
+
+        const resetRow = new Adw.ActionRow({
+            title: _('Reset All Settings'),
+            subtitle: _('Restore all extension settings to their default values'),
+        });
+        resetGroup.add(resetRow);
+
+        const resetButton = new Gtk.Button({
+            label: _('Reset'),
+            valign: Gtk.Align.CENTER,
+            css_classes: ['destructive-action'],
+        });
+        resetRow.add_suffix(resetButton);
+
+        resetButton.connect('clicked', () => {
+            const keys = settings.list_keys();
+            keys.forEach(key => settings.reset(key));
+
+            // Manual overrides from original indicator logic
+            settings.set_uint('gap-inner', 4);
+            settings.set_uint('gap-outer', 4);
+            settings.set_uint('active-hint-border-radius', 10);
+            settings.set_uint('active-hint-border-width', 4);
+        });
     }
 
     private _addShortcutRow(group: Adw.PreferencesGroup, settings: Gio.Settings, key: string, title: string) {

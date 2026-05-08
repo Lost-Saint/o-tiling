@@ -312,6 +312,12 @@ export class ShellWindow {
                 wm_class = this.name(ext);
             }
 
+            // If name resolution also returns empty/null, defer tiling
+            // (this can happen during first-launch initialization).
+            if (wm_class === null || wm_class.trim().length === 0) {
+                return false;
+            }
+
             const role = this.meta.get_role();
 
             // Quake-style terminals such as Tilix's quake mode.

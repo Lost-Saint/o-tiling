@@ -14,7 +14,7 @@ import { Executor } from '../system/executor.js';
 export type Entity = [number, number];
 
 export function entity_eq(a: Entity, b: Entity): boolean {
-    return a[0] == b[0] && b[1] == b[1];
+    return a[0] === b[0] && a[1] === b[1];
 }
 
 export function entity_new(pos: number, gen: number): Entity {
@@ -153,13 +153,13 @@ export class World {
     private entities_: Array<Entity>;
     private storages: Array<Storage<any>>;
     private tags_: Array<any>;
-    private free_slots: Array<number>;
+    private free_slots: Set<number>;
 
     constructor() {
         this.entities_ = [];
         this.storages = [];
         this.tags_ = [];
-        this.free_slots = [];
+        this.free_slots = new Set();
     }
 
     /// The total capacity of the entity array
@@ -169,7 +169,7 @@ export class World {
 
     /// The number of unallocated entity slots
     get free(): number {
-        return this.free_slots.length;
+        return this.free_slots.size;
     }
 
     /// The number of allocated entities
@@ -187,7 +187,7 @@ export class World {
     /// Iterates across entities in the world
     *entities(): IterableIterator<Entity> {
         for (const entity of this.entities_.values()) {
-            if (!(this.free_slots.indexOf(entity[0]) > -1)) yield entity;
+            if (!this.free_slots.has(entity[0])) yield entity;
         }
     }
 
@@ -195,9 +195,12 @@ export class World {
     ///
     /// Find the first available slot, and increment the generation.
     create_entity(): Entity {
-        const slot = this.free_slots.pop();
+        const slot = this.free_slots.size > 0
+            ? this.free_slots.values().next().value
+            : undefined;
 
-        if (slot) {
+        if (slot !== undefined) {
+            this.free_slots.delete(slot);
             var entity = this.entities_[slot];
             entity[1] += 1;
         } else {
@@ -218,7 +221,7 @@ export class World {
             storage.remove(entity);
         }
 
-        this.free_slots.push(entity[0]);
+        this.free_slots.add(entity[0]);
     }
 
     /// Adds a new tag to the given entity

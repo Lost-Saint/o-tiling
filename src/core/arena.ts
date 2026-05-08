@@ -6,7 +6,7 @@ export class Arena<T> {
 
     truncate(n: number) {
         this.slots.splice(n);
-        this.unused.splice(n);
+        this.unused = this.unused.filter(i => i < n);
     }
 
     get(n: number): null | T {

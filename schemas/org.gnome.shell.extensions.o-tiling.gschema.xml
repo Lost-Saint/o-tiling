@@ -86,6 +86,21 @@
             <summary>Show title bars on windows with server-side decorations</summary>
         </key>
 
+        <key type="b" name="show-minimize-button">
+            <default>true</default>
+            <summary>Show the minimize button</summary>
+        </key>
+
+        <key type="b" name="show-maximize-button">
+            <default>true</default>
+            <summary>Show the maximize button</summary>
+        </key>
+
+        <key type="b" name="show-close-button">
+            <default>true</default>
+            <summary>Show the close button</summary>
+        </key>
+
         <key type="b" name="show-skip-taskbar">
             <default>true</default>
             <summary>Handle minimized to tray windows</summary>

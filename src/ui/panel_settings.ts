@@ -62,8 +62,14 @@ export class Indicator {
 
         this.button.connect('button-press-event', (actor: any, event: any) => {
             if (event.get_button() === 1) { // Left click
-                if (ext.auto_tiler) ext.auto_tile_off();
-                else ext.auto_tile_on();
+                if (ext._ext_soft_disabled) {
+                    // Extension is fully off — left click re-enables everything
+                    ext.ext_soft_enable();
+                } else {
+                    // Extension is on — left click toggles only auto-tiling
+                    if (ext.auto_tiler) ext.auto_tile_off();
+                    else ext.auto_tile_on();
+                }
                 return Clutter.EVENT_STOP;
             }
             return Clutter.EVENT_PROPAGATE;
@@ -76,15 +82,8 @@ export class Indicator {
         this.toggle_workspace_tiled = workspace_tiled(ext);
         bm.addMenuItem(this.toggle_workspace_tiled);
 
-        this.toggle_new_workspaces_tiled = toggle(
-            _('Auto-Tile New Workspaces'),
-            ext.settings.new_workspaces_tiled(),
-            'window-new-symbolic',
-            (state) => ext.settings.set_new_workspaces_tiled(state),
-        );
+        this.toggle_new_workspaces_tiled = new_workspaces_tiled(ext);
         bm.addMenuItem(this.toggle_new_workspaces_tiled);
-
-
 
         bm.addMenuItem(new PopupSeparatorMenuItem());
 
@@ -105,7 +104,7 @@ export class Indicator {
         // ── Numeric Settings ────────────────────────────────────
         this.entry_gaps = number_entry(
             _('Gaps'),
-            { value: ext.settings.gap_inner(), min: 0, max: 24 },
+            { value: ext.settings.gap_inner(), min: 0, max: 24, reset_value: 4 },
             'view-fullscreen-symbolic',
             (value) => {
                 ext.settings.set_gap_inner(value);
@@ -116,7 +115,7 @@ export class Indicator {
 
         this.border_radius = number_entry(
             _('Border Radius'),
-            { value: ext.settings.active_hint_border_radius(), min: 0, max: 30 },
+            { value: ext.settings.active_hint_border_radius(), min: 0, max: 30, reset_value: 8 },
             'selection-mode-symbolic',
             (value) => ext.settings.set_active_hint_border_radius(value),
         );
@@ -124,7 +123,7 @@ export class Indicator {
 
         bm.addMenuItem(number_entry(
             _('Border Width'),
-            { value: ext.settings.active_hint_border_width(), min: 1, max: 10 },
+            { value: ext.settings.active_hint_border_width(), min: 1, max: 10, reset_value: 3 },
             'border-all-symbolic',
             (value) => ext.settings.set_active_hint_border_width(value),
         ));
@@ -136,34 +135,11 @@ export class Indicator {
         // ── Actions ─────────────────────────────────────────────
         bm.addMenuItem(settings_button(bm));
 
-        const reset_item = new PopupMenuItem(_('Reset All Settings'));
-        const reset_icon = new St.Icon({
-            icon_name: 'edit-clear-all-symbolic',
-            icon_size: 16,
-            style_class: 'popup-menu-icon'
-        });
-        if (typeof (reset_item as any).insert_child_at_index === 'function') {
-            (reset_item as any).insert_child_at_index(reset_icon, 0);
-        } else {
-            reset_item.add_child(reset_icon);
-        }
-
-
-        reset_item.connect('activate', () => {
-            ext.settings.reset_all();
-            ext.settings.set_gap_inner(4);
-            ext.settings.set_gap_outer(4);
-            ext.settings.set_active_hint_border_radius(10);
-            ext.settings.set_active_hint_border_width(4);
-            bm.close();
-        });
-        bm.addMenuItem(reset_item);
-
-
         bm.addMenuItem(new PopupSeparatorMenuItem());
 
         this.toggle_tiled = tiled(ext);
         bm.addMenuItem(this.toggle_tiled);
+
     }
 
     update_workspace_tiling_state() {
@@ -226,11 +202,11 @@ function settings_button(menu: any): any {
 
 function number_entry(
     label_text: string,
-    options: { value: number; min: number; max: number },
+    options: { value: number; min: number; max: number; reset_value?: number },
     icon_name: string | null,
     callback: (a: number) => void,
 ): any {
-    const { value, min, max } = options;
+    const { value, min, max, reset_value } = options;
 
     const item = new PopupBaseMenuItem({ reactive: false });
 
@@ -244,7 +220,6 @@ function number_entry(
     }
 
     const label = new St.Label({
-
         text: label_text,
         y_align: Clutter.ActorAlign.CENTER,
         x_expand: true,
@@ -283,6 +258,15 @@ function number_entry(
 
     btn_minus.connect('clicked', () => updateValue(parseInt(entry.text) - 1));
     btn_plus.connect('clicked', () => updateValue(parseInt(entry.text) + 1));
+
+    if (reset_value !== undefined) {
+        const btn_reset = new St.Button({
+            child: new St.Icon({ icon_name: 'edit-undo-symbolic', icon_size: 14 }),
+            style_class: 'o-tiling-spin-btn',
+        });
+        entry_box.add_child(btn_reset);
+        btn_reset.connect('clicked', () => updateValue(reset_value));
+    }
 
     item.add_child(label);
     item.add_child(entry_box);
@@ -335,13 +319,18 @@ function toggle(
 }
 
 function tiled(ext: Ext): any {
+    // Extension is "on" when it is NOT soft-disabled
+    const isOn = !ext._ext_soft_disabled;
     return toggle(
-        _('Extension On/Off'),
-        null != ext.auto_tiler,
+        _('Enable O-Tiling Extension'),
+        isOn,
         { on: 'view-grid-symbolic', off: 'view-module-symbolic' },
-        (shouldTile) => {
-            if (shouldTile) ext.auto_tile_on();
-            else ext.auto_tile_off();
+        (shouldEnable) => {
+            if (shouldEnable) {
+                ext.ext_soft_enable();
+            } else {
+                ext.ext_soft_disable();
+            }
         }
     );
 }
@@ -354,6 +343,15 @@ function workspace_tiled(ext: Ext): any {
         (shouldTile) => {
             ext.workspace_tiling_set(ext.active_workspace(), shouldTile);
         }
+    );
+}
+
+function new_workspaces_tiled(ext: Ext): any {
+    return toggle(
+        _('Tile New Workspaces'),
+        ext.settings.new_workspaces_tiled(),
+        { on: 'tab-new-symbolic', off: 'tab-new-symbolic' },
+        (state) => ext.settings.set_new_workspaces_tiled(state),
     );
 }
 

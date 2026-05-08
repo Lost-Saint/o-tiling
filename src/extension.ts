@@ -20,6 +20,8 @@ import * as Executor from './system/executor.js';
 const exec = Executor;
 import * as movement from './window/movement.js';
 import * as stack from './engine/stack.js';
+import { WindowButtonsManager } from './system/window_buttons.js';
+
 
 import * as dbus_service from './system/dbus_service.js';
 import * as scheduler from './system/scheduler.js';
@@ -159,6 +161,8 @@ export class Ext extends Ecs.System<ExtEvent> {
     private _resume_timeout: number | null = null;
     private _resuming: boolean = false;
     private _signals_attached: boolean = false;
+    /** True when the user has soft-disabled the extension from the panel */
+    _ext_soft_disabled: boolean = false;
     private _focused_signal_connected: boolean = false;
     private _restack_source: number | null = null;
     private _schedule_idle_sources: Set<number> = new Set();
@@ -271,6 +275,9 @@ export class Ext extends Ecs.System<ExtEvent> {
     /** Manages theme consistency (session injection) */
     theme_consistency_handler: ThemeConsistencyManager | null = null;
 
+    /** Manages window management buttons (min/max/close) */
+    window_buttons_manager: WindowButtonsManager | null = null;
+
 
     _resume_timeout_source: number | null = null;
     private _bordered_entity: Entity | null = null;
@@ -364,6 +371,9 @@ export class Ext extends Ecs.System<ExtEvent> {
         this.toggle_workspace_switcher_style(this.settings.workspace_switcher_style(), false);
         this.toggle_theme_consistency(this.settings.theme_consistency(), false);
 
+        this.window_buttons_manager = new WindowButtonsManager(this.settings);
+        this.window_buttons_manager.enable();
+
         if (this.settings.skip_overview()) {
             if ((Main.layoutManager as any)._startingUp) {
                 this._startup_complete_id = Main.layoutManager.connect('startup-complete', () => {
@@ -450,6 +460,11 @@ export class Ext extends Ecs.System<ExtEvent> {
         if (this.theme_consistency_handler) {
             this.theme_consistency_handler.disable();
             this.theme_consistency_handler = null;
+        }
+
+        if (this.window_buttons_manager) {
+            this.window_buttons_manager.disable();
+            this.window_buttons_manager = null;
         }
 
         for (const win of this.windows.values()) {
@@ -621,6 +636,10 @@ export class Ext extends Ecs.System<ExtEvent> {
 
                     case GlobalEvent.OverviewShown:
                         this.on_overview_shown();
+                        break;
+
+                    case GlobalEvent.OverviewHidden:
+                        this.on_overview_hidden();
                         break;
                 }
 
@@ -1881,6 +1900,28 @@ export class Ext extends Ecs.System<ExtEvent> {
         this.unset_grab_op();
     }
 
+    on_overview_hidden() {
+        // When the overview closes (e.g. after launching from app grid),
+        // restore prev_focused to the last known tiled window on the active
+        // workspace so that the incoming window's first-frame handler can
+        // tile it correctly next to an existing window.
+        if (this.auto_tiler) {
+            const ws_id = this.active_workspace();
+            const mon = this.active_monitor();
+            const entity = this.workspace_active.get(ws_id);
+            if (entity) {
+                const win = this.windows.get(entity);
+                if (win && win.is_tilable(this) && this.auto_tiler.attached.contains(entity)) {
+                    // Rehydrate prev_focused so fetch_mode() will find it.
+                    if (this.prev_focused[1] !== entity) {
+                        this.prev_focused[0] = this.prev_focused[1];
+                        this.prev_focused[1] = entity;
+                    }
+                }
+            }
+        }
+    }
+
     on_show_window_titles() {
         const show_title = this.settings.show_title();
 
@@ -2189,6 +2230,10 @@ export class Ext extends Ecs.System<ExtEvent> {
                     } else {
                         _hide_skip_taskbar_windows();
                     }
+                    break;
+                case 'new-workspaces-tiled':
+                    if (indicator) indicator.toggle_new_workspaces_tiled.setToggleState(this.settings.new_workspaces_tiled());
+                    break;
             }
         });
 
@@ -2552,6 +2597,158 @@ export class Ext extends Ecs.System<ExtEvent> {
         }
     }
 
+    /**
+     * Soft-disable: shuts down ALL extension features without destroying
+     * the panel indicator, so the user can re-enable from the panel button.
+     * Equivalent to extension disable() but keeps the Indicator alive.
+     */
+    ext_soft_disable() {
+        if (this._ext_soft_disabled) return;
+        this._ext_soft_disabled = true;
+
+        // 1. Stop auto-tiling
+        if (this.auto_tiler) {
+            this.settings.set_edge_tiling(true);
+            this.auto_tiler.destroy(this);
+            this.auto_tiler = null;
+        }
+
+        // 2. Hide and destroy ALL window borders, disconnect window-specific signals
+        // Collect entities first to avoid modification during iteration
+        const entities = Array.from(this.windows.iter()).map(([e]) => e);
+        for (const entity of entities) {
+            const win = this.windows.get(entity);
+            if (win) {
+                // Disconnect signals stored in window_signals and size_signals for THIS window
+                const win_sigs = this.window_signals.get(entity);
+                if (win_sigs) {
+                    for (const sig of win_sigs) try { win.meta.disconnect(sig); } catch (_) {}
+                }
+                const size_sigs = this.size_signals.get(entity);
+                if (size_sigs) {
+                    for (const sig of size_sigs) try { win.meta.disconnect(sig); } catch (_) {}
+                }
+
+                win.destroy();
+            }
+            this.delete_entity(entity);
+        }
+
+        // 3. Clear all ECS storages to ensure a fresh state on enable
+        this.init = true;
+
+        // 4. Disable all keybindings
+        this.keybindings.disable(this.keybindings.global)
+                        .disable(this.keybindings.window_focus);
+
+        // 5. Remove all global window/workspace/display signals
+        this.signals_remove();
+
+        // 6. Remove GNOME Shell injections
+        this.injections_remove();
+
+        // 7. Clear pending timers/sources
+        if (this._resume_timeout_source !== null) {
+            GLib.source_remove(this._resume_timeout_source);
+            this._resume_timeout_source = null;
+        }
+        if (this.suspend_timeout) {
+            GLib.source_remove(this.suspend_timeout);
+            this.suspend_timeout = null;
+        }
+        if (this._restack_source !== null) {
+            GLib.source_remove(this._restack_source);
+            this._restack_source = null;
+        }
+        for (const src of this._schedule_idle_sources) {
+            try { GLib.source_remove(src); } catch (_) { }
+        }
+        this._schedule_idle_sources.clear();
+        for (const [, src] of this.size_requests) {
+            try { GLib.source_remove(src); } catch (_) { }
+        }
+        this.size_requests.clear();
+
+        // 8. Disable other handlers
+        if (this.theme_consistency_handler) {
+            this.theme_consistency_handler.disable();
+            this.theme_consistency_handler = null;
+        }
+        if (this.workspace_switcher_style_handler) {
+            this.workspace_switcher_style_handler.disable();
+            this.workspace_switcher_style_handler = null;
+        }
+        if (this.window_buttons_manager) {
+            this.window_buttons_manager.disable();
+            this.window_buttons_manager = null;
+        }
+
+        // 9. Final UI cleanup
+        this.hide_all_borders();
+        if (this.button) {
+            this.button.icon.gicon = this.button_gio_icon_auto_off;
+        }
+
+        // 10. Update the toggle_tiled switch state in the menu
+        const indicator = (PanelSettings as any).indicator;
+        if (indicator) {
+            indicator.toggle_tiled.setToggleState(false);
+            if (indicator.toggle_tiled.updateIcon) indicator.toggle_tiled.updateIcon(false);
+        }
+    }
+
+    /**
+     * Soft-enable: restores ALL extension features after a soft-disable.
+     * Reads saved settings to restore the state the user had configured.
+     */
+    ext_soft_enable() {
+        if (!this._ext_soft_disabled) return;
+        this._ext_soft_disabled = false;
+
+        // 1. Re-attach GNOME Shell injections
+        this.injections_add();
+
+        // 2. Re-attach all signals
+        this.signals_attach();
+
+        // 3. Re-enable all keybindings
+        this.keybindings.enable(this.keybindings.global)
+                        .enable(this.keybindings.window_focus);
+
+        // 4. Restore auto-tiling if user had it enabled
+        if (this.settings.tile_by_default()) {
+            this.auto_tile_on(false); // false = do not re-save setting
+        } else {
+            this.settings.set_edge_tiling(true);
+            if (this.settings.active_hint()) {
+                this.show_border_on_focused();
+            }
+        }
+
+        // 5. Restore theme consistency if user had it enabled
+        if (this.settings.theme_consistency()) {
+            this.toggle_theme_consistency(true, false);
+        }
+
+        // 6. Restore workspace-switcher style if user had it enabled
+        if (isGnome50() && this.settings.workspace_switcher_style()) {
+            this.toggle_workspace_switcher_style(true, false);
+        }
+
+        // 7. Update panel icon to on/off based on auto_tiler state
+        if (this.button) {
+            this.button.icon.gicon = this.auto_tiler
+                ? this.button_gio_icon_auto_on
+                : this.button_gio_icon_auto_off;
+        }
+
+        if (indicator) {
+            // The toggle_tiled switch reflects overall "extension enabled" state
+            indicator.toggle_tiled.setToggleState(true); // extension is ON now
+            if (indicator.toggle_tiled.updateIcon) indicator.toggle_tiled.updateIcon(true);
+        }
+    }
+
     auto_tile_off(save_setting: boolean = true) {
         this.settings.set_edge_tiling(true);
         this.hide_all_borders();
@@ -2620,6 +2817,9 @@ export class Ext extends Ecs.System<ExtEvent> {
     }
 
     auto_tile_on(save_setting: boolean = true) {
+        // Do not auto-tile if the extension is soft-disabled
+        if (this._ext_soft_disabled) return;
+
         this.settings.set_edge_tiling(false);
         this.hide_all_borders();
 
@@ -3009,6 +3209,24 @@ export class Ext extends Ecs.System<ExtEvent> {
 
             if (this.auto_tiler && !win.meta.minimized && win.is_tilable(this) && this.is_workspace_tiled(win.workspace_id())) {
                 const id = actor.connect('first-frame', () => {
+                    // If prev_focused is empty (e.g. launched from app grid with no prior focus),
+                    // attempt to recover it from workspace_active before tiling.
+                    if (this.auto_tiler && !this.previously_focused(win)) {
+                        const ws_id = win.workspace_id();
+                        const entity = this.workspace_active.get(ws_id);
+                        if (entity && !Ecs.entity_eq(entity, win.entity)) {
+                            const candidate = this.windows.get(entity);
+                            if (
+                                candidate &&
+                                candidate.is_tilable(this) &&
+                                this.auto_tiler.attached.contains(entity) &&
+                                candidate.meta.get_monitor() === win.meta.get_monitor()
+                            ) {
+                                this.prev_focused[0] = this.prev_focused[1];
+                                this.prev_focused[1] = entity;
+                            }
+                        }
+                    }
                     this.auto_tiler?.auto_tile(this, win, this.init);
                     grab_focus();
                     actor.disconnect(id);
@@ -3358,6 +3576,7 @@ function _show_skip_taskbar_windows(ext: Ext) {
                 }
 
                 const windows = (global as any).display.get_tab_list(Meta.TabList.NORMAL_ALL, workspace);
+                const seen = new Set();
                 return windows
                     .map((w: any) => {
                         const meta_win = w.is_attached_dialog() ? w.get_transient_for() : w;
@@ -3368,7 +3587,11 @@ function _show_skip_taskbar_windows(ext: Ext) {
                         }
                         return null;
                     })
-                    .filter((w: any, i: number, a: any[]) => w != null && a.indexOf(w) == i) as Meta.Window[];
+                    .filter((w: any) => {
+                        if (w == null || seen.has(w)) return false;
+                        seen.add(w);
+                        return true;
+                    }) as Meta.Window[];
             };
         } else {
             (global as any).log('O-Tiling: WARNING - WindowSwitcherPopup._getWindowList not found. Alt-tab modifications skipped.');

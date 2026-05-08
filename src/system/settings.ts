@@ -5,6 +5,18 @@ import * as utils from '../utils/utils.js';
 
 const DARK = ['dark', 'adapta', 'plata', 'dracula'];
 
+const ACCENT_COLOR_MAP: Record<string, string> = {
+    'blue':   'rgba(53, 132, 228, 1)',
+    'teal':   'rgba(33, 144, 175, 1)',
+    'green':  'rgba(58, 148, 74, 1)',
+    'yellow': 'rgba(200, 136, 0, 1)',
+    'orange': 'rgba(237, 91, 0, 1)',
+    'red':    'rgba(224, 27, 36, 1)',
+    'pink':   'rgba(205, 64, 119, 1)',
+    'purple': 'rgba(145, 65, 172, 1)',
+    'slate':  'rgba(111, 119, 131, 1)',
+};
+
 // Use Gio.Settings directly as our Settings type
 type Settings = Gio.Settings;
 
@@ -75,6 +87,10 @@ const WORKSPACE_SWITCHER_SIZE = 'workspace-switcher-size';
 const WORKSPACE_BACKGROUND_CORNER_SIZE = 'workspace-background-corner-size';
 const THEME_CONSISTENCY = 'theme-consistency';
 const SKIP_OVERVIEW = 'skip-overview';
+const SHOW_MINIMIZE_BUTTON = 'show-minimize-button';
+const SHOW_MAXIMIZE_BUTTON = 'show-maximize-button';
+const SHOW_CLOSE_BUTTON = 'show-close-button';
+
 
 
 export class ExtensionSettings {
@@ -82,6 +98,7 @@ export class ExtensionSettings {
     int: Settings | null = settings_new_id('org.gnome.desktop.interface');
     mutter: Settings | null = settings_new_id('org.gnome.mutter');
     shell: Settings | null = settings_new_id('org.gnome.shell.extensions.user-theme');
+    wm: Settings | null = settings_new_id('org.gnome.desktop.wm.preferences');
 
     // Getters
 
@@ -123,18 +140,7 @@ export class ExtensionSettings {
 
         try {
             const accent = this.int.get_string('accent-color');
-            const map: Record<string, string> = {
-                'blue': 'rgba(53, 132, 228, 1)',
-                'teal': 'rgba(33, 144, 175, 1)',
-                'green': 'rgba(58, 148, 74, 1)',
-                'yellow': 'rgba(200, 136, 0, 1)',
-                'orange': 'rgba(237, 91, 0, 1)',
-                'red': 'rgba(224, 27, 36, 1)',
-                'pink': 'rgba(205, 64, 119, 1)',
-                'purple': 'rgba(145, 65, 172, 1)',
-                'slate': 'rgba(111, 119, 131, 1)',
-            };
-            return map[accent] || DEFAULT_RGBA_COLOR;
+            return ACCENT_COLOR_MAP[accent] ?? DEFAULT_RGBA_COLOR;
         } catch (e) {
             return DEFAULT_RGBA_COLOR;
         }
@@ -252,6 +258,18 @@ export class ExtensionSettings {
 
     skip_overview(): boolean {
         return this.ext.get_boolean(SKIP_OVERVIEW);
+    }
+
+    show_minimize_button(): boolean {
+        return this.ext.get_boolean(SHOW_MINIMIZE_BUTTON);
+    }
+
+    show_maximize_button(): boolean {
+        return this.ext.get_boolean(SHOW_MAXIMIZE_BUTTON);
+    }
+
+    show_close_button(): boolean {
+        return this.ext.get_boolean(SHOW_CLOSE_BUTTON);
     }
 
 

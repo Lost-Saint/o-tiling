@@ -6,9 +6,9 @@
         "sourceMap": false,
         "strict": true,
         "skipLibCheck": true,
-        "target": "ESNext",
+        "target": "ES2022",
         "lib": [
-            "ESNext"
+            "ES2022"
         ],
         "allowJs": true,
         "rootDir": "src"
