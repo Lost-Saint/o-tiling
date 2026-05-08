@@ -400,6 +400,7 @@ export class ShellWindow {
 
     private on_style_changed() {
         if (!this.border) return;
+        if (!this.border.get_stage()) return;
         this.border_size = this.border.get_theme_node().get_border_width(St.Side.TOP);
     }
 

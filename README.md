@@ -64,7 +64,7 @@ Paste the command matching your GNOME version into your terminal:
 
 **GNOME Shell 49/50**
 ```bash
-curl -L -o o-tiling.zip "https://github.com/oliwebd/o-tiling/releases/latest/download/o-tiling@oliwebd.github.comzip" && gnome-extensions install --force o-tiling.zip && rm o-tiling.zip
+curl -L -o o-tiling.zip "https://github.com/oliwebd/o-tiling/releases/latest/download/o-tiling@oliwebd.github.com.zip" && gnome-extensions install --force o-tiling.zip && rm o-tiling.zip
 ```
 
 
