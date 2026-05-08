@@ -9,7 +9,7 @@ Technical reference for AI agents and contributors working on the **O-tiling** G
 | Field | Value |
 |---|---|
 | Name | O-tiling |
-| Version | 2.4.0 |
+| Version | 2.4.2 |
 | UUID | `o-tiling@oliwebd.github.com` |
 | GSettings Schema | `org.gnome.shell.extensions.o-tiling` |
 | D-Bus Interface | `org.gnome.shell.extensions.OTiling` |
@@ -76,6 +76,7 @@ src/
     theme_consistency/   — Rounded corners logic for GTK/Shell
     panel_settings.ts   — Panel indicator (Indicator class)
   system/
+    window_buttons.ts   — WindowButtonsManager (min/max/close button layout)
     settings.ts         — ExtensionSettings wrapper over GSettings
     config.ts           — Config file loader
     keybindings.ts      — Keybinding registration/deregistration
@@ -109,13 +110,25 @@ Tracks the focused window's frame rect. Uses CSS `border-radius`.
 Premium customization for the GNOME 50+ workspace overview.
 - **CSS Injection**: Dynamically generates and loads CSS into `St.ThemeContext`.
 - **Thumbnail Scaling**: Percentage-based scaling via `ThumbnailsBox._maxThumbnailScale`.
-- **Background Blur**: Applies `Shell.BlurEffect` to the `ThumbnailsBox` actor.
+- **Auto-Small**: Dynamically shrinks thumbnails to fit all workspaces on the monitor.
+- **Centering**: Horizontal centering of the thumbnails strip via `Clutter.ActorAlign.CENTER`.
+- **Transparency**: Fully transparent background to integrate with the Shell theme.
 
 ### 5.3 Theme Consistency / RoundedShell (`src/ui/theme_consistency/`)
 Applies uniform rounded corners across the desktop environment.
 - **Shell Components**: Rounds panel, menus, popovers via CSS.
 - **GTK Applications**: Injects local CSS into user's GTK configuration.
 - **Initialization**: Explicitly applied in `Ext.setup()` to ensure activation on startup.
+
+### 5.4 Window Buttons Manager (`src/system/window_buttons.ts`)
+Manages the global GNOME button layout (Minimize, Maximize, Close).
+- **Synchronization**: Bridges extension settings to the `org.gnome.desktop.wm.preferences` schema.
+- **Cleanup**: Restores default layout and disconnects signals on extension disable.
+
+### 5.5 Extension Soft Disable
+Halt-mode implemented in `extension.ts` using the `_ext_soft_disabled` flag.
+- **Functionality**: Disables all tiling, keybindings, and injections without removing the panel indicator.
+- **State Recovery**: Re-enabling the extension triggers a full re-tiling of the current workspace.
 
 ---
 
@@ -138,6 +151,9 @@ Applies uniform rounded corners across the desktop environment.
 ### Bug D — Broken Rounded Corners on Thumbnails
 - **Fix:** Explicitly set `overflow: hidden` on `.workspace-thumbnail` and apply `border-radius` to the internal background to prevent sharp corners from showing through.
 
+### Bug E — First-Launch Tiling Failure
+- **Fix:** Added defensive fallbacks in 'first-frame' window initialization and handled missing `OverviewHidden` events to rehydrate focus state.
+
 ---
 
-*Document Version: 2.4.1 | Updated: May 2026*
+*Document Version: 2.4.5 | Updated: May 8, 2026*
