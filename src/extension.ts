@@ -91,15 +91,9 @@ import { PACKAGE_VERSION } from 'resource:///org/gnome/shell/misc/config.js';
 import * as Tags from './utils/tags.js';
 import { get_current_path } from './utils/paths.js';
 
-const STYLESHEET_PATHS = ['light', 'dark', 'highcontrast'].map(stylesheet_path);
-const STYLESHEETS = STYLESHEET_PATHS.map((path) => Gio.File.new_for_path(path));
+const STYLESHEET_PATH = stylesheet_path('stylesheet');
+const STYLESHEET = Gio.File.new_for_path(STYLESHEET_PATH);
 const GNOME_VERSION = PACKAGE_VERSION;
-
-enum Style {
-    Light,
-    Dark,
-    HighContrast,
-}
 
 interface Display {
     area: Rectangle;
@@ -147,8 +141,6 @@ export class Ext extends Ecs.System<ExtEvent> {
     /** Column sizes in snap-to-grid */
     column_size: number = 32;
 
-    /** The currently-loaded theme variant */
-    current_style: Style = Style.Dark;
 
     /** Set when the display configuration has been triggered for execution */
     displays_updating: SignalID | null = null;
@@ -310,9 +302,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         this.displays[0] = (global as any).backend.get_monitor_manager()?.get_logical_monitors().find((m: any) => m.is_primary)?.get_number() ?? 0;
 
         this.load_settings();
-        this.reload_theme();
-
-        this.register_fn(() => load_theme(this.current_style));
+        load_theme();
 
         this.conf.reload();
 
@@ -419,7 +409,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         };
 
         this.dbus.WindowQuit = (win: [number, number]) => {
-            this.windows.get(win)?.meta.delete((global as any).get_current_time());
+            this.windows.get(win)?.meta.delete(utils.get_current_time());
         };
     }
 
@@ -798,7 +788,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         if (id + 1 === wom.get_n_workspaces()) {
             id += 1;
-            new_work = wom.append_new_workspace(true, (global as any).get_current_time());
+            new_work = wom.append_new_workspace(true, utils.get_current_time());
         } else {
             new_work = wom.get_workspace_by_index(id);
         }
@@ -1595,14 +1585,14 @@ export class Ext extends Ecs.System<ExtEvent> {
                 move_to_neighbor(neighbor);
             } else if (direction === Meta.MotionDirection.DOWN && !last_window()) {
                 if (this.settings.dynamic_workspaces()) {
-                    neighbor = wom.append_new_workspace(false, (global as any).get_current_time());
+                    neighbor = wom.append_new_workspace(false, utils.get_current_time());
                 } else {
                     return;
                 }
             } else if (direction === Meta.MotionDirection.UP && ws.index() === 0) {
                 if (this.settings.dynamic_workspaces()) {
                     // Add a new workspace, to push everyone to free up the first one
-                    wom.append_new_workspace(false, (global as any).get_current_time());
+                    wom.append_new_workspace(false, utils.get_current_time());
 
                     // Move everything one workspace down
                     this.on_workspace_modify(
@@ -1625,7 +1615,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
             this.size_signals_block(win);
             win.meta.change_workspace_by_index(neighbor.index(), true);
-            neighbor.activate_with_focus(win.meta, (global as any).get_current_time());
+            neighbor.activate_with_focus(win.meta, utils.get_current_time());
             this.size_signals_unblock(win);
         };
 
@@ -1759,21 +1749,11 @@ export class Ext extends Ecs.System<ExtEvent> {
     }
 
     on_gtk_shell_changed() {
-        this.reload_theme();
-        load_theme(this.current_style);
+        load_theme();
     }
 
     on_gtk_theme_change() {
-        this.reload_theme();
-        load_theme(this.current_style);
-    }
-
-    reload_theme() {
-        this.current_style = this.settings.is_dark()
-            ? Style.Dark
-            : this.settings.is_high_contrast()
-                ? Style.HighContrast
-                : Style.Light;
+        load_theme();
     }
 
     /** Handle window maximization notifications */
@@ -2312,7 +2292,7 @@ export class Ext extends Ecs.System<ExtEvent> {
                                 refocus_tiled_window();
                             } else {
                                 // This section fixes Steam's sub-menus.
-                                meta_window.activate((global as any).get_current_time());
+                                utils.activate_window(meta_window);
                             }
                         }
                     } else if (this.auto_tiler) {
@@ -2548,7 +2528,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     /** Switch to a workspace by its index */
     switch_to_workspace(id: number) {
-        this.workspace_by_id(id)?.activate((global as any).get_current_time());
+        this.workspace_by_id(id)?.activate(utils.get_current_time());
     }
 
     tab_list(tablist: number, workspace: Meta.Workspace | null): Array<Window.ShellWindow> {
@@ -3385,25 +3365,19 @@ function stylesheet_path(name: string) {
 }
 
 // Supplements the loaded theme with the extension's theme.
-function load_theme(style: Style): string | any {
-    const pop_stylesheet = Number(style);
+function load_theme(): string | any {
     try {
         const theme_context = St.ThemeContext.get_for_stage(((global as any).stage as any));
-
         const existing_theme: null | any = theme_context.get_theme();
-
-        const pop_stylesheet_path = STYLESHEET_PATHS[pop_stylesheet];
 
         // get_theme() returns null if no custom theme — use new St.Theme()
         const theme = existing_theme ?? new St.Theme({});
 
-        for (const s of STYLESHEETS) {
-            theme.unload_stylesheet(s);
-        }
-        theme.load_stylesheet(STYLESHEETS[pop_stylesheet]);
+        theme.unload_stylesheet(STYLESHEET);
+        theme.load_stylesheet(STYLESHEET);
         theme_context.set_theme(theme);
 
-        return pop_stylesheet_path;
+        return STYLESHEET_PATH;
     } catch (e) {
         log.error('failed to load stylesheet: ' + e);
         return null;

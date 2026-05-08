@@ -6,6 +6,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
 import GObject from 'gi://GObject';
+import Clutter from 'gi://Clutter';
 const { Ok, Err } = result;
 const { Error } = error;
 
@@ -323,4 +324,41 @@ export function later_remove(id: number) {
         }
     } catch (_) {}
     GLib.source_remove(id);
+}
+
+/**
+ * Gets a safe timestamp for Mutter/X11 operations.
+ * Prioritizes Clutter event time to avoid synchronous roundtrips.
+ */
+export function get_current_time(): number {
+    const time = Clutter.get_current_event_time();
+    if (time === 0) {
+        return (global as any).display.get_current_time();
+    }
+    return time;
+}
+
+/**
+ * Safely activates a window using a non-blocking timestamp.
+ */
+export function activate_window(window: Meta.Window, move_mouse: boolean = true) {
+    if (!window || window.is_override_redirect()) return;
+    
+    try {
+        const time = get_current_time();
+        if (typeof (window as any).activate === 'function') {
+            (window as any).activate(time);
+        } else {
+            // Fallback for older Mutter or specific window types
+            window.foreach_transient((transient) => {
+                transient.activate(time);
+                return false;
+            });
+            window.activate(time);
+        }
+    } catch (e) {
+        // Log error but don't crash the shell
+        const log = (global as any).log;
+        if (log) log(`o-tiling: failed to activate window: ${e}`);
+    }
 }
