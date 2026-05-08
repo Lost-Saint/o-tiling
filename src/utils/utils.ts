@@ -332,9 +332,10 @@ export function later_remove(id: number) {
  */
 export function get_current_time(): number {
     const time = Clutter.get_current_event_time();
-    if (time === 0) {
-        return (global as any).display.get_current_time();
-    }
+    // Never fall back to get_current_time() — on X11 that triggers
+    // meta_x11_display_get_current_time_roundtrip, which is a synchronous
+    // X11 call forbidden on the compositor thread and causes SIGABRT.
+    // Mutter accepts 0 (CurrentTime) gracefully for focus/activate calls.
     return time;
 }
 
