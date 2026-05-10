@@ -229,9 +229,15 @@ git push origin v2.4.8
 
 ---
 
+## Credits
+
+**O-tiling** was originally forked from the [**System76 pop-shell**](https://github.com/pop-os/shell) project. It has been extensively refactored to remove all System76-specific dependencies, ensuring a native experience on any modern GNOME-based distribution.
+
+---
+
 ## License
 
-O-tiling is licensed under the **GNU General Public License v3.0** (GPLv3), continuing the license of the original System76 `pop-shell` project.
+O-tiling is licensed under the **GNU General Public License v3.0** (GPLv3), continuing the license of the original `pop-shell` project.
 
 ---
 
