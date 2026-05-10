@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist gettext-domain="o-tiling">
+    <enum id="org.gnome.shell.extensions.o-tiling.ThemeConsistencyStyle">
+        <value nick="rounded" value="0"/>
+        <value nick="sharp" value="1"/>
+    </enum>
+
     <schema id="org.gnome.shell.extensions.o-tiling" path="/org/gnome/shell/extensions/o-tiling/">
         <!-- Appearance Options -->
         <key type="b" name="active-hint">
@@ -68,6 +73,11 @@
         <key type="b" name="theme-consistency">
             <default>false</default>
             <summary>Apply rounded corners consistency to Shell elements (no User Themes extension required)</summary>
+        </key>
+
+        <key name="theme-consistency-style" enum="org.gnome.shell.extensions.o-tiling.ThemeConsistencyStyle">
+            <default>'rounded'</default>
+            <summary>The style of corners to apply for theme consistency</summary>
         </key>
 
 

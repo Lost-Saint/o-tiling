@@ -9,7 +9,7 @@ Technical reference for AI agents and contributors working on the **O-tiling** G
 | Field | Value |
 |---|---|
 | Name | O-tiling |
-| Version | 2.4.6 |
+| Version | 2.4.7 |
 | UUID | `o-tiling@oliwebd.github.com` |
 | GSettings Schema | `org.gnome.shell.extensions.o-tiling` |
 | D-Bus Interface | `org.gnome.shell.extensions.OTiling` |
@@ -113,6 +113,7 @@ Premium customization for the GNOME 50+ workspace overview.
 - **Auto-Small**: Dynamically shrinks thumbnails to fit all workspaces on the monitor.
 - **Centering**: Horizontal centering of the thumbnails strip via `Clutter.ActorAlign.CENTER`.
 - **Transparency**: Fully transparent background to integrate with the Shell theme.
+- **Background Corners**: Programmatically overrides `_updateBorderRadius` on `WorkspaceBackground` to apply `rounded_clip_radius` to the wallpaper content in the overview.
 
 ### 5.3 Theme Consistency / RoundedShell (`src/ui/theme_consistency/`)
 Applies uniform rounded corners across the desktop environment.
@@ -154,6 +155,9 @@ Halt-mode implemented in `extension.ts` using the `_ext_soft_disabled` flag.
 ### Bug E — First-Launch Tiling Failure
 - **Fix:** Added defensive fallbacks in 'first-frame' window initialization and handled missing `OverviewHidden` events to rehydrate focus state.
 
+### Bug F — Missing Text in Preferences for Minimize/Maximize
+- **Fix:** Replaced ampersand (`&`) with "and" in `Adw.SwitchRow` titles to prevent rendering issues in certain GTK/Libadwaita environments.
+
 ---
 
-*Document Version: 2.4.6 | Updated: May 8, 2026*
+*Document Version: 2.4.7 | Updated: May 10, 2026*

@@ -67,3 +67,8 @@ export const gnomeShellCss = `/* ── Quick Settings Panel ── */
     border-radius: 10px !important;
 }
 `;
+
+export function getGnomeShellCss(_style: 'rounded' | 'sharp'): string {
+    // Per user feedback, Shell elements should stay rounded even in "sharp" mode
+    return gnomeShellCss;
+}

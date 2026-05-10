@@ -357,6 +357,12 @@ export class Ext extends Ecs.System<ExtEvent> {
         });
         this._settings_signal_ids.push([this.settings.ext, id_theme_consistency]);
 
+        const id_theme_style = this.settings.ext.connect('changed::theme-consistency-style', () => {
+            const style = this.settings.theme_consistency_style() as any;
+            this.theme_consistency_handler?.updateStyle(style);
+        });
+        this._settings_signal_ids.push([this.settings.ext, id_theme_style]);
+
         // Initial application
         this.toggle_workspace_switcher_style(this.settings.workspace_switcher_style(), false);
         this.toggle_theme_consistency(this.settings.theme_consistency(), false);
@@ -2782,10 +2788,11 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     toggle_theme_consistency(enabled: boolean, save: boolean = true) {
         if (enabled) {
+            const style = this.settings.theme_consistency_style() as any;
             if (!this.theme_consistency_handler) {
                 this.theme_consistency_handler = new ThemeConsistencyManager();
             }
-            this.theme_consistency_handler.enable();
+            this.theme_consistency_handler.enable(style);
         } else {
             this.theme_consistency_handler?.disable();
             this.theme_consistency_handler = null;

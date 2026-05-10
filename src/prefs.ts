@@ -56,7 +56,7 @@ export default class OTilingPreferences extends ExtensionPreferences {
         settings.bind('show-title', showTitle as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
         const showMinMax = new Adw.SwitchRow({
-            title: _('Show Minimize & Maximize Buttons'),
+            title: _('Show Minimize and Maximize Buttons'),
         });
         appearanceGroup.add(showMinMax);
         settings.bind('show-minimize-maximize-buttons', showMinMax as any, 'active', Gio.SettingsBindFlags.DEFAULT);
@@ -68,15 +68,33 @@ export default class OTilingPreferences extends ExtensionPreferences {
         settings.bind('show-close-button', showClose as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
         const themesConsistencyRow = new Adw.SwitchRow({
-            title: _('Themes Consistency (RoundedShell)'),
-            subtitle: _('Applies rounded corners to GTK (files) and GNOME Shell (session)'),
+            title: _('Themes Consistency'),
+            subtitle: _('Applies uniform corner styles to GTK apps and GNOME Shell'),
         });
         appearanceGroup.add(themesConsistencyRow);
         settings.bind('theme-consistency', themesConsistencyRow as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
+        const themeStyleRow = new Adw.ComboRow({
+            title: _('Theme Consistency Style'),
+            model: Gtk.StringList.new([_('Rounded'), _('Sharp GTK')]),
+        });
+        appearanceGroup.add(themeStyleRow);
+        
+        // Bind the combo row index to our enum setting
+        themeStyleRow.connect('notify::selected', () => {
+            const selected = themeStyleRow.selected;
+            settings.set_string('theme-consistency-style', selected === 0 ? 'rounded' : 'sharp');
+            if (themesConsistencyRow.active) {
+                applyThemeConsistency(selected === 0 ? 'rounded' : 'sharp');
+            }
+        });
+
+        // Set initial value
+        themeStyleRow.selected = settings.get_string('theme-consistency-style') === 'sharp' ? 1 : 0;
+
         themesConsistencyRow.connect('notify::active', () => {
             if (themesConsistencyRow.active) {
-                applyThemeConsistency();
+                applyThemeConsistency(settings.get_string('theme-consistency-style') as any);
             }
         });
 

@@ -1,4 +1,4 @@
-**O-tiling** is a lightweight, keyboard-driven auto-tiling engine for GNOME Shell 49 and 50. It brings an auto-tiling experience to any modern GNOME environment without proprietary dependencies.
+**O-tiling** is a lightweight, keyboard-driven auto-tiling engine for GNOME Shell 48, 49, and 50. It brings an auto-tiling experience to any modern GNOME shell without proprietary dependencies.
 
 ![O-tiling Preview](./preview.png)
 
@@ -10,9 +10,9 @@
 
 **Aura focus border** — A premium active-window indicator with smooth animations. It automatically integrates with your **GNOME System Accent Color**, respecting your desktop theme (Blue, Teal, Green, etc.) out of the box. Features configurable border width, radius, and glow intensity for a high-end feel.
 
-**Theme Consistency (RoundedShell)** — Programmatically applies uniform rounded corners to GTK apps and GNOME Shell elements (panel, session menus, popovers). This creates a cohesive "Rounded Shell" aesthetic that feels native and polished across the entire desktop.
+**Theme Consistency** — Programmatically applies uniform corner styles to GTK apps and GNOME Shell elements (panel, session menus, popovers). Choose between **Rounded** (modern aesthetic) or **Sharp GTK** (classic/tiling look for applications while keeping Shell rounded). This creates a cohesive desktop aesthetic that feels native and polished.
 
-**Workspace Switcher Styling (GNOME 50+)** — Advanced customization for the workspace overview. Adjust thumbnail scale (percentage-based), corner radii, and background blur intensity. Includes a specialized fix for "auto" accent colors and hex values to ensure perfect visual consistency.
+**Workspace Switcher Styling (GNOME 50+)** — Advanced customization for the workspace overview. Adjust thumbnail scale (percentage-based), corner radii, and workspace background corner size. Includes a specialized fix for "auto" accent colors and hex values to ensure perfect visual consistency.
 
 **Keyboard-first navigation** — Move focus and windows with `Super+h/j/k/l` or arrow keys. Swap, resize, and reorient tiles without touching the mouse.
 
@@ -30,6 +30,7 @@
 
 | GNOME Shell | Fedora | Status |
 |---|---|---|
+| 48 | 42 | ✅ Fully supported |
 | 49 | 43 | ✅ Fully supported |
 | 50 | 44 | ✅ Fully supported |
 
@@ -222,8 +223,8 @@ GitHub Actions builds and tests the extension against GNOME 49 and 50 on every p
 To cut a release:
 
 ```bash
-git tag v2.4.1
-git push origin v2.4.1
+git tag v2.4.7
+git push origin v2.4.7
 ```
 
 ---

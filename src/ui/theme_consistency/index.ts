@@ -3,7 +3,7 @@ import Gio from 'gi://Gio';
 import St from 'gi://St';
 import Clutter from 'gi://Clutter';
 import * as log from '../../utils/log.js';
-import { gnomeShellCss } from './gnome_shell.js';
+import { getGnomeShellCss } from './gnome_shell.js';
 
 /**
  * Manages the GNOME Shell session-level CSS injection for theme consistency.
@@ -11,14 +11,21 @@ import { gnomeShellCss } from './gnome_shell.js';
  */
 export class ThemeConsistencyManager {
     private _file: Gio.File | null = null;
+    private _currentStyle: 'rounded' | 'sharp' = 'rounded';
 
-    enable(): void {
-        if (this._file) return;
+    enable(style: 'rounded' | 'sharp' = 'rounded'): void {
+        if (this._file && this._currentStyle === style) return;
+        
+        if (this._file) {
+            this.disable();
+        }
 
+        this._currentStyle = style;
         const path = `/tmp/o-tiling-theme-consistency-${GLib.get_monotonic_time()}.css`;
 
         try {
-            GLib.file_set_contents(path, gnomeShellCss);
+            const css = getGnomeShellCss(style);
+            GLib.file_set_contents(path, css);
             this._file = Gio.File.new_for_path(path);
             const theme = St.ThemeContext.get_for_stage(
                 (global as any).stage as Clutter.Stage,
@@ -26,7 +33,7 @@ export class ThemeConsistencyManager {
 
             if (theme) {
                 theme.load_stylesheet(this._file);
-                log.info('ThemeConsistencyManager: session CSS injected');
+                log.info(`ThemeConsistencyManager: session CSS (${style}) injected`);
             }
         } catch (e) {
             log.error(`ThemeConsistencyManager: failed to inject CSS: ${e}`);
@@ -53,5 +60,11 @@ export class ThemeConsistencyManager {
 
     get isEnabled(): boolean {
         return this._file !== null;
+    }
+
+    updateStyle(style: 'rounded' | 'sharp'): void {
+        if (this.isEnabled) {
+            this.enable(style);
+        }
     }
 }

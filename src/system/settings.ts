@@ -86,6 +86,7 @@ const WORKSPACE_THUMBNAIL_CORNER_RADIUS = 'workspace-thumbnail-corner-radius';
 const WORKSPACE_SWITCHER_SIZE = 'workspace-switcher-size';
 const WORKSPACE_BACKGROUND_CORNER_SIZE = 'workspace-background-corner-size';
 const THEME_CONSISTENCY = 'theme-consistency';
+const THEME_CONSISTENCY_STYLE = 'theme-consistency-style';
 const SKIP_OVERVIEW = 'skip-overview';
 const SHOW_MINIMIZE_MAXIMIZE_BUTTONS = 'show-minimize-maximize-buttons';
 const SHOW_CLOSE_BUTTON = 'show-close-button';
@@ -255,6 +256,10 @@ export class ExtensionSettings {
         return this.ext.get_boolean(THEME_CONSISTENCY);
     }
 
+    theme_consistency_style(): string {
+        return this.ext.get_string(THEME_CONSISTENCY_STYLE);
+    }
+
     skip_overview(): boolean {
         return this.ext.get_boolean(SKIP_OVERVIEW);
     }
@@ -388,6 +393,10 @@ export class ExtensionSettings {
 
     set_theme_consistency(set: boolean) {
         this.ext.set_boolean(THEME_CONSISTENCY, set);
+    }
+
+    set_theme_consistency_style(style: string) {
+        this.ext.set_string(THEME_CONSISTENCY_STYLE, style);
     }
 
     set_skip_overview(set: boolean) {

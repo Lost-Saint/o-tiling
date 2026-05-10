@@ -1,15 +1,18 @@
-export const gtkCss = `
+export function getGtkCss(style: 'rounded' | 'sharp'): string {
+    const radius = style === 'rounded' ? '10px' : '0';
+
+    return `
 /* Rounded corners for normal floating windows */
 window.main-window,
 window.background,
 .base,
 stack,
 dialog {
-    border-radius: 10px;
+    border-radius: ${radius};
 }
 
 headerbar {
-    border-radius: 10px 10px 0 0;
+    border-radius: ${radius} ${radius} 0 0;
 }
 
 /* Remove rounded corners for maximized, tiled, snapped and fullscreen windows */
@@ -43,5 +46,7 @@ window.fullscreen headerbar {
     border-radius: 0;
 }
 `;
+}
 
-
+// Backward compatibility
+export const gtkCss = getGtkCss('rounded');
