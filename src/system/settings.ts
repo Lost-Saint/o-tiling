@@ -87,8 +87,7 @@ const WORKSPACE_SWITCHER_SIZE = 'workspace-switcher-size';
 const WORKSPACE_BACKGROUND_CORNER_SIZE = 'workspace-background-corner-size';
 const THEME_CONSISTENCY = 'theme-consistency';
 const SKIP_OVERVIEW = 'skip-overview';
-const SHOW_MINIMIZE_BUTTON = 'show-minimize-button';
-const SHOW_MAXIMIZE_BUTTON = 'show-maximize-button';
+const SHOW_MINIMIZE_MAXIMIZE_BUTTONS = 'show-minimize-maximize-buttons';
 const SHOW_CLOSE_BUTTON = 'show-close-button';
 
 
@@ -260,12 +259,8 @@ export class ExtensionSettings {
         return this.ext.get_boolean(SKIP_OVERVIEW);
     }
 
-    show_minimize_button(): boolean {
-        return this.ext.get_boolean(SHOW_MINIMIZE_BUTTON);
-    }
-
-    show_maximize_button(): boolean {
-        return this.ext.get_boolean(SHOW_MAXIMIZE_BUTTON);
+    show_minimize_maximize_buttons(): boolean {
+        return this.ext.get_boolean(SHOW_MINIMIZE_MAXIMIZE_BUTTONS);
     }
 
     show_close_button(): boolean {

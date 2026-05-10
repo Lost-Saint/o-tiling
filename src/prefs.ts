@@ -55,17 +55,11 @@ export default class OTilingPreferences extends ExtensionPreferences {
         appearanceGroup.add(showTitle);
         settings.bind('show-title', showTitle as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
-        const showMin = new Adw.SwitchRow({
-            title: _('Show Minimize Button'),
+        const showMinMax = new Adw.SwitchRow({
+            title: _('Show Minimize & Maximize Buttons'),
         });
-        appearanceGroup.add(showMin);
-        settings.bind('show-minimize-button', showMin as any, 'active', Gio.SettingsBindFlags.DEFAULT);
-
-        const showMax = new Adw.SwitchRow({
-            title: _('Show Maximize Button'),
-        });
-        appearanceGroup.add(showMax);
-        settings.bind('show-maximize-button', showMax as any, 'active', Gio.SettingsBindFlags.DEFAULT);
+        appearanceGroup.add(showMinMax);
+        settings.bind('show-minimize-maximize-buttons', showMinMax as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
         const showClose = new Adw.SwitchRow({
             title: _('Show Close Button'),

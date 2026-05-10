@@ -17,9 +17,8 @@ export class WindowButtonsManager {
      */
     enable() {
         this._signalIds.push(
-            this._settings.ext.connect('changed::show-minimize-button', () => this.sync()),
-            this._settings.ext.connect('changed::show-maximize-button', () => this.sync()),
-            this._settings.ext.connect('changed::show-close-button', () => this.sync()),
+            this._settings.ext.connect('changed::show-minimize-maximize-buttons', () => this.sync()),
+            this._settings.ext.connect('changed::show-close-button', () => this.sync())
         );
         this.sync();
     }
@@ -41,8 +40,7 @@ export class WindowButtonsManager {
         const wm = this._settings.wm;
         if (!wm) return;
 
-        const show_min = this._settings.show_minimize_button();
-        const show_max = this._settings.show_maximize_button();
+        const show_min_max = this._settings.show_minimize_maximize_buttons();
         const show_close = this._settings.show_close_button();
 
         let layout = wm.get_string('button-layout');
@@ -60,9 +58,13 @@ export class WindowButtonsManager {
         left_buttons = left_buttons.filter((s) => s !== 'minimize' && s !== 'maximize' && s !== 'close');
 
         // Add back to right side in order: minimize, maximize, close
-        if (show_min) right_buttons.push('minimize');
-        if (show_max) right_buttons.push('maximize');
-        if (show_close) right_buttons.push('close');
+        if (show_min_max) {
+            right_buttons.push('minimize');
+            right_buttons.push('maximize');
+        }
+        if (show_close) {
+            right_buttons.push('close');
+        }
 
         const new_layout = `${left_buttons.join(',')}:${right_buttons.join(',')}`;
         wm.set_string('button-layout', new_layout);

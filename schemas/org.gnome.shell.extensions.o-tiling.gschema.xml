@@ -86,14 +86,9 @@
             <summary>Show title bars on windows with server-side decorations</summary>
         </key>
 
-        <key type="b" name="show-minimize-button">
+        <key type="b" name="show-minimize-maximize-buttons">
             <default>true</default>
-            <summary>Show the minimize button</summary>
-        </key>
-
-        <key type="b" name="show-maximize-button">
-            <default>true</default>
-            <summary>Show the maximize button</summary>
+            <summary>Show minimize and maximize buttons</summary>
         </key>
 
         <key type="b" name="show-close-button">
