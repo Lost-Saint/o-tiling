@@ -91,8 +91,6 @@ jobs:
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: latest
 
       - name: Get pnpm store path
         id: pnpm-cache
