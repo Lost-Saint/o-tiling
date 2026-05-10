@@ -164,6 +164,7 @@ Settings are stored in GSettings under `org.gnome.shell.extensions.o-tiling`. Th
 | `pnpm run type-check` | Run TypeScript type-check only (`tsc --noEmit`) |
 | `pnpm run deploy` | Run lint + type-check + build |
 | `pnpm run debug` | Build, install, then launch a nested GNOME Shell |
+| `pnpm run shexli` | Hot-reload the extension via shexli (creates venv and installs shexli) |
 
 ### Launch a nested shell for debugging
 

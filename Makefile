@@ -43,6 +43,11 @@ lint:
 install: $(UUID).zip
 	gnome-extensions install --force $(UUID).zip
 
+## shexli  : Hot-reload the extension using shexli
+shexli: $(UUID).zip
+	@if [ ! -d "venv" ]; then python3 -m venv venv; fi
+	@. venv/bin/activate && pip install -U shexli && shexli $(UUID).zip
+
 ## uninstall : Remove the extension
 uninstall:
 	rm -rf "$(INSTALL)"
