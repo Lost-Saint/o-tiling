@@ -63,9 +63,9 @@ Download the latest version for your GNOME Shell version from the [**Releases**]
 
 Paste the command matching your GNOME version into your terminal:
 
-**GNOME Shell 49/50**
+**GNOME Shell 48/49/50**
 ```bash
-curl -L -o o-tiling.zip "https://github.com/oliwebd/o-tiling/releases/latest/download/o-tiling@oliwebd.github.com.zip" && gnome-extensions install --force o-tiling.zip && rm o-tiling.zip
+curl -L -o o-tiling.zip $(curl -s https://api.github.com/repos/oliwebd/o-tiling/releases/latest | grep "browser_download_url" | head -n 1 | cut -d '"' -f 4) && gnome-extensions install --force o-tiling.zip && rm o-tiling.zip
 ```
 
 
@@ -218,7 +218,7 @@ See `agent.md` for the full technical reference including the API change map, ma
 
 ## CI / Releases
 
-GitHub Actions builds and tests the extension against GNOME 49 and 50 on every push. Tagged releases (`v*.*.*`) automatically publish zips for both GNOME versions to the GitHub Releases page.
+GitHub Actions builds the extension and verifies version consistency for GNOME 48, 49, and 50 on every push. Tagged releases (`v*.*.*`) automatically publish zips to the GitHub Releases page.
 
 To cut a release:
 
