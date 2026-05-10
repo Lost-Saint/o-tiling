@@ -223,8 +223,8 @@ GitHub Actions builds and tests the extension against GNOME 49 and 50 on every p
 To cut a release:
 
 ```bash
-git tag v2.4.7
-git push origin v2.4.7
+git tag v2.4.8
+git push origin v2.4.8
 ```
 
 ---
