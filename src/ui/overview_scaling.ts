@@ -23,10 +23,10 @@ export class OverviewScalingManager {
                 this._origUpdateWorkspacesState = proto._updateWorkspacesState;
 
                 const self = this;
-                proto._updateWorkspacesState = function(this: any) {
+                proto._updateWorkspacesState = function(this: any, ...args: any[]) {
                     // If feature is enabled, use default GNOME behavior (active is large, sides are small)
                     if (self._enabled) {
-                        return self._origUpdateWorkspacesState.apply(this, arguments);
+                        return self._origUpdateWorkspacesState.apply(this, args);
                     }
 
                     // If feature is disabled, force all workspaces to full scale (1.0) and full opacity (255)
