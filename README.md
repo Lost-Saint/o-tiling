@@ -179,7 +179,7 @@ Logs are printed to the nested shell's journal. Use `journalctl -f` or look in t
 
 ### Architecture overview
 
-The tiling engine is an **Entity-Component-System** (ECS). All windows, forks, and stacks are plain integer entity IDs. Data lives in typed `Ecs.Storage<T>` instances. The layout is a per-display per-workspace binary tree:
+The tiling engine is an **Entity-Component-System** (ECS). All windows, forks, and stacks are plain integer entity IDs. Data lives in typed `Ecs.Storage<T>` instances. The layout is a per-display per-workspace binary tree managed by the `Forest` world.
 
 ```
 Forest (ECS world)
@@ -193,16 +193,16 @@ Key source files:
 
 | File | Role |
 |---|---|
-| `src/extension.ts` | Main `Ext` class — lifecycle, signals, event dispatch |
-| `src/auto_tiler.ts` | High-level tiling coordinator |
-| `src/forest.ts` | Tiling tree world (`Forest extends Ecs.World`) |
-| `src/fork.ts` | Fork node — two children + orientation + split ratio |
-| `src/window.ts` | `ShellWindow` — Aura border, restack, actor bindings |
-| `src/stack.ts` | Stack container — tabbed windows in one tile slot |
-| `src/utils.ts` | GNOME version shims (`later_add`, `maximize`, `is_maximized`) |
-| `src/shell.ts` | `monitor_neighbor_index` with GNOME 50 fallback |
-| `src/ui/workspace_switcher_style.ts` | GNOME 50+ workspace overview styling and thumbnail scaling |
-| `src/ui/theme_consistency/index.ts` | Rounded corners logic for GTK and Shell elements |
+| `src/extension.ts` | Main entry point — extension lifecycle, signal management, and event dispatch |
+| `src/engine/auto_tiler.ts` | High-level tiling coordinator — bridges Shell events to Forest operations |
+| `src/engine/forest.ts` | Tiling tree world — manages the binary tree of entities |
+| `src/engine/fork.ts` | Fork node logic — manages orientation and split ratios |
+| `src/window/window.ts` | `ShellWindow` — Aura border rendering, actor bindings, and restacking logic |
+| `src/system/window_buttons.ts` | WindowButtonsManager — dynamic control of minimize, maximize, and close buttons |
+| `src/system/settings.ts` | ExtensionSettings — unified GSettings wrapper for all extension preferences |
+| `src/ui/workspace_switcher_style.ts` | GNOME 50+ workspace overview styling and advanced thumbnail scaling |
+| `src/ui/theme_consistency/` | Session-level CSS injection for Rounded/Sharp desktop consistency |
+| `src/utils/utils.ts` | GNOME version shims (`later_add`, `maximize`, `is_maximized`, `is_wayland`) |
 
 See `agent.md` for the full technical reference including the API change map, mandatory shims, EGO reviewer requirements, and historical bug fixes.
 

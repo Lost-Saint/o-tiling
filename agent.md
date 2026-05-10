@@ -68,25 +68,36 @@ utils.later_add(Meta.LaterType.BEFORE_REDRAW, () => {
 
 ```
 src/
-  extension.ts          — Main Ext class. lifecycle, signals, event dispatch
-  auto_tiler.ts         — High-level auto-tiling coordinator
-  forest.ts             — Tiling tree world (Forest extends Ecs.World)
+  extension.ts          — Main entry point — lifecycle, signals, event dispatch
+  prefs.ts              — Libadwaita preferences window
+  engine/
+    auto_tiler.ts       — High-level tiling coordinator
+    forest.ts           — Tiling tree world (Forest extends Ecs.World)
+    fork.ts             — Fork node — two children + orientation + split ratio
+    stack.ts            — Stack container — tabbed windows in one tile slot
+    tiling.ts           — Geometry calculation and tile placement
+  window/
+    window.ts           — ShellWindow — Aura border, restack, actor bindings
+    focus.ts            — Focus management and window activation
+    movement.ts         — Window move/resize operations
   ui/
     workspace_switcher_style.ts — GNOME 50+ workspace overview styling
-    theme_consistency/   — Rounded corners logic for GTK/Shell
+    theme_consistency/   — Rounded/Sharp corners logic for GTK/Shell
     panel_settings.ts   — Panel indicator (Indicator class)
   system/
     window_buttons.ts   — WindowButtonsManager (min/max/close button layout)
     settings.ts         — ExtensionSettings wrapper over GSettings
     config.ts           — Config file loader
     keybindings.ts      — Keybinding registration/deregistration
+    executor.ts         — GLib-based event executor
+  core/
+    ecs.ts              — Entity-Component-System primitives
+    events.ts           — Event tagging and data structures
   utils/
     utils.ts            — Shared utilities: later_add, maximize, unmaximize, is_wayland
     rectangle.ts        — Rectangle class wrapping Mtk geometry
     log.ts              — Internal logger
-  ecs.ts                — Entity-Component-System primitives
-  dbus_service.ts       — D-Bus service export
-  prefs.ts              — Libadwaita preferences window
+    geom.ts             — Geometric math and intersection checks
 ```
 
 ---
