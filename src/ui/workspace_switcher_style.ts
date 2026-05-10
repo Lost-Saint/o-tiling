@@ -115,6 +115,7 @@ export class WorkspaceSwitcherStyle {
     private _workspaceAddedId: number | null = null;
     private _workspaceRemovedId: number | null = null;
     private _overviewShowingId: number | null = null;
+    private _origUpdateBorderRadius: any = null;
 
     constructor(
         accentColor: string,
@@ -347,7 +348,6 @@ export class WorkspaceSwitcherStyle {
     }
 
     private _applyBackgroundCorners(): void {
-        const radius = this._bgCornerSize;
         const workspacesDisplay = this._getWorkspacesDisplay();
         if (!workspacesDisplay) return;
 
@@ -357,11 +357,27 @@ export class WorkspaceSwitcherStyle {
             for (const ws of workspaces) {
                 const bg = ws._background;
                 if (bg) {
-                    bg.clip_to_allocation = radius > 0;
-                    // Also clip the first child if it exists, as it usually holds the actual background actor
-                    const child = bg.get_first_child?.();
-                    if (child) {
-                        child.clip_to_allocation = radius > 0;
+                    const bgProto = Object.getPrototypeOf(bg);
+                    if (!this._origUpdateBorderRadius && typeof bgProto._updateBorderRadius === 'function') {
+                        this._origUpdateBorderRadius = bgProto._updateBorderRadius;
+                        
+                        const self = this;
+                        bgProto._updateBorderRadius = function() {
+                            const { scaleFactor } = St.ThemeContext.get_for_stage((global as any).stage as Clutter.Stage);
+                            const cornerRadius = scaleFactor * self._bgCornerSize;
+                            
+                            const backgroundContent = this._bgManager?.backgroundActor?.content;
+                            if (backgroundContent) {
+                                const progress = this._stateAdjustment ? this._stateAdjustment.value : 1;
+                                backgroundContent.rounded_clip_radius = cornerRadius * progress;
+                            } else if (self._origUpdateBorderRadius) {
+                                self._origUpdateBorderRadius.call(this);
+                            }
+                        };
+                    }
+                    
+                    if (typeof bg._updateBorderRadius === 'function') {
+                        bg._updateBorderRadius();
                     }
                 }
             }
@@ -378,14 +394,17 @@ export class WorkspaceSwitcherStyle {
             for (const ws of workspaces) {
                 const bg = ws._background;
                 if (bg) {
-                    bg.clip_to_allocation = false;
-                    const child = bg.get_first_child?.();
-                    if (child) {
-                        child.clip_to_allocation = false;
+                    const bgProto = Object.getPrototypeOf(bg);
+                    if (this._origUpdateBorderRadius) {
+                        bgProto._updateBorderRadius = this._origUpdateBorderRadius;
+                    }
+                    if (typeof bg._updateBorderRadius === 'function') {
+                        bg._updateBorderRadius();
                     }
                 }
             }
         }
+        this._origUpdateBorderRadius = null;
     }
 
     private _setupAutoScroll(): void {
