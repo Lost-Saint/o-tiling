@@ -6,15 +6,15 @@ import * as utils from '../utils/utils.js';
 const DARK = ['dark', 'adapta', 'plata', 'dracula'];
 
 const ACCENT_COLOR_MAP: Record<string, string> = {
-    'blue':   'rgba(53, 132, 228, 1)',
-    'teal':   'rgba(33, 144, 175, 1)',
-    'green':  'rgba(58, 148, 74, 1)',
+    'blue': 'rgba(53, 132, 228, 1)',
+    'teal': 'rgba(33, 144, 175, 1)',
+    'green': 'rgba(58, 148, 74, 1)',
     'yellow': 'rgba(200, 136, 0, 1)',
     'orange': 'rgba(237, 91, 0, 1)',
-    'red':    'rgba(224, 27, 36, 1)',
-    'pink':   'rgba(205, 64, 119, 1)',
+    'red': 'rgba(224, 27, 36, 1)',
+    'pink': 'rgba(205, 64, 119, 1)',
     'purple': 'rgba(145, 65, 172, 1)',
-    'slate':  'rgba(111, 119, 131, 1)',
+    'slate': 'rgba(111, 119, 131, 1)',
 };
 
 // Use Gio.Settings directly as our Settings type
@@ -90,6 +90,7 @@ const THEME_CONSISTENCY_STYLE = 'theme-consistency-style';
 const SKIP_OVERVIEW = 'skip-overview';
 const SHOW_MINIMIZE_MAXIMIZE_BUTTONS = 'show-minimize-maximize-buttons';
 const SHOW_CLOSE_BUTTON = 'show-close-button';
+const WORKSPACE_OVERVIEW_LARGE_ACTIVE = 'workspace-overview-large-active';
 
 
 
@@ -148,7 +149,7 @@ export class ExtensionSettings {
 
     hint_color_rgba() {
         const rgba = this.ext.get_string(HINT_COLOR_RGBA);
-        
+
         if (rgba === 'auto') {
             return this.get_system_accent_color();
         }
@@ -270,6 +271,10 @@ export class ExtensionSettings {
 
     show_close_button(): boolean {
         return this.ext.get_boolean(SHOW_CLOSE_BUTTON);
+    }
+
+    workspace_overview_large_active(): boolean {
+        return this.ext.get_boolean(WORKSPACE_OVERVIEW_LARGE_ACTIVE);
     }
 
 
@@ -401,6 +406,10 @@ export class ExtensionSettings {
 
     set_skip_overview(set: boolean) {
         this.ext.set_boolean(SKIP_OVERVIEW, set);
+    }
+
+    set_workspace_overview_large_active(set: boolean) {
+        this.ext.set_boolean(WORKSPACE_OVERVIEW_LARGE_ACTIVE, set);
     }
 
 

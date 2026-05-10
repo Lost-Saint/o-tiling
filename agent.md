@@ -9,7 +9,7 @@ Technical reference for AI agents and contributors working on the **O-tiling** G
 | Field | Value |
 |---|---|
 | Name | O-tiling |
-| Version | 2.4.8 |
+| Version | 2.5.0 |
 | UUID | `o-tiling@oliwebd.github.com` |
 | GSettings Schema | `org.gnome.shell.extensions.o-tiling` |
 | D-Bus Interface | `org.gnome.shell.extensions.OTiling` |
@@ -171,4 +171,4 @@ Halt-mode implemented in `extension.ts` using the `_ext_soft_disabled` flag.
 
 ---
 
-*Document Version: 2.4.8 | Updated: May 10, 2026*
+*Document Version: 2.5.0 | Updated: May 10, 2026*

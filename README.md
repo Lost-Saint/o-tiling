@@ -223,8 +223,8 @@ GitHub Actions builds the extension and verifies version consistency for GNOME 4
 To cut a release:
 
 ```bash
-git tag v2.4.8
-git push origin v2.4.8
+git tag v2.5.0
+git push origin v2.5.0
 ```
 
 ---

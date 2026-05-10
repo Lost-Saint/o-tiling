@@ -32,6 +32,7 @@ import { Rectangle } from './utils/rectangle.js';
 import type { Indicator } from './ui/panel_settings.js';
 import { WorkspaceSwitcherStyle, isGnome50 } from './ui/workspace_switcher_style.js';
 import { ThemeConsistencyManager } from './ui/theme_consistency/index.js';
+import { OverviewScalingManager } from './ui/overview_scaling.js';
 
 import { Fork } from './engine/fork.js';
 
@@ -264,6 +265,9 @@ export class Ext extends Ecs.System<ExtEvent> {
     /** Calculates window placements when tiling and focus-switching */
     tiler: Tiling.Tiler = new Tiling.Tiler(this);
  
+    /** Manages workspace scaling in the overview */
+    overview_scaling_manager: OverviewScalingManager | null = null;
+
     /** Manages theme consistency (session injection) */
     theme_consistency_handler: ThemeConsistencyManager | null = null;
 
@@ -352,6 +356,11 @@ export class Ext extends Ecs.System<ExtEvent> {
         });
         this._settings_signal_ids.push([this.settings.ext, id_ws_bg_corner]);
 
+        const id_ws_large_active = this.settings.ext.connect('changed::workspace-overview-large-active', () => {
+            this.overview_scaling_manager?.updateSetting(this.settings.workspace_overview_large_active());
+        });
+        this._settings_signal_ids.push([this.settings.ext, id_ws_large_active]);
+
         const id_theme_consistency = this.settings.ext.connect('changed::theme-consistency', () => {
             this.toggle_theme_consistency(this.settings.theme_consistency());
         });
@@ -366,6 +375,9 @@ export class Ext extends Ecs.System<ExtEvent> {
         // Initial application
         this.toggle_workspace_switcher_style(this.settings.workspace_switcher_style(), false);
         this.toggle_theme_consistency(this.settings.theme_consistency(), false);
+
+        this.overview_scaling_manager = new OverviewScalingManager(this.settings.workspace_overview_large_active());
+        this.overview_scaling_manager.enable();
 
         this.window_buttons_manager = new WindowButtonsManager(this.settings);
         this.window_buttons_manager.enable();
@@ -451,6 +463,11 @@ export class Ext extends Ecs.System<ExtEvent> {
         if (this.workspace_switcher_style_handler) {
             this.workspace_switcher_style_handler.disable();
             this.workspace_switcher_style_handler = null;
+        }
+
+        if (this.overview_scaling_manager) {
+            this.overview_scaling_manager.disable();
+            this.overview_scaling_manager = null;
         }
 
         if (this.theme_consistency_handler) {

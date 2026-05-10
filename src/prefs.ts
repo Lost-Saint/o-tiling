@@ -79,7 +79,7 @@ export default class OTilingPreferences extends ExtensionPreferences {
             model: Gtk.StringList.new([_('Rounded'), _('Sharp GTK')]),
         });
         appearanceGroup.add(themeStyleRow);
-        
+
         // Bind the combo row index to our enum setting
         themeStyleRow.connect('notify::selected', () => {
             const selected = themeStyleRow.selected;
@@ -141,6 +141,13 @@ export default class OTilingPreferences extends ExtensionPreferences {
         });
         overviewGroup.add(bgCornerSizeRow);
         settings.bind('workspace-background-corner-size', bgCornerSizeRow as any, 'value', Gio.SettingsBindFlags.DEFAULT);
+
+        const overviewLargeActive = new Adw.SwitchRow({
+            title: _('Enlarge Active Workspace'),
+            subtitle: _('Whether the active workspace in the overview should be larger than others (GNOME default)'),
+        });
+        overviewGroup.add(overviewLargeActive);
+        settings.bind('workspace-overview-large-active', overviewLargeActive as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
         // Aura Group
         const auraGroup = new Adw.PreferencesGroup({

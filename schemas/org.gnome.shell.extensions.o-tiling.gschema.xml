@@ -64,6 +64,11 @@
             <summary>Corner radius of workspace background in the overview, in pixels (GNOME 50+ only)</summary>
         </key>
 
+        <key type="b" name="workspace-overview-large-active">
+            <default>true</default>
+            <summary>Whether the active workspace in the overview should be enlarged (GNOME default behavior)</summary>
+        </key>
+
 
         <key type="b" name="skip-overview">
             <default>false</default>
