@@ -128,7 +128,6 @@ export class PanelTransparencyManager {
     background-color: rgba(255, 255, 255, 0.15) !important;
     background-image: none !important;
     box-shadow: none !important;
-    border-radius: 12px !important;
 }
 
 /* Clock-display uses highlighted_child pattern: hover fill is on .clock child,
