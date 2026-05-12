@@ -69,6 +69,11 @@
             <summary>Whether the active workspace in the overview should be enlarged (GNOME default behavior)</summary>
         </key>
 
+        <key type="b" name="workspace-overview-fullscreen-bg">
+            <default>false</default>
+            <summary>Hide workspace backgrounds in the overview to reveal the full-screen wallpaper</summary>
+        </key>
+
 
         <key type="b" name="skip-overview">
             <default>false</default>

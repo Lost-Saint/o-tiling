@@ -149,6 +149,13 @@ export default class OTilingPreferences extends ExtensionPreferences {
         overviewGroup.add(overviewLargeActive);
         settings.bind('workspace-overview-large-active', overviewLargeActive as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
+        const overviewFullscreenBg = new Adw.SwitchRow({
+            title: _('Full Screen Workspace Background'),
+            subtitle: _('Hide workspace backgrounds in the overview to reveal the full-screen wallpaper'),
+        });
+        overviewGroup.add(overviewFullscreenBg);
+        settings.bind('workspace-overview-fullscreen-bg', overviewFullscreenBg as any, 'active', Gio.SettingsBindFlags.DEFAULT);
+
         // Panel Transparency Group
         const panelGroup = new Adw.PreferencesGroup({
             title: _('Appearance — Panel'),

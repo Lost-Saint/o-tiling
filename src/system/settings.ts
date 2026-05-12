@@ -280,6 +280,10 @@ export class ExtensionSettings {
         return this.ext.get_boolean(WORKSPACE_OVERVIEW_LARGE_ACTIVE);
     }
 
+    workspace_overview_fullscreen_bg(): boolean {
+        return this.ext.get_boolean('workspace-overview-fullscreen-bg');
+    }
+
     panel_transparency(): boolean {
         return this.ext.get_boolean(PANEL_TRANSPARENCY);
     }

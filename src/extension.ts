@@ -34,6 +34,7 @@ import { WorkspaceSwitcherStyle, isGnome50 } from './ui/workspace_switcher_style
 import { ThemeConsistencyManager } from './ui/theme_consistency/index.js';
 import { OverviewScalingManager } from './ui/overview_scaling.js';
 import { PanelTransparencyManager } from './ui/panel_transparency.js';
+import { OverviewWallpaperStyle } from './ui/overview_wallpaper.js';
 
 import { Fork } from './engine/fork.js';
 
@@ -269,7 +270,11 @@ export class Ext extends Ecs.System<ExtEvent> {
     /** Manages workspace scaling in the overview */
     overview_scaling_manager: OverviewScalingManager | null = null;
 
+    /** Manages fullscreen overview wallpaper CSS */
+    overview_wallpaper_handler: OverviewWallpaperStyle | null = null;
+
     /** Manages theme consistency (session injection) */
+
     theme_consistency_handler: ThemeConsistencyManager | null = null;
 
     /** Manages panel transparency CSS injection */
@@ -365,6 +370,11 @@ export class Ext extends Ecs.System<ExtEvent> {
         });
         this._settings_signal_ids.push([this.settings.ext, id_ws_large_active]);
 
+        const id_ws_fullscreen_bg = this.settings.ext.connect('changed::workspace-overview-fullscreen-bg', () => {
+            this.overview_wallpaper_handler?.updateSetting(this.settings.workspace_overview_fullscreen_bg());
+        });
+        this._settings_signal_ids.push([this.settings.ext, id_ws_fullscreen_bg]);
+
         const id_theme_consistency = this.settings.ext.connect('changed::theme-consistency', () => {
             this.toggle_theme_consistency(this.settings.theme_consistency());
         });
@@ -403,6 +413,9 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         this.overview_scaling_manager = new OverviewScalingManager(this.settings.workspace_overview_large_active());
         this.overview_scaling_manager.enable();
+
+        this.overview_wallpaper_handler = new OverviewWallpaperStyle(this.settings.workspace_overview_fullscreen_bg());
+        this.overview_wallpaper_handler.enable();
 
         this.window_buttons_manager = new WindowButtonsManager(this.settings);
         this.window_buttons_manager.enable();
@@ -506,6 +519,11 @@ export class Ext extends Ecs.System<ExtEvent> {
         if (this.overview_scaling_manager) {
             this.overview_scaling_manager.disable();
             this.overview_scaling_manager = null;
+        }
+
+        if (this.overview_wallpaper_handler) {
+            this.overview_wallpaper_handler.disable();
+            this.overview_wallpaper_handler = null;
         }
 
         if (this.theme_consistency_handler) {
