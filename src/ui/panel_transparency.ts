@@ -121,15 +121,38 @@ export class PanelTransparencyManager {
     -minimum-hpadding: 6px;
 }
 
+/* Override default theme hover fill (uses capsule look) */
 #panel .panel-button:hover,
-#panel .panel-button:focus {
-    background-color: rgba(255, 255, 255, 0.12) !important;
-    border-radius: 8px;
+#panel .panel-button:focus,
+#panel .panel-button:active,
+#panel .panel-button:checked {
+    background-color: rgba(255, 255, 255, 0.15) !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    border-radius: 12px !important;
 }
 
-#panel .panel-button:active {
-    background-color: rgba(255, 255, 255, 0.20) !important;
+/* Clock-display uses highlighted_child pattern: hover fill is on .clock child,
+   not the button itself. Override it so there is no dual background. */
+#panel .panel-button.clock-display:hover .clock,
+#panel .panel-button.clock-display:focus .clock,
+#panel .panel-button.clock-display:active .clock,
+#panel .panel-button.clock-display:checked .clock {
+    box-shadow: none !important;
+    background: none !important;
 }
+
+/* Also clear any other child backgrounds to be safe */
+#panel .panel-button:hover > *,
+#panel .panel-button:focus > *,
+#panel .panel-button:active > *,
+#panel .panel-button:checked > * {
+    background-color: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+}
+
+
 
 /* Clock label */
 #panel .clock {
