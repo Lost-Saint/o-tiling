@@ -408,16 +408,29 @@ export class Ext extends Ecs.System<ExtEvent> {
         this.window_buttons_manager.enable();
 
         if (this.settings.skip_overview()) {
+            // Direct skip: try hiding immediately if it's already visible
+            if (Main.overview.visible) Main.overview.hide();
+
             if ((Main.layoutManager as any)._startingUp) {
+                // Intercept any show attempts during the rest of the startup process
+                const showingId = Main.overview.connect('showing', () => {
+                    if ((Main.layoutManager as any)._startingUp) {
+                        Main.overview.hide();
+                    }
+                });
+
                 this._startup_complete_id = Main.layoutManager.connect('startup-complete', () => {
+                    // Final hide check in case it managed to show up
                     if (Main.overview.visible) Main.overview.hide();
+                    
+                    // Cleanup the showing interceptor
+                    Main.overview.disconnect(showingId);
+
                     if (this._startup_complete_id) {
                         Main.layoutManager.disconnect(this._startup_complete_id);
                         this._startup_complete_id = 0;
                     }
                 });
-            } else {
-                if (Main.overview.visible) Main.overview.hide();
             }
         }
 
