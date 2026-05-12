@@ -119,6 +119,7 @@ export class PanelTransparencyManager {
     color: rgba(255, 255, 255, 0.92) !important;
     -natural-hpadding: 12px;
     -minimum-hpadding: 6px;
+    border: none !important;
 }
 
 /* Override default theme hover fill (uses capsule look) */
@@ -151,6 +152,7 @@ export class PanelTransparencyManager {
     background-image: none !important;
     box-shadow: none !important;
 }
+
 
 
 

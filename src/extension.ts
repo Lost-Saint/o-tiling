@@ -510,8 +510,22 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.window_buttons_manager = null;
         }
 
-        for (const win of this.windows.values()) {
-            win.destroy();
+        const entities = Array.from(this.windows.iter()).map(([e]) => e);
+        for (const entity of entities) {
+            const win = this.windows.get(entity);
+            if (win) {
+                // Disconnect signals stored in window_signals and size_signals for THIS window
+                const win_sigs = this.window_signals.get(entity);
+                if (win_sigs) {
+                    for (const sig of win_sigs) try { win.meta.disconnect(sig); } catch (_) {}
+                }
+                const size_sigs = this.size_signals.get(entity);
+                if (size_sigs) {
+                    for (const sig of size_sigs) try { win.meta.disconnect(sig); } catch (_) {}
+                }
+
+                win.destroy();
+            }
         }
 
         if (this.suspend_timeout) {
