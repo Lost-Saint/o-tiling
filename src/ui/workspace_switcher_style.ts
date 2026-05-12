@@ -71,12 +71,14 @@ function buildCss(accentColor: string, thumbnailCornerRadius: number, bgCornerSi
 .workspace-thumbnail.selected {
     border-color: ${activeColor} !important;
     border-width: 3px !important;
+    border-radius: ${thumbnailCornerRadius}px !important;
 }
 
 /* Hover state */
 .workspace-thumbnail:hover {
     border-color: rgba(255, 255, 255, 0.25) !important;
     background-color: rgba(255, 255, 255, 0.06);
+    border-radius: ${thumbnailCornerRadius}px !important;
 }
 
 /* Workspace label always visible below each card */

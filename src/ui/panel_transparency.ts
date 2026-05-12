@@ -117,8 +117,6 @@ export class PanelTransparencyManager {
 /* Panel buttons — keep them readable on transparent background */
 #panel .panel-button {
     color: rgba(255, 255, 255, 0.92) !important;
-    -natural-hpadding: 12px;
-    -minimum-hpadding: 6px;
     border: none !important;
 }
 
