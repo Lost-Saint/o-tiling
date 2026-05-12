@@ -27,24 +27,32 @@ export class OverviewScalingManager {
                     // Always call the original logic first to maintain internal Shell layout/state
                     self._origUpdateWorkspacesState.apply(this, args);
 
-                    // If feature is enabled, we use GNOME's default behavior (active is large, sides are small)
-                    if (self._enabled) return;
-
-                    // If feature is disabled, we want all workspaces to be equal size.
-                    // For a single workspace, GNOME's original call already set a "fit" scale (usually ~0.9).
-                    // Forcing 1.0 (as we did before) causes overflow into the dash/search bar.
                     const { nWorkspaces } = (global as any).workspace_manager;
-                    if (nWorkspaces <= 1) return;
-
-                    // For multiple workspaces, we equalize them to the scale of the active workspace.
-                    // Note: 'this' here is the WorkspacesView instance.
                     const activeIndex = this._activeWorkspaceIndex ?? (global as any).workspace_manager.get_active_workspace_index();
                     const activeWorkspace = this._workspaces[activeIndex];
                     if (!activeWorkspace) return;
 
-                    // We use the scale that GNOME calculated for the active workspace for ALL workspaces.
-                    // This ensures they are uniform without being oversized.
-                    const [targetScale] = activeWorkspace.get_scale();
+                    // GNOME's default scale for the active workspace.
+                    // For a single workspace or the active one in multi-view, this can be too large (1.0).
+                    // We cap it at 0.88 to ensure no overflow into Dash/Search bar.
+                    const MAX_OVERVIEW_SCALE = 0.88;
+                    let [targetScale] = activeWorkspace.get_scale();
+                    
+                    if (targetScale > MAX_OVERVIEW_SCALE) {
+                        targetScale = MAX_OVERVIEW_SCALE;
+                    }
+
+                    // If "Enlarge Active Workspace" is enabled, we only apply the cap to the active one
+                    // and let GNOME handle the rest (sides are usually already small).
+                    if (self._enabled) {
+                        activeWorkspace.set_scale(targetScale, targetScale);
+                        if (activeWorkspace._background) {
+                            activeWorkspace._background.set_scale(targetScale, targetScale);
+                        }
+                        return;
+                    }
+
+                    // If "Enlarge Active Workspace" is disabled, we equalize ALL workspaces to the capped scale.
                     const targetY = activeWorkspace.y;
 
                     for (let i = 0; i < nWorkspaces; i++) {

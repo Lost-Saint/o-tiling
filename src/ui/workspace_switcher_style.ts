@@ -95,7 +95,7 @@ function buildCss(accentColor: string, thumbnailCornerRadius: number, bgCornerSi
 .workspace-background-content,
 .workspace-background-bin {
     border-radius: ${bgCornerSize}px !important;
-    background-color: transparent !important;
+    background-color: rgba(0, 0, 0, 0.45) !important;
     box-shadow: none !important;
 }
 `;

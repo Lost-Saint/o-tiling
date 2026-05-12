@@ -79,9 +79,9 @@ export class OverviewWallpaperStyle {
 .workspace-background-container,
 .workspace-background-actor,
 .workspace-background-group {
-    opacity: 0 !important;
-    visibility: hidden !important;
-    background-color: transparent !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    background-color: rgba(0, 0, 0, 0.45) !important;
     box-shadow: none !important;
     border: none !important;
 }
