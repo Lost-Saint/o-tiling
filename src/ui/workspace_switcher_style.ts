@@ -71,12 +71,14 @@ function buildCss(accentColor: string, thumbnailCornerRadius: number, bgCornerSi
 .workspace-thumbnail.selected {
     border-color: ${activeColor} !important;
     border-width: 3px !important;
+    border-radius: ${thumbnailCornerRadius}px !important;
 }
 
 /* Hover state */
 .workspace-thumbnail:hover {
     border-color: rgba(255, 255, 255, 0.25) !important;
     background-color: rgba(255, 255, 255, 0.06);
+    border-radius: ${thumbnailCornerRadius}px !important;
 }
 
 /* Workspace label always visible below each card */
@@ -93,7 +95,7 @@ function buildCss(accentColor: string, thumbnailCornerRadius: number, bgCornerSi
 .workspace-background-content,
 .workspace-background-bin {
     border-radius: ${bgCornerSize}px !important;
-    background-color: transparent !important;
+    background-color: rgba(0, 0, 0, 0.45) !important;
     box-shadow: none !important;
 }
 `;
@@ -358,8 +360,12 @@ export class WorkspaceSwitcherStyle {
                 const bg = ws._background;
                 if (bg) {
                     const bgProto = Object.getPrototypeOf(bg);
-                    if (!this._origUpdateBorderRadius && typeof bgProto._updateBorderRadius === 'function') {
+                    // BUG-05 fix: use a guard flag so we only patch once and can always restore
+                    if (!this._origUpdateBorderRadius &&
+                        typeof bgProto._updateBorderRadius === 'function' &&
+                        !bgProto.__o_tiling_patched) {
                         this._origUpdateBorderRadius = bgProto._updateBorderRadius;
+                        bgProto.__o_tiling_patched = true;
                         
                         const self = this;
                         bgProto._updateBorderRadius = function() {
@@ -385,25 +391,32 @@ export class WorkspaceSwitcherStyle {
     }
 
     private _restoreBackgroundCorners(): void {
-        const workspacesDisplay = this._getWorkspacesDisplay();
-        if (!workspacesDisplay) return;
+        if (!this._origUpdateBorderRadius) return;
 
-        const views = workspacesDisplay._workspacesViews || [];
+        // BUG-05 fix: restore prototype directly — only need to do it once since
+        // all backgrounds share the same prototype. The guard flag ensures we can
+        // always find and restore the patched prototype.
+        const workspacesDisplay = this._getWorkspacesDisplay();
+        const views = workspacesDisplay?._workspacesViews || [];
+        let restored = false;
         for (const view of views) {
-            const workspaces = view._workspaces || [];
+            const workspaces = view?._workspaces || [];
             for (const ws of workspaces) {
-                const bg = ws._background;
+                const bg = ws?._background;
                 if (bg) {
                     const bgProto = Object.getPrototypeOf(bg);
-                    if (this._origUpdateBorderRadius) {
+                    if (bgProto.__o_tiling_patched) {
                         bgProto._updateBorderRadius = this._origUpdateBorderRadius;
-                    }
-                    if (typeof bg._updateBorderRadius === 'function') {
-                        bg._updateBorderRadius();
+                        delete bgProto.__o_tiling_patched;
+                        bg._updateBorderRadius?.();
+                        restored = true;
+                        break;
                     }
                 }
             }
+            if (restored) break;
         }
+
         this._origUpdateBorderRadius = null;
     }
 

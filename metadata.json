@@ -1,8 +1,8 @@
 {
     "name": "O-tiling",
-    "description": "Auto-tiling engine for GNOME Shell with the 'Aura' focus border.",
-    "version": 2,
-    "version-name": "2.5.0",
+    "description": "Auto-tiling extension for GNOME Shell with 'Aura' focus border, customizable workspace overview styling, and theme consistency.",
+    "version": 4,
+    "version-name": "2.8.0",
     "uuid": "o-tiling@oliwebd.github.com",
     "settings-schema": "org.gnome.shell.extensions.o-tiling",
     "shell-version": [
