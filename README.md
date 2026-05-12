@@ -1,6 +1,6 @@
-# O-tiling v2.8.0 — Auto-tiling engine for GNOME Shell with Aura focus border
+# O-tiling: Auto-tiling engine for GNOME Shell
 
-A lightweight, keyboard-driven auto-tiling extension for GNOME Shell. It started as a fork of **System76's pop-shell** but has been heavily refactored to remove all System76-specific dependencies — so it runs natively on Fedora, Arch, Ubuntu, or any GNOME distro. On top of the original pop-shell core, I've added a bunch of new features that aren't in upstream.
+A lightweight, keyboard-driven auto-tiling extension for GNOME Shell. It started as a fork of **System76's pop-shell** but has been heavily refactored. So it runs lightly on Fedora, Arch, Ubuntu, or any GNOME distro. On top of the original pop-shell core, I've added a bunch of new features that aren't in upstream.
 
 > **Compatibility:** Tested on GNOME 50 only. Other versions may work but are not officially supported.
 
