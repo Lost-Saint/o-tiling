@@ -1,6 +1,7 @@
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as Background from 'resource:///org/gnome/shell/ui/background.js';
 import * as log from '../utils/log.js';
+import * as AppDisplay from 'resource:///org/gnome/shell/ui/appDisplay.js';
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import St from 'gi://St';
@@ -148,34 +149,41 @@ export class OverviewWallpaperStyle {
     // ── Private ──────────────────────────────────────────────────────────────
 
     private _patchAppFolderDialog(): void {
-        const appDisplay = (Main as any).overview?._overview?._controls?._appDisplay ||
-            (Main as any).overview?._controls?._appDisplay;
-
-        const { AppFolderDialog } = appDisplay || {};
-        if (!AppFolderDialog) return;
+        const { AppFolderDialog } = AppDisplay as any;
+        if (!AppFolderDialog) {
+            log.warn('OverviewWallpaperStyle: AppFolderDialog not found in AppDisplay');
+            return;
+        }
 
         const proto = AppFolderDialog.prototype as any;
         if (!proto._o_tiling_patched) {
             const origOpen = proto.open;
+            proto._o_tiling_orig_open = origOpen;
             proto.open = function (this: any, ...args: any[]) {
-                origOpen.apply(this, args);
+                if (origOpen) origOpen.apply(this, args);
+                
                 if (!this._blurEffect) {
-                    this._blurEffect = new Shell.BlurEffect();
-                    (this._blurEffect as any).brightness = 0.6;
+                    try {
+                        this._blurEffect = new Shell.BlurEffect();
+                        (this._blurEffect as any).brightness = 0.6;
 
-                    const blurMode = (Shell as any).BlurMode;
-                    if (blurMode !== undefined && 'mode' in this._blurEffect) {
-                        this._blurEffect.mode = blurMode.BACKGROUND ?? 1;
+                        const blurMode = (Shell as any).BlurMode;
+                        if (blurMode !== undefined && 'mode' in this._blurEffect) {
+                            this._blurEffect.mode = blurMode.BACKGROUND ?? 1;
+                        }
+
+                        const sigma = 15;
+                        if ('radius' in this._blurEffect) {
+                            this._blurEffect.radius = sigma * 2;
+                        } else if ('sigma' in this._blurEffect) {
+                            this._blurEffect.sigma = sigma;
+                        }
+
+                        this.add_effect_with_name('o-tiling-appfolder-blur', this._blurEffect);
+                        log.info('OverviewWallpaperStyle: Applied blur to AppFolderDialog');
+                    } catch (e) {
+                        log.warn(`OverviewWallpaperStyle: Failed to apply blur to AppFolderDialog: ${e}`);
                     }
-
-                    const sigma = 15;
-                    if ('radius' in this._blurEffect) {
-                        this._blurEffect.radius = sigma * 2;
-                    } else if ('sigma' in this._blurEffect) {
-                        this._blurEffect.sigma = sigma;
-                    }
-
-                    this.add_effect(this._blurEffect);
                 }
             };
             proto._o_tiling_patched = true;
@@ -316,6 +324,16 @@ export class OverviewWallpaperStyle {
     }
 
     private _unpatchAppFolderDialog(): void {
-        // Best-effort; Shell handles lifecycle of the effect itself
+        const { AppFolderDialog } = AppDisplay as any;
+        if (!AppFolderDialog) return;
+
+        const proto = AppFolderDialog.prototype as any;
+        if (proto._o_tiling_patched) {
+            if (proto._o_tiling_orig_open) {
+                proto.open = proto._o_tiling_orig_open;
+            }
+            delete proto._o_tiling_orig_open;
+            delete proto._o_tiling_patched;
+        }
     }
 }
