@@ -82,10 +82,6 @@ const ACTIVE_HINT_OVERLAY_OPACITY = 'active-hint-overlay-opacity';
 const ACTIVE_HINT_GLOW_OPACITY = 'active-hint-glow-opacity';
 const ACTIVE_HINT_GLOW = 'active-hint-glow';
 const WORKSPACE_SWITCHER_STYLE = 'workspace-switcher-style';
-const WORKSPACE_THUMBNAIL_CORNER_RADIUS = 'workspace-thumbnail-corner-radius';
-const WORKSPACE_SWITCHER_SIZE = 'workspace-switcher-size';
-const WORKSPACE_BACKGROUND_CORNER_SIZE = 'workspace-background-corner-size';
-const THEME_CONSISTENCY = 'theme-consistency';
 const THEME_CONSISTENCY_STYLE = 'theme-consistency-style';
 const SKIP_OVERVIEW = 'skip-overview';
 const SHOW_MINIMIZE_MAXIMIZE_BUTTONS = 'show-minimize-maximize-buttons';
@@ -244,21 +240,9 @@ export class ExtensionSettings {
     }
 
 
-    workspace_thumbnail_corner_radius(): number {
-        return this.ext.get_uint(WORKSPACE_THUMBNAIL_CORNER_RADIUS);
-    }
 
-    workspace_switcher_size(): number {
-        return this.ext.get_uint(WORKSPACE_SWITCHER_SIZE);
-    }
 
-    workspace_background_corner_size(): number {
-        return this.ext.get_uint(WORKSPACE_BACKGROUND_CORNER_SIZE);
-    }
 
-    theme_consistency(): boolean {
-        return this.ext.get_boolean(THEME_CONSISTENCY);
-    }
 
     theme_consistency_style(): string {
         return this.ext.get_string(THEME_CONSISTENCY_STYLE);
@@ -280,9 +264,6 @@ export class ExtensionSettings {
         return this.ext.get_boolean(WORKSPACE_OVERVIEW_LARGE_ACTIVE);
     }
 
-    workspace_overview_fullscreen_bg(): boolean {
-        return this.ext.get_boolean('workspace-overview-fullscreen-bg');
-    }
 
     panel_transparency(): boolean {
         return this.ext.get_boolean(PANEL_TRANSPARENCY);
@@ -403,21 +384,9 @@ export class ExtensionSettings {
     }
 
 
-    set_workspace_thumbnail_corner_radius(set: number) {
-        this.ext.set_uint(WORKSPACE_THUMBNAIL_CORNER_RADIUS, set);
-    }
 
-    set_workspace_switcher_size(set: number) {
-        this.ext.set_uint(WORKSPACE_SWITCHER_SIZE, set);
-    }
 
-    set_workspace_background_corner_size(set: number) {
-        this.ext.set_uint(WORKSPACE_BACKGROUND_CORNER_SIZE, set);
-    }
 
-    set_theme_consistency(set: boolean) {
-        this.ext.set_boolean(THEME_CONSISTENCY, set);
-    }
 
     set_theme_consistency_style(style: string) {
         this.ext.set_string(THEME_CONSISTENCY_STYLE, style);

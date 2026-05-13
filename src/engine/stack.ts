@@ -13,11 +13,11 @@ import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 import Meta from 'gi://Meta';
+import Pango from 'gi://Pango';
 
 const ACTIVE_TAB = 'o-tiling-tab o-tiling-tab-active';
 const INACTIVE_TAB = 'o-tiling-tab o-tiling-tab-inactive';
-const URGENT_TAB = 'o-tiling-tab o-tiling-tab-urgent';
-const INACTIVE_TAB_STYLE = '#9B8E8A';
+const URGENT_TAB = 'o-tiling-tab';
 
 export var TAB_HEIGHT: number = 24;
 
@@ -70,27 +70,36 @@ const TabButton = GObject.registerClass(
     class TabButton extends St.Button {
         _title: any;
         constructor(window: ShellWindow) {
-            const icon = window.icon(window.ext, 24);
+            const icon = window.icon(window.ext, 16);
             icon.set_x_align(Clutter.ActorAlign.START);
 
+            const icon_bin = new St.Bin({
+                child: icon,
+                width: 16,
+                height: 16,
+                style: 'border-radius: 3px; padding: 1px;',
+            });
+
             const label = new St.Label({
-                y_expand: true,
+                x_expand: true,
                 x_align: Clutter.ActorAlign.START,
                 y_align: Clutter.ActorAlign.CENTER,
-                style: 'padding-left: 8px',
+                style: 'padding-left: 6px; max-width: 120px;',
             });
 
             label.text = window.title();
+            label.clutter_text.set_ellipsize(Pango.EllipsizeMode.END);
 
             const container = new St.BoxLayout({
-                y_expand: true,
+                x_expand: true,
                 y_align: Clutter.ActorAlign.CENTER,
             });
+            (container as any).set_orientation(Clutter.Orientation.HORIZONTAL);
 
             const close_button = new ContainerButton(
                 new St.Icon({
                     icon_name: 'window-close-symbolic',
-                    icon_size: 24,
+                    icon_size: 12,
                     y_align: Clutter.ActorAlign.CENTER,
                 }),
             );
@@ -101,8 +110,10 @@ const TabButton = GObject.registerClass(
 
             close_button.set_x_align(Clutter.ActorAlign.END);
             close_button.set_y_align(Clutter.ActorAlign.CENTER);
+            close_button.set_opacity(0);
+            close_button.set_style('transition-duration: 120ms;');
 
-            container.add_child(icon);
+            container.add_child(icon_bin);
             container.add_child(label);
             container.add_child(close_button);
 
@@ -114,6 +125,10 @@ const TabButton = GObject.registerClass(
             });
 
             this._title = label;
+
+            // Reveal close button on tab hover
+            this.connect('enter-event', () => close_button.set_opacity(255));
+            this.connect('leave-event', () => close_button.set_opacity(0));
         }
 
         set_title(text: string) {
@@ -249,18 +264,9 @@ export class Stack {
 
                 const button = this.buttons.get(component.button);
                 if (button) {
+                    button.remove_style_class_name('o-tiling-tab-urgent');
                     button.set_style_class_name(name);
-                    let tab_color = '';
-                    if (component.active) {
-                        const settings = this.ext.settings;
-                        const color_value = settings.hint_color_rgba();
-                        tab_color = `${color_value}; color: ${utils.is_dark(color_value) ? 'white' : 'black'}`;
-                    } else {
-                        tab_color = `${INACTIVE_TAB_STYLE}`;
-                    }
-
-                    const tab_border_radius = this.get_tab_border_radius(idx);
-                    button.set_style(`background: ${tab_color}; border-radius: ${tab_border_radius};`);
+                    this.change_tab_color(component);
                 }
             });
 
@@ -275,8 +281,7 @@ export class Stack {
     private get_tab_border_radius(idx: number): string {
         let result = `0px 0px 0px 0px`;
 
-        // the minus 4px is to accomodate the inner radius being tighter
-        let radius = Math.max(0, this.ext.settings.active_hint_border_radius() - 4);
+        let radius = 6;   // fixed pill radius independent of the hint border setting
         // only allow a radius up to half the tab_height
         radius = Math.min(radius, Math.trunc(this.tabs_height / 2));
         // set each corner's radius based on it's order
@@ -353,14 +358,19 @@ export class Stack {
         const settings = this.ext.settings;
         const button = this.buttons.get(tab.button);
         if (button) {
-            let tab_color = '';
             if (Ecs.entity_eq(tab.entity, this.active)) {
                 const color_value = settings.hint_color_rgba();
-                tab_color = `background: ${color_value}; color: ${utils.is_dark(color_value) ? 'white' : 'black'}`;
+                const tab_border_radius = this.get_tab_border_radius(
+                    this.tabs.findIndex(t => Ecs.entity_eq(t.entity, tab.entity))
+                );
+                button.set_style(
+                    `background: ${color_value}; color: ${utils.is_dark(color_value) ? 'white' : 'black'}; border-radius: ${tab_border_radius};`
+                );
             } else {
-                tab_color = `background: ${INACTIVE_TAB_STYLE}`;
+                const idx = this.tabs.findIndex(t => Ecs.entity_eq(t.entity, tab.entity));
+                const tab_border_radius = this.get_tab_border_radius(idx);
+                button.set_style(`border-radius: ${tab_border_radius};`);
             }
-            button.set_style(tab_color);
         }
     }
 
@@ -638,12 +648,13 @@ export class Stack {
         this.rect = rect;
 
         this.tabs_height = TAB_HEIGHT * this.ext.dpi;
+        const GAP = 5;
 
         this.stack_rect = {
             x: rect.x,
-            y: rect.y - this.tabs_height,
+            y: rect.y - this.tabs_height - GAP,
             width: rect.width,
-            height: this.tabs_height + rect.height,
+            height: this.tabs_height + GAP + rect.height,
         };
 
         this.widgets.tabs.x = rect.x;
@@ -697,8 +708,12 @@ export class Stack {
 
             window.meta.connect('notify::urgent', () => {
                 this.window_exec(comp, entity, (window) => {
-                    if (!window.meta.has_focus()) {
-                        this.buttons.get(button)?.set_style_class_name(URGENT_TAB);
+                    const btn = this.buttons.get(button);
+                    if (!btn) return;
+                    if (window.meta.urgent && !window.meta.has_focus()) {
+                        btn.add_style_class_name('o-tiling-tab-urgent');
+                    } else {
+                        btn.remove_style_class_name('o-tiling-tab-urgent');
                     }
                 });
             }),

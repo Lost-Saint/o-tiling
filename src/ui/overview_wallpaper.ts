@@ -1,17 +1,11 @@
-import St from 'gi://St';
-import Gio from 'gi://Gio';
-import GLib from 'gi://GLib';
-import Clutter from 'gi://Clutter';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import * as Background from 'resource:///org/gnome/shell/ui/background.js';
+import * as log from '../utils/log.js';
+import GLib from 'gi://GLib';
+import Gio from 'gi://Gio';
+import St from 'gi://St';
 import Shell from 'gi://Shell';
-import { isGnome50 } from './workspace_switcher_style.js';
+import Clutter from 'gi://Clutter';
 
-// ─── CSS builders ────────────────────────────────────────────────────────────
-
-/**
- * Workspace-background rules — class names are stable across GNOME 48-50.
- */
 function buildWorkspaceBgCss(): string {
     return `
 /* O-Tiling: Full Screen Overview Wallpaper — workspace backgrounds */
@@ -28,270 +22,146 @@ function buildWorkspaceBgCss(): string {
     border: none !important;
 }
 
-/* Keep thumbnail previews visible */
-.workspace-thumbnail .workspace-background,
-.workspace-thumbnail .workspace-background-content,
-.workspace-thumbnail .workspace-background-bin,
-.workspace-thumbnail .workspace-background-container,
-.workspace-thumbnail .workspace-background-actor {
-    opacity: 1 !important;
-    visibility: visible !important;
+/* Search bar styling in overview */
+.search-entry {
+    background-color: rgba(0, 0, 0, 0.35) !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+}
+
+.search-entry:focus {
+    background-color: rgba(0, 0, 0, 0.5) !important;
 }
 `;
 }
 
 /**
- * Search-bar rules.
- *
- * GNOME 48-49: search floats above the workspace switcher. Class is .search-entry.
- * GNOME 50:    search moved into the unified overview surface. Same class name.
- *
- * We target both the container and the inner StEntry because the theme may set
- * the background on either level depending on version.
+ * Manages the aesthetic of a "Full Screen" overview wallpaper by hiding/tinting
+ * individual workspace background actors and applying blur effects to dialogs.
  */
-function buildSearchCss(): string {
-    return `
-/* O-Tiling: Full Screen Overview Wallpaper — search bar */
-.search-entry,
-.search-entry StEntry,
-.search-entry-container {
-    background-color: rgba(255, 255, 255, 0.12) !important;
-    border-color: rgba(255, 255, 255, 0.20) !important;
-    box-shadow: none !important;
-    color: rgba(255, 255, 255, 0.90) !important;
-}
-
-.search-entry:focus,
-.search-entry StEntry:focus {
-    background-color: rgba(255, 255, 255, 0.18) !important;
-    border-color: rgba(255, 255, 255, 0.38) !important;
-}
-
-/* Placeholder text */
-.search-entry StEntry .hint-text {
-    color: rgba(255, 255, 255, 0.50) !important;
-}
-`;
-}
-
-/**
- * App-folder dialog rules.
- *
- * Confirmed from the real GNOME 50 _app-grid.scss:
- *
- *   .app-folder-dialog {
- *       background-color: $system_overlay_bg_color;   // opaque dark
- *       box-shadow: inset 0 0 0 1px $system_borders_color;
- *       border-radius: $modal_radius * 4;
- *   }
- *   .app-folder-dialog-container {
- *       padding-top: $panel_height;                   // NO background set
- *   }
- *
- * .apps-scroll-view and .icon-grid have NO background in the SCSS (only
- * spacing/padding), so they are already transparent — no override needed.
- * .overview-tile intentionally keeps its $system_base_color so app icons
- * remain legible.
- */
-function buildFolderCss(): string {
-    return `
-/* O-Tiling: Full Screen Overview Wallpaper — app folder dialog */
-
-/* Outer backdrop wrapper — no background, wallpaper shows through */
-.app-folder-dialog-container {
-    background-color: transparent !important;
-}
-
-/* The dialog card itself — semi-transparent dark glass */
-.app-folder-dialog {
-    background-color: rgba(28, 28, 36, 0.60) !important;
-    /* Keep the theme's inset border so the card edge is still visible */
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12) !important;
-}
-
-/* Folder title label */
-.app-folder-dialog .folder-name-container .folder-name-label,
-.app-folder-dialog .folder-name-container .folder-name-entry {
-    color: rgba(255, 255, 255, 0.95) !important;
-}
-
-/* Folder rename text entry */
-.app-folder-dialog .folder-name-container .folder-name-entry {
-    background-color: rgba(255, 255, 255, 0.12) !important;
-    border-color: rgba(255, 255, 255, 0.20) !important;
-    color: rgba(255, 255, 255, 0.95) !important;
-}
-`;
-}
-
-/**
- * GNOME 50 only: the unified overview surface introduces a few extra
- * containers that may carry an opaque background.
- */
-function buildGnome50Css(): string {
-    return `
-/* O-Tiling: GNOME 50 unified overview surface */
-.overview-controls,
-.workspace-overview {
-    background-color: transparent !important;
-}
-`;
-}
-
-/** Assembles the complete injected stylesheet. */
-function buildCss(): string {
-    const parts: string[] = [
-        buildWorkspaceBgCss(),
-        buildSearchCss(),
-        buildFolderCss(),
-    ];
-
-    if (isGnome50()) {
-        parts.push(buildGnome50Css());
-    }
-
-    return parts.join('\n');
-}
-
-// ─── OverviewWallpaperStyle ───────────────────────────────────────────────────
-
 export class OverviewWallpaperStyle {
     private _file: Gio.File | null = null;
-    private _enabled: boolean = false;
-    private _backgroundGroup: Clutter.Actor | null = null;
-    private _bgManagers: any[] = [];
-    private _signalMonitorChanged: number | null = null;
+    private _appFolderBlur: any = null;
+    private _bgBlurEffect: Shell.BlurEffect | null = null;
+    private _signals: number[] = [];
 
-    constructor(enabled: boolean = false) {
-        this._enabled = enabled;
-    }
-
-    // ── Background actor helpers ──────────────────────────────────────────
-
-    private _createBackgrounds(): void {
-        this._destroyBackgrounds();
-
-        // overviewGroup exists in GNOME 48-50; guard defensively.
-        const overviewGroup = (Main.layoutManager as any).overviewGroup;
-        if (!overviewGroup) {
-            console.warn('OverviewWallpaperStyle: overviewGroup not available, skipping background actors');
-            return;
-        }
-
-        this._backgroundGroup = new Clutter.Actor();
-
-        try {
-            const blurEffect = new Shell.BlurEffect({
-                brightness: 0.65,
-                radius: 15,
-                mode: Shell.BlurMode.ACTOR,
-            });
-            this._backgroundGroup.add_effect_with_name('o-tiling-bg-blur', blurEffect);
-        } catch (e) {
-            console.warn('OverviewWallpaperStyle: blur effect unavailable', e);
-        }
-
-        overviewGroup.insert_child_at_index(this._backgroundGroup, 0);
-
-        const monitors = Main.layoutManager.monitors;
-        for (let i = 0; i < monitors.length; i++) {
-            const monitor = monitors[i];
-            const widget = new St.Widget({
-                x: monitor.x,
-                y: monitor.y,
-                width: monitor.width,
-                height: monitor.height,
-            });
-
-            try {
-                const bgManager = new Background.BackgroundManager({
-                    container: widget,
-                    monitorIndex: i,
-                    controlPosition: false,
-                });
-                this._bgManagers.push(bgManager);
-            } catch (e) {
-                console.warn(`OverviewWallpaperStyle: BackgroundManager failed on monitor ${i}`, e);
-            }
-
-            this._backgroundGroup.add_child(widget);
-        }
-    }
-
-    private _destroyBackgrounds(): void {
-        for (const manager of this._bgManagers) {
-            try { manager.destroy(); } catch (_) { }
-        }
-        this._bgManagers = [];
-
-        if (this._backgroundGroup) {
-            try { this._backgroundGroup.destroy(); } catch (_) { }
-            this._backgroundGroup = null;
-        }
-    }
-
-    // ── Public API ────────────────────────────────────────────────────────
+    constructor() {}
 
     enable(): void {
-        if (!this._enabled) return;
         if (this._file) return;
 
-        const css = buildCss();
-        const path = `/tmp/o-tiling-owp-style-${GLib.get_monotonic_time()}.css`;
+        const css = buildWorkspaceBgCss();
+        const path = `/tmp/o-tiling-overview-bg-${GLib.get_monotonic_time()}.css`;
 
         try {
             GLib.file_set_contents(path, css);
             this._file = Gio.File.new_for_path(path);
-
-            const theme = St.ThemeContext
-                .get_for_stage((global as any).stage as Clutter.Stage)
-                .get_theme() as any;
+            const theme = St.ThemeContext.get_for_stage(
+                (global as any).stage as Clutter.Stage,
+            ).get_theme() as any;
 
             if (theme) {
                 theme.load_stylesheet(this._file);
-                this._createBackgrounds();
-                this._signalMonitorChanged = Main.layoutManager.connect(
-                    'monitors-changed',
-                    () => this._createBackgrounds(),
-                );
-            } else {
-                console.warn('OverviewWallpaperStyle: no theme context found');
-                this._file = null;
+                this._patchAppFolderDialog();
+                this._setupBlurSignals();
+                
+                // If overview is already open, apply immediately
+                if (Main.overview.visible || Main.overview.showing) {
+                    this._applyBackgroundBlur();
+                }
             }
         } catch (e) {
-            console.error('OverviewWallpaperStyle: failed to enable', e);
-            this._file = null;
+            log.error(`OverviewWallpaperStyle: failed to load CSS: ${e}`);
         }
     }
 
     disable(): void {
-        if (this._signalMonitorChanged !== null) {
-            try { Main.layoutManager.disconnect(this._signalMonitorChanged); } catch (_) { }
-            this._signalMonitorChanged = null;
-        }
-
-        this._destroyBackgrounds();
-
         if (!this._file) return;
 
         try {
-            const theme = St.ThemeContext
-                .get_for_stage((global as any).stage as Clutter.Stage)
-                .get_theme() as any;
+            const theme = St.ThemeContext.get_for_stage(
+                (global as any).stage as Clutter.Stage,
+            ).get_theme() as any;
 
-            if (theme) theme.unload_stylesheet(this._file);
-            this._file.delete(null);
-        } catch (_) { /* best-effort */ }
+            if (theme) {
+                theme.unload_stylesheet(this._file);
+            }
+            if (this._file.query_exists(null)) {
+                this._file.delete(null);
+            }
+            this._unpatchAppFolderDialog();
+            this._removeBackgroundBlur();
+        } catch (_) { /* best-effort cleanup */ }
 
         this._file = null;
+        this._signals.forEach(id => Main.overview.disconnect(id));
+        this._signals = [];
     }
 
-    updateSetting(enabled: boolean): void {
-        this._enabled = enabled;
-        if (this._enabled) {
-            this.enable();
-        } else {
-            this.disable();
+    private _patchAppFolderDialog(): void {
+        // Apply blur to app folder dialogs for a consistent glass look
+        const appDisplay = (Main as any).overview?._overview?._controls?._appDisplay || 
+                           (Main as any).overview?._controls?._appDisplay;
+        
+        const { AppFolderDialog } = appDisplay || {};
+        if (!AppFolderDialog) return;
+
+        const proto = AppFolderDialog.prototype as any;
+        if (!proto._o_tiling_patched) {
+            const origOpen = proto.open;
+            proto.open = function(...args: any[]) {
+                origOpen.apply(this, args);
+                if (!this._blurEffect) {
+                    this._blurEffect = new Shell.BlurEffect({
+                        brightness: 0.6,
+                        radius: 30,
+                        mode: Shell.BlurMode.BACKGROUND,
+                    });
+                    this.add_effect(this._blurEffect);
+                }
+            };
+            proto._o_tiling_patched = true;
         }
+    }
+
+    private _setupBlurSignals(): void {
+        this._signals.push(Main.overview.connect('showing', () => {
+            this._applyBackgroundBlur();
+        }));
+        this._signals.push(Main.overview.connect('hiding', () => {
+            this._removeBackgroundBlur();
+        }));
+    }
+
+    private _applyBackgroundBlur(): void {
+        if (this._bgBlurEffect) return;
+
+        this._bgBlurEffect = new Shell.BlurEffect({
+            brightness: 0.6,
+            radius: 40, // Slightly higher radius for the full-screen background
+            mode: Shell.BlurMode.BACKGROUND,
+        });
+
+        // The background in the overview is typically held by the thumbnails box parent or the overview controls
+        const controls = (Main as any).overview?._overview?._controls || (Main as any).overview?._controls;
+        if (controls) {
+            controls.add_effect_with_name('o-tiling-overview-blur', this._bgBlurEffect);
+        }
+    }
+
+    private _removeBackgroundBlur(): void {
+        if (!this._bgBlurEffect) return;
+
+        const controls = (Main as any).overview?._overview?._controls || (Main as any).overview?._controls;
+        if (controls) {
+            controls.remove_effect_by_name('o-tiling-overview-blur');
+        }
+        this._bgBlurEffect = null;
+    }
+
+    private _unpatchAppFolderDialog(): void {
+        // We generally don't unpatch prototypes at runtime to avoid instability,
+        // but the effect itself is managed by the Shell lifecycle.
     }
 }

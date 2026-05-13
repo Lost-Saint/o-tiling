@@ -67,36 +67,33 @@ export default class OTilingPreferences extends ExtensionPreferences {
         appearanceGroup.add(showClose);
         settings.bind('show-close-button', showClose as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
-        const themesConsistencyRow = new Adw.SwitchRow({
+        const themesConsistencyRow = new Adw.ComboRow({
             title: _('Themes Consistency'),
-            subtitle: _('Applies uniform corner styles to GTK apps and GNOME Shell'),
+            subtitle: _('Stock GNOME, Rounded Corners, or Sharp Corners'),
+            model: Gtk.StringList.new([_('Default'), _('Rounded'), _('Sharp')]),
         });
         appearanceGroup.add(themesConsistencyRow);
-        settings.bind('theme-consistency', themesConsistencyRow as any, 'active', Gio.SettingsBindFlags.DEFAULT);
-
-        const themeStyleRow = new Adw.ComboRow({
-            title: _('Theme Consistency Style'),
-            model: Gtk.StringList.new([_('Rounded'), _('Sharp GTK')]),
-        });
-        appearanceGroup.add(themeStyleRow);
 
         // Bind the combo row index to our enum setting
-        themeStyleRow.connect('notify::selected', () => {
-            const selected = themeStyleRow.selected;
-            settings.set_string('theme-consistency-style', selected === 0 ? 'rounded' : 'sharp');
-            if (themesConsistencyRow.active) {
-                applyThemeConsistency(selected === 0 ? 'rounded' : 'sharp');
+        themesConsistencyRow.connect('notify::selected', () => {
+            const selected = themesConsistencyRow.selected;
+            const style = selected === 0 ? 'default' : selected === 1 ? 'rounded' : 'sharp';
+            settings.set_string('theme-consistency-style', style);
+            
+            // Apply GTK theme consistency immediately
+            if (style !== 'default') {
+                applyThemeConsistency(style as 'rounded' | 'sharp');
             }
         });
 
         // Set initial value
-        themeStyleRow.selected = settings.get_string('theme-consistency-style') === 'sharp' ? 1 : 0;
-
-        themesConsistencyRow.connect('notify::active', () => {
-            if (themesConsistencyRow.active) {
-                applyThemeConsistency(settings.get_string('theme-consistency-style') as any);
-            }
-        });
+        const currentStyle = settings.get_string('theme-consistency-style');
+        themesConsistencyRow.selected = currentStyle === 'rounded' ? 1 : currentStyle === 'sharp' ? 2 : 0;
+        
+        // Ensure GTK consistency is applied if active
+        if (currentStyle !== 'default') {
+            applyThemeConsistency(currentStyle as 'rounded' | 'sharp');
+        }
 
         // Overview Group
         const overviewGroup = new Adw.PreferencesGroup({
@@ -111,36 +108,13 @@ export default class OTilingPreferences extends ExtensionPreferences {
         overviewGroup.add(skipOverview);
         settings.bind('skip-overview', skipOverview as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
-        const workspaceSwitcherStyle = new Adw.SwitchRow({
-            title: _('Workspace Switcher Style'),
-            subtitle: _('GNOME 50+ only — styles the workspace thumbnails bar'),
+        const switcherStyleRow = new Adw.SwitchRow({
+            title: _('Overview and Blur'),
+            subtitle: _('Style the workspace switcher bar and apply a fullscreen blur/tint to the overview'),
         });
-        overviewGroup.add(workspaceSwitcherStyle);
-        settings.bind('workspace-switcher-style', workspaceSwitcherStyle as any, 'active', Gio.SettingsBindFlags.DEFAULT);
+        overviewGroup.add(switcherStyleRow);
+        settings.bind('workspace-switcher-style', switcherStyleRow as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
-        const thumbnailCornerRadius = new Adw.SpinRow({
-            title: _('Workspace Thumbnail Corner Radius'),
-            subtitle: _('GNOME 50+ only — set the roundness of workspace previews'),
-            adjustment: new Gtk.Adjustment({ lower: 0, upper: 60, step_increment: 1 }),
-        });
-        overviewGroup.add(thumbnailCornerRadius);
-        settings.bind('workspace-thumbnail-corner-radius', thumbnailCornerRadius as any, 'value', Gio.SettingsBindFlags.DEFAULT);
-
-        const switcherSizeRow = new Adw.SpinRow({
-            title: _('Workspace Switcher Size'),
-            subtitle: _('GNOME 50+ only — size of workspace switcher as a percentage of screen height'),
-            adjustment: new Gtk.Adjustment({ lower: 5, upper: 25, step_increment: 1 }),
-        });
-        overviewGroup.add(switcherSizeRow);
-        settings.bind('workspace-switcher-size', switcherSizeRow as any, 'value', Gio.SettingsBindFlags.DEFAULT);
-
-        const bgCornerSizeRow = new Adw.SpinRow({
-            title: _('Workspace Background Corner Size'),
-            subtitle: _('Workspace background corner size in overview'),
-            adjustment: new Gtk.Adjustment({ lower: 0, upper: 60, step_increment: 1 }),
-        });
-        overviewGroup.add(bgCornerSizeRow);
-        settings.bind('workspace-background-corner-size', bgCornerSizeRow as any, 'value', Gio.SettingsBindFlags.DEFAULT);
 
         const overviewLargeActive = new Adw.SwitchRow({
             title: _('Enlarge Active Workspace'),
@@ -149,12 +123,6 @@ export default class OTilingPreferences extends ExtensionPreferences {
         overviewGroup.add(overviewLargeActive);
         settings.bind('workspace-overview-large-active', overviewLargeActive as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
-        const overviewFullscreenBg = new Adw.SwitchRow({
-            title: _('Full Screen Workspace Background'),
-            subtitle: _('Hide workspace backgrounds in the overview to reveal the full-screen wallpaper'),
-        });
-        overviewGroup.add(overviewFullscreenBg);
-        settings.bind('workspace-overview-fullscreen-bg', overviewFullscreenBg as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
         // Panel Transparency Group
         const panelGroup = new Adw.PreferencesGroup({

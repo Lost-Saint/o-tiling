@@ -34,7 +34,9 @@ import { WorkspaceSwitcherStyle, isGnome50 } from './ui/workspace_switcher_style
 import { ThemeConsistencyManager } from './ui/theme_consistency/index.js';
 import { OverviewScalingManager } from './ui/overview_scaling.js';
 import { PanelTransparencyManager } from './ui/panel_transparency.js';
-import { OverviewWallpaperStyle } from './ui/overview_wallpaper.js';
+import { OverviewLayoutManager } from './ui/overview_layout.js';
+import { applyThemeConsistency } from './ui/theme_consistency/apply.js';
+
 
 import { Fork } from './engine/fork.js';
 
@@ -270,8 +272,6 @@ export class Ext extends Ecs.System<ExtEvent> {
     /** Manages workspace scaling in the overview */
     overview_scaling_manager: OverviewScalingManager | null = null;
 
-    /** Manages fullscreen overview wallpaper CSS */
-    overview_wallpaper_handler: OverviewWallpaperStyle | null = null;
 
     /** Manages theme consistency (session injection) */
 
@@ -279,6 +279,9 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     /** Manages panel transparency CSS injection */
     panel_transparency_handler: PanelTransparencyManager | null = null;
+
+    /** Manages overview window positioning to match tiling */
+    overview_layout_manager: OverviewLayoutManager | null = null;
 
     /** Manages window management buttons (min/max/close) */
     window_buttons_manager: WindowButtonsManager | null = null;
@@ -350,39 +353,18 @@ export class Ext extends Ecs.System<ExtEvent> {
         this._settings_signal_ids.push([this.settings.ext, id_ws_accent]);
 
 
-        const id_ws_radius = this.settings.ext.connect('changed::workspace-thumbnail-corner-radius', () => {
-            this.workspace_switcher_style_handler?.updateThumbnailCornerRadius(this.settings.workspace_thumbnail_corner_radius());
-        });
-        this._settings_signal_ids.push([this.settings.ext, id_ws_radius]);
 
-        const id_ws_size = this.settings.ext.connect('changed::workspace-switcher-size', () => {
-            this.workspace_switcher_style_handler?.updateSwitcherSize(this.settings.workspace_switcher_size());
-        });
-        this._settings_signal_ids.push([this.settings.ext, id_ws_size]);
 
-        const id_ws_bg_corner = this.settings.ext.connect('changed::workspace-background-corner-size', () => {
-            this.workspace_switcher_style_handler?.updateBgCornerSize(this.settings.workspace_background_corner_size());
-        });
-        this._settings_signal_ids.push([this.settings.ext, id_ws_bg_corner]);
 
         const id_ws_large_active = this.settings.ext.connect('changed::workspace-overview-large-active', () => {
             this.overview_scaling_manager?.updateSetting(this.settings.workspace_overview_large_active());
         });
         this._settings_signal_ids.push([this.settings.ext, id_ws_large_active]);
 
-        const id_ws_fullscreen_bg = this.settings.ext.connect('changed::workspace-overview-fullscreen-bg', () => {
-            this.overview_wallpaper_handler?.updateSetting(this.settings.workspace_overview_fullscreen_bg());
-        });
-        this._settings_signal_ids.push([this.settings.ext, id_ws_fullscreen_bg]);
 
-        const id_theme_consistency = this.settings.ext.connect('changed::theme-consistency', () => {
-            this.toggle_theme_consistency(this.settings.theme_consistency());
-        });
-        this._settings_signal_ids.push([this.settings.ext, id_theme_consistency]);
 
         const id_theme_style = this.settings.ext.connect('changed::theme-consistency-style', () => {
-            const style = this.settings.theme_consistency_style() as any;
-            this.theme_consistency_handler?.updateStyle(style);
+            this.toggle_theme_consistency(this.settings.theme_consistency_style());
         });
         this._settings_signal_ids.push([this.settings.ext, id_theme_style]);
 
@@ -408,14 +390,15 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         // Initial application
         this.toggle_workspace_switcher_style(this.settings.workspace_switcher_style(), false);
-        this.toggle_theme_consistency(this.settings.theme_consistency(), false);
+        this.toggle_theme_consistency(this.settings.theme_consistency_style(), false);
         this.toggle_panel_transparency(this.settings.panel_transparency(), false);
 
         this.overview_scaling_manager = new OverviewScalingManager(this.settings.workspace_overview_large_active());
         this.overview_scaling_manager.enable();
 
-        this.overview_wallpaper_handler = new OverviewWallpaperStyle(this.settings.workspace_overview_fullscreen_bg());
-        this.overview_wallpaper_handler.enable();
+
+        this.overview_layout_manager = new OverviewLayoutManager(this);
+        this.overview_layout_manager.enable();
 
         this.window_buttons_manager = new WindowButtonsManager(this.settings);
         this.window_buttons_manager.enable();
@@ -521,10 +504,6 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.overview_scaling_manager = null;
         }
 
-        if (this.overview_wallpaper_handler) {
-            this.overview_wallpaper_handler.disable();
-            this.overview_wallpaper_handler = null;
-        }
 
         if (this.theme_consistency_handler) {
             this.theme_consistency_handler.disable();
@@ -534,6 +513,11 @@ export class Ext extends Ecs.System<ExtEvent> {
         if (this.panel_transparency_handler) {
             this.panel_transparency_handler.disable();
             this.panel_transparency_handler = null;
+        }
+
+        if (this.overview_layout_manager) {
+            this.overview_layout_manager.disable();
+            this.overview_layout_manager = null;
         }
 
         if (this.window_buttons_manager) {
@@ -1386,7 +1370,18 @@ export class Ext extends Ecs.System<ExtEvent> {
     }
 
     /** Triggered when a grab operation has been ended */
-    on_grab_end(meta: Meta.Window, op?: any) {
+    on_grab_end(meta: Meta.Window, op?: any, drop_cursor?: Rect.Rectangle) {
+        // Guard: if grab_op is already null and this is a non-overview drag,
+        // a previous on_grab_end call already handled this drop (double-fire).
+        if (this.grab_op === null && op !== undefined) {
+            return;
+        }
+
+        // Capture cursor NOW, before any deferred execution moves it.
+        if (!drop_cursor) {
+            drop_cursor = cursor_rect();
+        }
+
         const win = this.get_window(meta);
 
         if (win !== null) {
@@ -1398,11 +1393,11 @@ export class Ext extends Ecs.System<ExtEvent> {
             return;
         }
 
-        this.on_grab_end_(win, op);
+        this.on_grab_end_(win, op, drop_cursor);
         this.unset_grab_op();
     }
 
-    on_grab_end_(win: Window.ShellWindow, op?: any) {
+    on_grab_end_(win: Window.ShellWindow, op?: any, drop_cursor?: Rect.Rectangle) {
         this.moved_by_mouse = true;
         this.size_signals_unblock(win);
 
@@ -1426,10 +1421,11 @@ export class Ext extends Ecs.System<ExtEvent> {
             const mon = this.monitors.get(win.entity);
             if (mon) {
                 const rect = win.meta.get_work_area_for_monitor(mon[0]);
-                if (rect && Rect.Rectangle.from_meta(rect as any).contains(cursor_rect())) {
+                const drop_cur = drop_cursor ?? cursor_rect();
+                if (rect && Rect.Rectangle.from_meta(rect as any).contains(drop_cur)) {
                     this.auto_tiler.reflow(this, win.entity);
                 } else {
-                    this.auto_tiler.on_drop(this, win, true);
+                    this.auto_tiler.on_drop(this, win, true, drop_cursor);
                 }
             }
 
@@ -1452,14 +1448,14 @@ export class Ext extends Ecs.System<ExtEvent> {
                 this.monitors.insert(win.entity, [win.meta.get_monitor(), win.workspace_id()]);
 
                 if (rect.x != crect.x || rect.y != crect.y) {
-                    if (rect.contains(cursor_rect())) {
+                    if (rect.contains(drop_cursor ?? cursor_rect())) {
                         if (this.auto_tiler.attached.contains(win.entity)) {
-                            this.auto_tiler.on_drop(this, win, mon_drop);
+                            this.auto_tiler.on_drop(this, win, mon_drop, drop_cursor);
                         } else {
                             this.auto_tiler.reflow(this, win.entity);
                         }
                     } else {
-                        this.auto_tiler.on_drop(this, win, mon_drop);
+                        this.auto_tiler.on_drop(this, win, mon_drop, drop_cursor);
                     }
                 }
             } else {
@@ -2808,8 +2804,8 @@ export class Ext extends Ecs.System<ExtEvent> {
         }
 
         // 5. Restore theme consistency if user had it enabled
-        if (this.settings.theme_consistency()) {
-            this.toggle_theme_consistency(true, false);
+        if (this.settings.theme_consistency_style() !== 'default') {
+            this.toggle_theme_consistency(this.settings.theme_consistency_style(), false);
         }
 
         // 6. Restore workspace-switcher style if user had it enabled
@@ -2871,15 +2867,21 @@ export class Ext extends Ecs.System<ExtEvent> {
             if (!this.workspace_switcher_style_handler) {
                 this.workspace_switcher_style_handler = new WorkspaceSwitcherStyle(
                     this.settings.hint_color_rgba(),
-                    this.settings.workspace_thumbnail_corner_radius(),
-                    this.settings.workspace_switcher_size(),
-                    this.settings.workspace_background_corner_size(),
                 );
             }
             this.workspace_switcher_style_handler.enable();
+
+            // When switcher style (Overview Style & Blur) is enabled,
+            // we disable workspace enlargement for a cleaner, unified look.
+            this.overview_scaling_manager?.updateSetting(false);
         } else {
             this.workspace_switcher_style_handler?.disable();
             this.workspace_switcher_style_handler = null;
+
+            // Restore enlargement setting based on user preference
+            this.overview_scaling_manager?.updateSetting(
+                this.settings.workspace_overview_large_active()
+            );
         }
 
         if (save) {
@@ -2887,20 +2889,22 @@ export class Ext extends Ecs.System<ExtEvent> {
         }
     }
 
-    toggle_theme_consistency(enabled: boolean, save: boolean = true) {
-        if (enabled) {
-            const style = this.settings.theme_consistency_style() as any;
+    toggle_theme_consistency(style: string, save: boolean = true) {
+        if (style !== 'default') {
             if (!this.theme_consistency_handler) {
                 this.theme_consistency_handler = new ThemeConsistencyManager();
             }
-            this.theme_consistency_handler.enable(style);
+            this.theme_consistency_handler.enable(style as any);
+            
+            // Also apply GTK theme consistency
+            applyThemeConsistency(style as 'rounded' | 'sharp');
         } else {
             this.theme_consistency_handler?.disable();
             this.theme_consistency_handler = null;
         }
 
         if (save) {
-            this.settings.set_theme_consistency(enabled);
+            this.settings.set_theme_consistency_style(style);
         }
     }
 

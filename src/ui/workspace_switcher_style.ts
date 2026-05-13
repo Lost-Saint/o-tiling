@@ -6,6 +6,10 @@ import Shell from 'gi://Shell';
 import { PACKAGE_VERSION } from 'resource:///org/gnome/shell/misc/config.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as Utils from '../utils/utils.js';
+import * as log from '../utils/log.js';
+import { OverviewWallpaperStyle } from './overview_wallpaper.js';
+import type { Ext } from '../extension.js';
+
 
 // ── Version gate ─────────────────────────────────────────────────────────────
 
@@ -29,7 +33,8 @@ export function isGnome50(): boolean {
  *   .workspace-thumbnail          – individual workspace preview cards
  *   .workspace-thumbnail:focus    – active / focused card
  */
-function buildCss(accentColor: string, thumbnailCornerRadius: number, bgCornerSize: number): string {
+function buildCss(accentColor: string): string {
+    const thumbnailCornerRadius = 10;
     // Determine the effective accent color; fallback to GNOME blue if 'auto' or invalid.
     const activeColor = (accentColor === 'auto' || !Utils.isValidColor(accentColor))
         ? '#3584e4'
@@ -90,15 +95,7 @@ function buildCss(accentColor: string, thumbnailCornerRadius: number, bgCornerSi
     padding-top: 6px;
 }
 
-/* Overview workspace background corner */
-.workspace-background,
-.workspace-background-content,
-.workspace-background-bin {
-    border-radius: ${bgCornerSize}px !important;
-    background-color: rgba(0, 0, 0, 0.45) !important;
-    box-shadow: none !important;
-}
-`;
+}`;
 }
 
 
@@ -107,9 +104,7 @@ function buildCss(accentColor: string, thumbnailCornerRadius: number, bgCornerSi
 export class WorkspaceSwitcherStyle {
     private _file: Gio.File | null = null;
     private _accentColor: string;
-    private _thumbnailCornerRadius: number;
-    private _switcherSize: number;      // percent (5-25)
-    private _bgCornerSize: number;       // pixels (0-60)
+    private _wallpaperStyle: OverviewWallpaperStyle | null = null;
     private _blurEffect: any = null;
     private _origMaxThumbnailScale: number | null = null;
     private _origMinThumbnailScale: number | null = null;
@@ -121,21 +116,15 @@ export class WorkspaceSwitcherStyle {
 
     constructor(
         accentColor: string,
-        thumbnailCornerRadius: number,
-        switcherSize: number,
-        bgCornerSize: number,
     ) {
         this._accentColor = accentColor;
-        this._thumbnailCornerRadius = thumbnailCornerRadius;
-        this._switcherSize = switcherSize;
-        this._bgCornerSize = bgCornerSize;
     }
 
     /** Injects custom CSS into the Shell theme. No-op if already enabled. */
     enable(): void {
         if (this._file) return;
 
-        const css = buildCss(this._accentColor, this._thumbnailCornerRadius, this._bgCornerSize);
+        const css = buildCss(this._accentColor);
         const path = `/tmp/o-tiling-ws-style-${GLib.get_monotonic_time()}.css`;
 
         try {
@@ -149,17 +138,23 @@ export class WorkspaceSwitcherStyle {
                 theme.load_stylesheet(this._file);
                 this._applyBlur();
                 this._applyThumbnailScale();
-                this._applyBackgroundCorners();
                 this._setupAutoScroll();
+
+                // Enable integrated overview blur/wallpaper style
+                if (!this._wallpaperStyle) {
+                    this._wallpaperStyle = new OverviewWallpaperStyle();
+                }
+                this._wallpaperStyle.enable();
             } else {
-                console.warn('WorkspaceSwitcherStyle: could not find theme to load stylesheet');
+                log.warn('WorkspaceSwitcherStyle: could not find theme to load stylesheet');
                 this._file = null;
             }
         } catch (e) {
-            console.error('WorkspaceSwitcherStyle: failed to load CSS', e);
+            log.error(`WorkspaceSwitcherStyle: failed to load CSS: ${e}`);
             this._file = null;
         }
     }
+
 
     /** Removes the injected CSS from the Shell theme. */
     disable(): void {
@@ -175,8 +170,10 @@ export class WorkspaceSwitcherStyle {
                 theme.unload_stylesheet(this._file);
                 this._removeBlur();
                 this._restoreThumbnailScale();
-                this._restoreBackgroundCorners();
                 this._teardownSignals();
+
+                this._wallpaperStyle?.disable();
+                this._wallpaperStyle = null;
             }
             this._file.delete(null);
         } catch (_) { /* best-effort */ }
@@ -191,24 +188,8 @@ export class WorkspaceSwitcherStyle {
     }
 
 
-    /** Hot-updates the thumbnail corner radius. */
-    updateThumbnailCornerRadius(radius: number): void {
-        this._thumbnailCornerRadius = radius;
-        this._refresh();
-    }
 
-    /** Hot-updates the workspace switcher size (percentage). */
-    updateSwitcherSize(percent: number): void {
-        this._switcherSize = percent;
-        this._applyThumbnailScale();
-    }
 
-    /** Hot-updates the workspace background corner radius. */
-    updateBgCornerSize(px: number): void {
-        this._bgCornerSize = px;
-        this._applyBackgroundCorners();
-        this._refresh();
-    }
 
     private _refresh(): void {
         if (this._file) {
@@ -238,10 +219,11 @@ export class WorkspaceSwitcherStyle {
                 thumbnailsBox.add_effect_with_name('o-tiling-blur', this._blurEffect);
             }
         } catch (e) {
-            console.warn('WorkspaceSwitcherStyle: failed to apply blur effect', e);
+            log.warn(`WorkspaceSwitcherStyle: failed to apply blur effect: ${e}`);
         }
         */
     }
+
 
     private _removeBlur(): void {
         if (this._blurEffect) {
@@ -292,8 +274,8 @@ export class WorkspaceSwitcherStyle {
             const aspectRatio = monitor.width / monitor.height;
             const spacing = 12; // Matching CSS spacing
 
-            // Calculate scale based on user preference
-            let scale = this._switcherSize / 100;
+            // Calculate scale based on hardcoded 15% preference
+            let scale = 15 / 100;
 
             // Calculate total width if we used the preferred scale
             const preferredWidth = (monitor.height * scale * aspectRatio + spacing) * nWorkspaces - spacing;
@@ -321,9 +303,10 @@ export class WorkspaceSwitcherStyle {
             thumbnailsBox.queue_relayout?.();
             thumbnailsBox.get_parent()?.queue_relayout?.();
         } catch (e) {
-            console.warn('WorkspaceSwitcherStyle: failed to set thumbnail scale', e);
+            log.warn(`WorkspaceSwitcherStyle: failed to set thumbnail scale: ${e}`);
         }
     }
+
 
     /** Restores the original _maxThumbnailScale on disable. */
     private _restoreThumbnailScale(): void {
@@ -349,76 +332,6 @@ export class WorkspaceSwitcherStyle {
             null;
     }
 
-    private _applyBackgroundCorners(): void {
-        const workspacesDisplay = this._getWorkspacesDisplay();
-        if (!workspacesDisplay) return;
-
-        const views = workspacesDisplay._workspacesViews || [];
-        for (const view of views) {
-            const workspaces = view._workspaces || [];
-            for (const ws of workspaces) {
-                const bg = ws._background;
-                if (bg) {
-                    const bgProto = Object.getPrototypeOf(bg);
-                    // BUG-05 fix: use a guard flag so we only patch once and can always restore
-                    if (!this._origUpdateBorderRadius &&
-                        typeof bgProto._updateBorderRadius === 'function' &&
-                        !bgProto.__o_tiling_patched) {
-                        this._origUpdateBorderRadius = bgProto._updateBorderRadius;
-                        bgProto.__o_tiling_patched = true;
-                        
-                        const self = this;
-                        bgProto._updateBorderRadius = function() {
-                            const { scaleFactor } = St.ThemeContext.get_for_stage((global as any).stage as Clutter.Stage);
-                            const cornerRadius = scaleFactor * self._bgCornerSize;
-                            
-                            const backgroundContent = this._bgManager?.backgroundActor?.content;
-                            if (backgroundContent) {
-                                const progress = this._stateAdjustment ? this._stateAdjustment.value : 1;
-                                backgroundContent.rounded_clip_radius = cornerRadius * progress;
-                            } else if (self._origUpdateBorderRadius) {
-                                self._origUpdateBorderRadius.call(this);
-                            }
-                        };
-                    }
-                    
-                    if (typeof bg._updateBorderRadius === 'function') {
-                        bg._updateBorderRadius();
-                    }
-                }
-            }
-        }
-    }
-
-    private _restoreBackgroundCorners(): void {
-        if (!this._origUpdateBorderRadius) return;
-
-        // BUG-05 fix: restore prototype directly — only need to do it once since
-        // all backgrounds share the same prototype. The guard flag ensures we can
-        // always find and restore the patched prototype.
-        const workspacesDisplay = this._getWorkspacesDisplay();
-        const views = workspacesDisplay?._workspacesViews || [];
-        let restored = false;
-        for (const view of views) {
-            const workspaces = view?._workspaces || [];
-            for (const ws of workspaces) {
-                const bg = ws?._background;
-                if (bg) {
-                    const bgProto = Object.getPrototypeOf(bg);
-                    if (bgProto.__o_tiling_patched) {
-                        bgProto._updateBorderRadius = this._origUpdateBorderRadius;
-                        delete bgProto.__o_tiling_patched;
-                        bg._updateBorderRadius?.();
-                        restored = true;
-                        break;
-                    }
-                }
-            }
-            if (restored) break;
-        }
-
-        this._origUpdateBorderRadius = null;
-    }
 
     private _setupAutoScroll(): void {
         const workspace_manager = (global as any).workspace_manager;
@@ -432,17 +345,14 @@ export class WorkspaceSwitcherStyle {
         // 1. Rescale when workspaces are added/removed
         this._workspaceAddedId = workspace_manager.connect('workspace-added', () => {
             this._applyThumbnailScale();
-            this._applyBackgroundCorners();
         });
         this._workspaceRemovedId = workspace_manager.connect('workspace-removed', () => {
             this._applyThumbnailScale();
-            this._applyBackgroundCorners();
         });
 
         // 2. Rescale when overview shows (ensures state is fresh)
         this._overviewShowingId = Main.overview.connect('showing', () => {
             this._applyThumbnailScale();
-            this._applyBackgroundCorners();
         });
     }
 
@@ -473,9 +383,10 @@ export class WorkspaceSwitcherStyle {
             const pageSize = adjustment.page_size;
             adjustment.value = childCenter - pageSize / 2;
         } catch (e) {
-            console.warn('WorkspaceSwitcherStyle: _scrollToActiveWorkspace failed', e);
+            log.warn(`WorkspaceSwitcherStyle: _scrollToActiveWorkspace failed: ${e}`);
         }
     }
+
 
     private _teardownSignals(): void {
         this._teardownAutoScroll();

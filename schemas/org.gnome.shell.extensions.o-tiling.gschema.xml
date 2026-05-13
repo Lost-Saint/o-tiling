@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist gettext-domain="o-tiling">
     <enum id="org.gnome.shell.extensions.o-tiling.ThemeConsistencyStyle">
-        <value nick="rounded" value="0"/>
-        <value nick="sharp" value="1"/>
+        <value nick="default" value="0"/>
+        <value nick="rounded" value="1"/>
+        <value nick="sharp" value="2"/>
     </enum>
 
     <schema id="org.gnome.shell.extensions.o-tiling" path="/org/gnome/shell/extensions/o-tiling/">
@@ -43,36 +44,16 @@
 
         <key type="b" name="workspace-switcher-style">
             <default>false</default>
-            <summary>Style the workspace switcher bar (GNOME 50+ only)</summary>
+            <summary>Apply the unified Overview Style &amp; Blur (GNOME 50+ only)</summary>
         </key>
 
-        <key type="u" name="workspace-thumbnail-corner-radius">
-            <default>10</default>
-            <range min="0" max="60"/>
-            <summary>Corner radius of workspace thumbnails, in pixels (GNOME 50+ only)</summary>
-        </key>
 
-        <key type="u" name="workspace-switcher-size">
-            <default>15</default>
-            <range min="5" max="25"/>
-            <summary>Scale of the workspace switcher as a percentage of screen height (GNOME 50+ only)</summary>
-        </key>
-
-        <key type="u" name="workspace-background-corner-size">
-            <default>12</default>
-            <range min="0" max="60"/>
-            <summary>Corner radius of workspace background in the overview, in pixels (GNOME 50+ only)</summary>
-        </key>
 
         <key type="b" name="workspace-overview-large-active">
             <default>true</default>
             <summary>Whether the active workspace in the overview should be enlarged (GNOME default behavior)</summary>
         </key>
 
-        <key type="b" name="workspace-overview-fullscreen-bg">
-            <default>false</default>
-            <summary>Hide workspace backgrounds in the overview to reveal the full-screen wallpaper</summary>
-        </key>
 
 
         <key type="b" name="skip-overview">
@@ -97,14 +78,10 @@
             <summary>Use a subtle dark gradient behind the transparent panel for readability</summary>
         </key>
 
-        <key type="b" name="theme-consistency">
-            <default>false</default>
-            <summary>Apply rounded corners consistency to Shell elements (no User Themes extension required)</summary>
-        </key>
 
         <key name="theme-consistency-style" enum="org.gnome.shell.extensions.o-tiling.ThemeConsistencyStyle">
-            <default>'rounded'</default>
-            <summary>The style of corners to apply for theme consistency</summary>
+            <default>'default'</default>
+            <summary>The style of corners to apply for theme consistency (default = disabled)</summary>
         </key>
 
 

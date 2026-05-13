@@ -1,4 +1,6 @@
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as log from '../utils/log.js';
+
 
 /**
  * Manages the scaling of workspaces in the overview.
@@ -23,7 +25,7 @@ export class OverviewScalingManager {
                 this._origUpdateWorkspacesState = proto._updateWorkspacesState;
 
                 const self = this;
-                proto._updateWorkspacesState = function(this: any, ...args: any[]) {
+                proto._updateWorkspacesState = function (this: any, ...args: any[]) {
                     // Always call the original logic first to maintain internal Shell layout/state
                     self._origUpdateWorkspacesState.apply(this, args);
 
@@ -35,9 +37,9 @@ export class OverviewScalingManager {
                     // GNOME's default scale for the active workspace.
                     // For a single workspace or the active one in multi-view, this can be too large (1.0).
                     // We cap it at 0.88 to ensure no overflow into Dash/Search bar.
-                    const MAX_OVERVIEW_SCALE = 0.88;
+                    const MAX_OVERVIEW_SCALE = 1.0;
                     let [targetScale] = activeWorkspace.get_scale();
-                    
+
                     if (targetScale > MAX_OVERVIEW_SCALE) {
                         targetScale = MAX_OVERVIEW_SCALE;
                     }
@@ -73,9 +75,10 @@ export class OverviewScalingManager {
 
             this.update();
         } catch (e) {
-            console.warn('OverviewScalingManager: failed to enable', e);
+            log.warn(`OverviewScalingManager: failed to enable: ${e}`);
         }
     }
+
 
     disable(): void {
         if (this._origUpdateWorkspacesState) {
@@ -97,8 +100,8 @@ export class OverviewScalingManager {
     /** Forces a refresh of the workspaces state in the overview. */
     update(): void {
         const workspacesDisplay = (Main as any).overview?._controls?._workspacesDisplay ||
-                                (Main as any).overview?._overview?._controls?._workspacesDisplay ||
-                                null;
+            (Main as any).overview?._overview?._controls?._workspacesDisplay ||
+            null;
         if (workspacesDisplay && workspacesDisplay._workspacesViews) {
             workspacesDisplay._workspacesViews.forEach((v: any) => {
                 if (typeof v._updateWorkspacesState === 'function') {

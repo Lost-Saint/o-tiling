@@ -341,8 +341,9 @@ export class AutoTiler {
      * - If the window is dropped onto a window, tile onto it
      * - If no window is present, tile onto the monitor
      */
-    on_drop(ext: Ext, win: ShellWindow, via_overview: boolean = false) {
-        const [cursor, monitor] = ext.cursor_status();
+    on_drop(ext: Ext, win: ShellWindow, via_overview: boolean = false, drop_cursor?: Rectangle) {
+        const [live_cursor, monitor] = ext.cursor_status();
+        const cursor = drop_cursor ?? live_cursor;
         const workspace = ext.active_workspace();
 
         if (win.rect().contains(cursor)) {

@@ -1,5 +1,7 @@
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
+import * as log from '../utils/log.js';
+
 
 const CONF_DIR: string = GLib.get_user_config_dir() + '/o-tiling';
 export var CONF_FILE: string = CONF_DIR + '/config.json';
@@ -199,8 +201,9 @@ export class Config {
             this.float = c.float;
             this.log_on_focus = c.log_on_focus;
         } else {
-            console.error(`error loading conf: ${conf.why}`);
+            log.error(`error loading conf: ${conf.why}`);
         }
+
 
         this._rebuild_caches();
     }

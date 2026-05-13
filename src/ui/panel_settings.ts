@@ -67,8 +67,8 @@ export class Indicator {
                     ext.ext_soft_enable();
                 } else {
                     // Extension is on — left click toggles only auto-tiling
-                    if (ext.auto_tiler) ext.auto_tile_off();
-                    else ext.auto_tile_on();
+                    if (ext.auto_tiler) ext.auto_tile_off(false);
+                    else ext.auto_tile_on(false);
                 }
                 return Clutter.EVENT_STOP;
             }

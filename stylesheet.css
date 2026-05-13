@@ -85,26 +85,56 @@
     padding-bottom: 6px;
 }
 
-/* ── Tab bar (stacking) ──────────────────────────────────── */
+/* ── Tab bar (stacking) — frosted-glass redesign ─────────── */
+
+.o-tiling-stack {
+    background-color: rgba(0, 0, 0, 0.52);
+    border-radius: 10px 10px 0px 0px;
+    border-bottom: 0.5px solid rgba(255, 255, 255, 0.08);
+    padding: 5px 8px;
+    spacing: 4px;
+    min-height: 36px;
+}
 
 .o-tiling-tab {
-    border: 1px solid #ccc;
-    color: #333;
-    padding: 0 1em;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 13px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.50);
+    background-color: transparent;
+    border: none;
+    transition-duration: 150ms;
+    transition-property: background-color, color;
+    max-width: 160px;
+}
+
+.o-tiling-tab:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.80);
 }
 
 .o-tiling-tab-active {
-    background: #3584e4;
-    color: white;
+    font-weight: 500;
+    color: #ffffff;
+    /* background-color is set programmatically from hint_color_rgba() */
 }
 
 .o-tiling-tab-inactive {
-    background: #f6f6f6;
-    color: #666;
+    color: rgba(255, 255, 255, 0.50);
+    background-color: transparent;
 }
 
 .o-tiling-tab-urgent {
-    background: #e01b24;
+    animation-name: o-tiling-pulse;
+    animation-duration: 1.4s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+@keyframes o-tiling-pulse {
+    0%,  100% { background-color: rgba(224, 27, 36, 0.25); }
+    50%        { background-color: rgba(224, 27, 36, 0.55); }
 }
 
 /* ── Panel menu enhancements ─────────────────────────────── */
@@ -144,16 +174,6 @@
     .o-tiling-search-element:select {
         background: rgba(246, 246, 246, .2);
         color: #EDEDED;
-    }
-
-    .o-tiling-tab {
-        border: 1px solid #333;
-        color: #000;
-    }
-
-    .o-tiling-tab-inactive {
-        background: #242424;
-        color: #ccc;
     }
 }
 
