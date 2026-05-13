@@ -13,13 +13,13 @@ import type { Ext } from '../extension.js';
 
 // ── Version gate ─────────────────────────────────────────────────────────────
 
-/** Returns true when running on GNOME Shell 50 or newer. */
+/** Returns true when running on GNOME Shell 48 or newer (horizontal overview). */
 export function isGnome50(): boolean {
     try {
         const major = parseInt(PACKAGE_VERSION.split('.')[0], 10);
-        return major >= 50;
+        return major >= 48;
     } catch (_) {
-        return false;
+        return true;
     }
 }
 
@@ -35,67 +35,11 @@ export function isGnome50(): boolean {
  */
 function buildCss(accentColor: string): string {
     const thumbnailCornerRadius = 10;
-    // Determine the effective accent color; fallback to GNOME blue if 'auto' or invalid.
     const activeColor = (accentColor === 'auto' || !Utils.isValidColor(accentColor))
         ? '#3584e4'
         : accentColor;
 
-    return `
-/* === O-Tiling: COSMIC-style Workspace Switcher (GNOME 50) === */
-
-.workspace-thumbnails,
-.thumbnails-box,
-.workspace-thumbnails-container {
-    background-color: transparent !important;
-    background: transparent !important;
-}
-
-.workspace-thumbnails {
-    padding: 12px 16px;
-    spacing: 12px;
-    border-radius: 0px;
-    border: none !important;
-}
-
-/* Individual workspace card */
-.workspace-thumbnail {
-    border-radius: ${thumbnailCornerRadius}px !important;
-    border: 3px solid transparent;
-    transition-duration: 200ms;
-}
-
-.workspace-thumbnail-background {
-    border-radius: ${thumbnailCornerRadius}px !important;
-    /* Do NOT set background-color here — it hides the wallpaper render.
-       Leave it transparent so the actual workspace wallpaper shows through. */
-    background-color: transparent;
-}
-
-/* Active card gets accent color border */
-.workspace-thumbnail:focus,
-.workspace-thumbnail.selected {
-    border-color: ${activeColor} !important;
-    border-width: 3px !important;
-    border-radius: ${thumbnailCornerRadius}px !important;
-}
-
-/* Hover state */
-.workspace-thumbnail:hover {
-    border-color: rgba(255, 255, 255, 0.25) !important;
-    background-color: rgba(255, 255, 255, 0.06);
-    border-radius: ${thumbnailCornerRadius}px !important;
-}
-
-/* Workspace label always visible below each card */
-.workspace-label {
-    color: rgba(255, 255, 255, 0.85);
-    font-size: 12px;
-    font-weight: 600;
-    text-align: center;
-    padding-top: 6px;
-}
-
-}`;
+    return `.workspace-thumbnails,.thumbnails-box,.workspace-thumbnails-container{background-color:transparent !important;background:transparent !important;}.workspace-thumbnails{padding:12px 16px;spacing:12px;border-radius:0px;border:none !important;}.workspace-thumbnail{border-radius:${thumbnailCornerRadius}px !important;border:3px solid transparent;}.workspace-thumbnail-background{border-radius:${thumbnailCornerRadius}px !important;background-color:transparent;}.workspace-thumbnail:focus,.workspace-thumbnail.selected{border-color:${activeColor} !important;border-width:3px !important;border-radius:${thumbnailCornerRadius}px !important;}.workspace-thumbnail:hover{border-color:rgba(255,255,255,0.25) !important;background-color:rgba(255,255,255,0.06);border-radius:${thumbnailCornerRadius}px !important;}.workspace-label{color:rgba(255,255,255,0.85);font-size:12px;font-weight:600;text-align:center;padding-top:6px;}`;
 }
 
 
@@ -240,15 +184,25 @@ export class WorkspaceSwitcherStyle {
     }
 
     private _getThumbnailsBox(): any {
-        return (Main as any).overview?._controls?._thumbnailsBox ||
-            (Main as any).overview?._overview?._controls?._thumbnailsBox ||
-            null;
+        const ov = (Main as any).overview;
+        if (!ov) return null;
+
+        // GNOME 45+ (including 50)
+        if (ov._overviewControls?._thumbnailsBox) {
+            log.debug('WorkspaceSwitcherStyle: found thumbnailsBox in _overviewControls');
+            return ov._overviewControls._thumbnailsBox;
+        }
+
+        // Fallbacks for older/different layouts
+        const manager = ov._overviewControls || ov._controls || ov._overview?._controls;
+        const box = manager?._thumbnailsBox || manager?._controls?._thumbnailsBox || null;
+        if (box) log.debug('WorkspaceSwitcherStyle: found thumbnailsBox via fallback manager');
+        else log.debug('WorkspaceSwitcherStyle: could NOT find thumbnailsBox');
+        return box;
     }
 
     private _getPreferredScale(): number {
         const monitor = (Main as any).layoutManager.primaryMonitor;
-        if (!monitor || !monitor.width || !monitor.height) return 0.15;
-
         const availWidth = monitor.width - 64; // Account for safe margins
         const nWorkspaces = (global as any).workspace_manager.n_workspaces;
         if (nWorkspaces <= 0) return 0.15;
@@ -298,6 +252,7 @@ export class WorkspaceSwitcherStyle {
 
             // 2. Patch the update method so Shell can't override our scale
             if (!this._origUpdateMaxThumbnailScale && typeof thumbnailsBox._updateMaxThumbnailScale === 'function') {
+                log.debug('WorkspaceSwitcherStyle: patching ThumbnailsBox._updateMaxThumbnailScale');
                 this._origUpdateMaxThumbnailScale = thumbnailsBox._updateMaxThumbnailScale;
 
                 const self = this;
@@ -309,6 +264,8 @@ export class WorkspaceSwitcherStyle {
                     const scale = self._getPreferredScale();
                     this._maxThumbnailScale = scale;
                     this._minThumbnailScale = scale;
+
+                    log.debug(`WorkspaceSwitcherStyle: enforced thumbnail scale ${scale}`);
 
                     // Ensure alignment is also enforced during updates
                     this.set_x_expand(false);

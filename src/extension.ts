@@ -32,7 +32,6 @@ import { Rectangle } from './utils/rectangle.js';
 import type { Indicator } from './ui/panel_settings.js';
 import { WorkspaceSwitcherStyle, isGnome50 } from './ui/workspace_switcher_style.js';
 import { ThemeConsistencyManager } from './ui/theme_consistency/index.js';
-import { OverviewScalingManager } from './ui/overview_scaling.js';
 import { PanelTransparencyManager } from './ui/panel_transparency.js';
 import { OverviewLayoutManager } from './ui/overview_layout.js';
 import { applyThemeConsistency } from './ui/theme_consistency/apply.js';
@@ -269,8 +268,6 @@ export class Ext extends Ecs.System<ExtEvent> {
     /** Calculates window placements when tiling and focus-switching */
     tiler: Tiling.Tiler = new Tiling.Tiler(this);
  
-    /** Manages workspace scaling in the overview */
-    overview_scaling_manager: OverviewScalingManager | null = null;
 
 
     /** Manages theme consistency (session injection) */
@@ -344,7 +341,6 @@ export class Ext extends Ecs.System<ExtEvent> {
         // Workspace switcher style — react to toggle and accent-color changes
         const id_ws_style = this.settings.ext.connect('changed::workspace-switcher-style', () => {
             this.toggle_workspace_switcher_style(this.settings.workspace_switcher_style());
-            this.overview_scaling_manager?.updateSetting(this.settings.workspace_overview_large_active());
         });
         this._settings_signal_ids.push([this.settings.ext, id_ws_style]);
 
@@ -357,10 +353,6 @@ export class Ext extends Ecs.System<ExtEvent> {
 
 
 
-        const id_ws_large_active = this.settings.ext.connect('changed::workspace-overview-large-active', () => {
-            this.overview_scaling_manager?.updateSetting(this.settings.workspace_overview_large_active());
-        });
-        this._settings_signal_ids.push([this.settings.ext, id_ws_large_active]);
 
 
 
@@ -394,8 +386,6 @@ export class Ext extends Ecs.System<ExtEvent> {
         this.toggle_theme_consistency(this.settings.theme_consistency_style(), false);
         this.toggle_panel_transparency(this.settings.panel_transparency(), false);
 
-        this.overview_scaling_manager = new OverviewScalingManager(this.settings.workspace_overview_large_active());
-        this.overview_scaling_manager.enable();
 
 
         this.overview_layout_manager = new OverviewLayoutManager(this);
@@ -500,10 +490,6 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.workspace_switcher_style_handler = null;
         }
 
-        if (this.overview_scaling_manager) {
-            this.overview_scaling_manager.disable();
-            this.overview_scaling_manager = null;
-        }
 
 
         if (this.theme_consistency_handler) {
@@ -2872,17 +2858,10 @@ export class Ext extends Ecs.System<ExtEvent> {
             }
             this.workspace_switcher_style_handler.enable();
 
-            // When switcher style (Overview Style & Blur) is enabled,
-            // we disable workspace enlargement for a cleaner, unified look.
-            this.overview_scaling_manager?.updateSetting(false);
+            // Restore enlargement setting based on user preference
         } else {
             this.workspace_switcher_style_handler?.disable();
             this.workspace_switcher_style_handler = null;
-
-            // Restore enlargement setting based on user preference
-            this.overview_scaling_manager?.updateSetting(
-                this.settings.workspace_overview_large_active()
-            );
         }
 
         if (save) {

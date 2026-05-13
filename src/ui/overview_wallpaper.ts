@@ -15,9 +15,9 @@ function buildWorkspaceBgCss(): string {
 .workspace-background-container,
 .workspace-background-actor,
 .workspace-background-group {
-    opacity: 1 !important;
+    opacity: 0.01 !important;
     visibility: visible !important;
-    background-color: rgba(0, 0, 0, 0.45) !important;
+    background-color: transparent !important;
     box-shadow: none !important;
     border: none !important;
 }
@@ -110,14 +110,21 @@ export class OverviewWallpaperStyle {
         const proto = AppFolderDialog.prototype as any;
         if (!proto._o_tiling_patched) {
             const origOpen = proto.open;
-            proto.open = function(...args: any[]) {
+            proto.open = function(this: any, ...args: any[]) {
                 origOpen.apply(this, args);
                 if (!this._blurEffect) {
+                    const sigma = 15;
                     this._blurEffect = new Shell.BlurEffect({
                         brightness: 0.6,
-                        radius: 30,
                         mode: Shell.BlurMode.BACKGROUND,
                     });
+
+                    if ('radius' in (this._blurEffect as any)) {
+                        (this._blurEffect as any).radius = sigma * 2;
+                    } else if ('sigma' in (this._blurEffect as any)) {
+                        (this._blurEffect as any).sigma = sigma;
+                    }
+
                     this.add_effect(this._blurEffect);
                 }
             };
@@ -134,17 +141,41 @@ export class OverviewWallpaperStyle {
         }));
     }
 
+    private _getOverviewControls(): Clutter.Actor | null {
+        const ov = (Main as any).overview;
+        // Robust discovery across GNOME versions
+        const manager = ov?._overview || ov?._controlsManager || ov?._overviewControls;
+
+        if (manager?._controls instanceof Clutter.Actor)
+            return manager._controls;
+
+        if (ov?._controls instanceof Clutter.Actor)
+            return ov._controls;
+            
+        // GNOME 50+ fallback
+        if (ov?._overviewControls?._group instanceof Clutter.Actor)
+            return ov._overviewControls._group;
+
+        return null;
+    }
+
     private _applyBackgroundBlur(): void {
         if (this._bgBlurEffect) return;
 
+        const sigma = 20;
         this._bgBlurEffect = new Shell.BlurEffect({
-            brightness: 0.6,
-            radius: 40, // Slightly higher radius for the full-screen background
+            brightness: 0.85,
             mode: Shell.BlurMode.BACKGROUND,
         });
 
-        // The background in the overview is typically held by the thumbnails box parent or the overview controls
-        const controls = (Main as any).overview?._overview?._controls || (Main as any).overview?._controls;
+        // Use 'radius' for GNOME 50+, fallback to 'sigma' for older versions
+        if ('radius' in (this._bgBlurEffect as any)) {
+            (this._bgBlurEffect as any).radius = sigma * 2;
+        } else if ('sigma' in (this._bgBlurEffect as any)) {
+            (this._bgBlurEffect as any).sigma = sigma;
+        }
+
+        const controls = this._getOverviewControls();
         if (controls) {
             controls.add_effect_with_name('o-tiling-overview-blur', this._bgBlurEffect);
         }
@@ -153,7 +184,7 @@ export class OverviewWallpaperStyle {
     private _removeBackgroundBlur(): void {
         if (!this._bgBlurEffect) return;
 
-        const controls = (Main as any).overview?._overview?._controls || (Main as any).overview?._controls;
+        const controls = this._getOverviewControls();
         if (controls) {
             controls.remove_effect_by_name('o-tiling-overview-blur');
         }

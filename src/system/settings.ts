@@ -86,7 +86,6 @@ const THEME_CONSISTENCY_STYLE = 'theme-consistency-style';
 const SKIP_OVERVIEW = 'skip-overview';
 const SHOW_MINIMIZE_MAXIMIZE_BUTTONS = 'show-minimize-maximize-buttons';
 const SHOW_CLOSE_BUTTON = 'show-close-button';
-const WORKSPACE_OVERVIEW_LARGE_ACTIVE = 'workspace-overview-large-active';
 const PANEL_TRANSPARENCY = 'panel-transparency';
 const PANEL_TRANSPARENCY_OPACITY = 'panel-transparency-opacity';
 const PANEL_TRANSPARENCY_BLUR_STYLE = 'panel-transparency-blur-style';
@@ -260,13 +259,6 @@ export class ExtensionSettings {
         return this.ext.get_boolean(SHOW_CLOSE_BUTTON);
     }
 
-    workspace_overview_large_active(): boolean {
-        // If workspace switcher style is enabled, we force large active to false
-        if (this.workspace_switcher_style()) {
-            return false;
-        }
-        return this.ext.get_boolean(WORKSPACE_OVERVIEW_LARGE_ACTIVE);
-    }
 
 
     panel_transparency(): boolean {
@@ -400,9 +392,6 @@ export class ExtensionSettings {
         this.ext.set_boolean(SKIP_OVERVIEW, set);
     }
 
-    set_workspace_overview_large_active(set: boolean) {
-        this.ext.set_boolean(WORKSPACE_OVERVIEW_LARGE_ACTIVE, set);
-    }
 
     set_panel_transparency(v: boolean) {
         this.ext.set_boolean(PANEL_TRANSPARENCY, v);

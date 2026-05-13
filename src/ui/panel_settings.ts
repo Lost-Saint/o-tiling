@@ -25,6 +25,7 @@ import { isGnome50 } from './workspace_switcher_style.js';
 
 export class Indicator {
     button: any;
+    private ext: Ext;
 
     toggle_tiled: any;
     toggle_workspace_tiled: any;
@@ -36,6 +37,7 @@ export class Indicator {
     signals: Array<[any, number]> = [];
 
     constructor(ext: Ext) {
+        this.ext = ext;
         this.button = new Button(0.0, _('O-tiling Settings'));
 
         const path = get_current_path();
@@ -96,14 +98,6 @@ export class Indicator {
         );
         bm.addMenuItem(this.toggle_active);
 
-        // Panel Transparency quick-toggle
-        const toggle_panel_trans = toggle(
-            _('Transparent Panel'),
-            ext.settings.panel_transparency(),
-            { on: 'display-brightness-symbolic', off: 'display-brightness-symbolic' },
-            (state) => ext.toggle_panel_transparency(state),
-        );
-        bm.addMenuItem(toggle_panel_trans);
 
 
 
@@ -152,7 +146,7 @@ export class Indicator {
     }
 
     update_workspace_tiling_state() {
-        const ext = (globalThis as any).oTilingExtension?.ext;
+        const ext = this.ext;
         if (ext && this.toggle_workspace_tiled) {
             const workspace = ext.active_workspace();
             const tiled = ext.is_workspace_tiled(workspace);

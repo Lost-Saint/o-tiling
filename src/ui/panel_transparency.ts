@@ -111,7 +111,6 @@ export class PanelTransparencyManager {
     background-image: none !important;
     box-shadow: none !important;
     border-bottom: none !important;
-    transition-duration: 200ms;
 }
 
 /* Panel buttons — keep them readable on transparent background */

@@ -49,12 +49,6 @@
 
 
 
-        <key type="b" name="workspace-overview-large-active">
-            <default>true</default>
-            <summary>Whether the active workspace in the overview should be enlarged (GNOME default behavior)</summary>
-        </key>
-
-
 
         <key type="b" name="skip-overview">
             <default>false</default>
