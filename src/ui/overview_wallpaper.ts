@@ -1,4 +1,5 @@
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as Background from 'resource:///org/gnome/shell/ui/background.js';
 import * as log from '../utils/log.js';
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
@@ -8,19 +9,6 @@ import Clutter from 'gi://Clutter';
 
 function buildWorkspaceBgCss(): string {
     return `
-/* O-Tiling: Full Screen Overview Wallpaper — workspace backgrounds */
-.workspace-background,
-.workspace-background-content,
-.workspace-background-bin,
-.workspace-background-container,
-.workspace-background-actor,
-.workspace-background-group {
-    opacity: 0.01 !important;
-    visibility: visible !important;
-    background-color: transparent !important;
-    box-shadow: none !important;
-    border: none !important;
-}
 
 /* Search bar styling in overview */
 .search-entry {
@@ -33,20 +21,76 @@ function buildWorkspaceBgCss(): string {
 .search-entry:focus {
     background-color: rgba(0, 0, 0, 0.5) !important;
 }
+
+/* ── Shell UI frosted-glass layer (complements Shell.BlurEffect) ── */
+
+/* Overview controls panel background */
+.overview-controls,
+.controls-manager {
+    background-color: rgba(0, 0, 0, 0.18) !important;
+}
+
+/* Workspace thumbnails strip — semi-transparent so blur shows through */
+.workspace-thumbnails,
+.thumbnails-box,
+.workspace-thumbnails-container {
+    background-color: rgba(0, 0, 0, 0.22) !important;
+    border-radius: 12px !important;
+}
+
+/* Individual thumbnail cards — slight tint */
+.workspace-thumbnail {
+    background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* App grid / dash area */
+.dash-background {
+    background-color: rgba(0, 0, 0, 0.30) !important;
+    border-radius: 16px !important;
+}
+
+/* Window picker caption */
+.window-caption {
+    background-color: rgba(0, 0, 0, 0.55) !important;
+    border-radius: 8px !important;
+    color: rgba(255, 255, 255, 0.90) !important;
+}
+
+/* App folder dialog */
+.app-folder-dialog {
+    background-color: rgba(0, 0, 0, 0.30) !important;
+    border-radius: 24px !important;
+}
+
+.app-folder-dialog .folder-name-entry {
+    background-color: transparent !important;
+}
+
+/* Closed app folder icon */
+.app-folder,
+.app-folder-icon,
+.overview-icon.app-folder {
+    background-color: rgba(0, 0, 0, 0.2) !important;
+    border-radius: 18px !important;
+}
 `;
 }
 
 /**
- * Manages the aesthetic of a "Full Screen" overview wallpaper by hiding/tinting
- * individual workspace background actors and applying blur effects to dialogs.
+ * Manages the aesthetic of a "Full Screen" overview with:
+ *   1. Wallpaper background blur  — Shell.BlurEffect on the overview controls actor
+ *   2. Shell UI blur              — Shell.BlurEffect on the workspace-thumbnails box
+ *      so the thumbnails themselves appear over a blurred background
  */
 export class OverviewWallpaperStyle {
     private _file: Gio.File | null = null;
-    private _appFolderBlur: any = null;
-    private _bgBlurEffect: Shell.BlurEffect | null = null;
+    private _bgBlurEffect: any = null;         // blur behind overview controls (wp blur)
+    private _shellUIBlurEffect: any = null;    // blur behind thumbnails strip (shell blur)
     private _signals: number[] = [];
+    private _bgManagers: any[] = [];
+    private _bgActors: Clutter.Actor[] = [];
 
-    constructor() {}
+    constructor() { }
 
     enable(): void {
         if (this._file) return;
@@ -65,10 +109,11 @@ export class OverviewWallpaperStyle {
                 theme.load_stylesheet(this._file);
                 this._patchAppFolderDialog();
                 this._setupBlurSignals();
-                
+
                 // If overview is already open, apply immediately
-                if (Main.overview.visible || Main.overview.showing) {
+                if (Main.overview.visible || (Main.overview as any).showing) {
                     this._applyBackgroundBlur();
+                    this._applyShellUIBlur();
                 }
             }
         } catch (e) {
@@ -92,6 +137,7 @@ export class OverviewWallpaperStyle {
             }
             this._unpatchAppFolderDialog();
             this._removeBackgroundBlur();
+            this._removeShellUIBlur();
         } catch (_) { /* best-effort cleanup */ }
 
         this._file = null;
@@ -99,30 +145,34 @@ export class OverviewWallpaperStyle {
         this._signals = [];
     }
 
+    // ── Private ──────────────────────────────────────────────────────────────
+
     private _patchAppFolderDialog(): void {
-        // Apply blur to app folder dialogs for a consistent glass look
-        const appDisplay = (Main as any).overview?._overview?._controls?._appDisplay || 
-                           (Main as any).overview?._controls?._appDisplay;
-        
+        const appDisplay = (Main as any).overview?._overview?._controls?._appDisplay ||
+            (Main as any).overview?._controls?._appDisplay;
+
         const { AppFolderDialog } = appDisplay || {};
         if (!AppFolderDialog) return;
 
         const proto = AppFolderDialog.prototype as any;
         if (!proto._o_tiling_patched) {
             const origOpen = proto.open;
-            proto.open = function(this: any, ...args: any[]) {
+            proto.open = function (this: any, ...args: any[]) {
                 origOpen.apply(this, args);
                 if (!this._blurEffect) {
-                    const sigma = 15;
-                    this._blurEffect = new Shell.BlurEffect({
-                        brightness: 0.6,
-                        mode: Shell.BlurMode.BACKGROUND,
-                    });
+                    this._blurEffect = new Shell.BlurEffect();
+                    (this._blurEffect as any).brightness = 0.6;
 
-                    if ('radius' in (this._blurEffect as any)) {
-                        (this._blurEffect as any).radius = sigma * 2;
-                    } else if ('sigma' in (this._blurEffect as any)) {
-                        (this._blurEffect as any).sigma = sigma;
+                    const blurMode = (Shell as any).BlurMode;
+                    if (blurMode !== undefined && 'mode' in this._blurEffect) {
+                        this._blurEffect.mode = blurMode.BACKGROUND ?? 1;
+                    }
+
+                    const sigma = 15;
+                    if ('radius' in this._blurEffect) {
+                        this._blurEffect.radius = sigma * 2;
+                    } else if ('sigma' in this._blurEffect) {
+                        this._blurEffect.sigma = sigma;
                     }
 
                     this.add_effect(this._blurEffect);
@@ -135,74 +185,137 @@ export class OverviewWallpaperStyle {
     private _setupBlurSignals(): void {
         this._signals.push(Main.overview.connect('showing', () => {
             this._applyBackgroundBlur();
+            this._applyShellUIBlur();
         }));
         this._signals.push(Main.overview.connect('hiding', () => {
             this._removeBackgroundBlur();
+            this._removeShellUIBlur();
         }));
     }
 
-    private _getOverviewControls(): Clutter.Actor | null {
-        const ov = (Main as any).overview;
-
-        // GNOME 50+ primary path
-        const c50 = ov?._overview?._controls ?? ov?._controls;
-        if (c50 instanceof Clutter.Actor) return c50;
-
-        // Intermediate versions
-        const mgr = ov?._overview ?? ov?._controlsManager ?? ov?._overviewControls;
-        if (mgr?._controls instanceof Clutter.Actor) return mgr._controls;
-        if (mgr?._group instanceof Clutter.Actor) return mgr._group;
-
-        return null;
-    }
+    // ── Wallpaper blur (using BackgroundManager like Blur my Shell) ───────────
 
     private _applyBackgroundBlur(): void {
-        if (this._bgBlurEffect) return;
+        if (this._bgActors.length > 0) return;
 
         const sigma = 20;
 
         try {
-            // Construct without init-property args — safer across GNOME versions
-            this._bgBlurEffect = new Shell.BlurEffect();
-            (this._bgBlurEffect as any).brightness = 0.85;
+            for (let i = 0; i < Main.layoutManager.monitors.length; i++) {
+                const monitor = Main.layoutManager.monitors[i];
+                
+                const bgActor = new St.Widget({
+                    x: monitor.x,
+                    y: monitor.y,
+                    width: monitor.width,
+                    height: monitor.height
+                });
 
-            // Shell.BlurMode.BACKGROUND may be absent on some builds
-            const blurMode = (Shell as any).BlurMode;
-            if (blurMode !== undefined && 'mode' in (this._bgBlurEffect as any)) {
-                (this._bgBlurEffect as any).mode = blurMode.BACKGROUND ?? 1;
-            }
+                const bgManager = new (Background as any).BackgroundManager({
+                    container: bgActor,
+                    monitorIndex: i,
+                    controlPosition: false,
+                });
 
-            if ('radius' in (this._bgBlurEffect as any)) {
-                (this._bgBlurEffect as any).radius = sigma * 2;
-            } else if ('sigma' in (this._bgBlurEffect as any)) {
-                (this._bgBlurEffect as any).sigma = sigma;
-            }
+                const blurEffect = new Shell.BlurEffect();
+                (blurEffect as any).brightness = 0.85;
 
-            const controls = this._getOverviewControls();
-            if (controls) {
-                controls.add_effect_with_name('o-tiling-overview-blur', this._bgBlurEffect);
-            } else {
-                log.warn('OverviewWallpaperStyle: could not find overview controls for blur');
-                this._bgBlurEffect = null;
+                const blurMode = (Shell as any).BlurMode;
+                if (blurMode !== undefined && 'mode' in (blurEffect as any)) {
+                    (blurEffect as any).mode = blurMode.ACTOR ?? 0;
+                }
+
+                if ('radius' in (blurEffect as any)) {
+                    (blurEffect as any).radius = sigma * 2;
+                } else if ('sigma' in (blurEffect as any)) {
+                    (blurEffect as any).sigma = sigma;
+                }
+
+                bgActor.add_effect_with_name('o-tiling-overview-blur', blurEffect);
+                Main.layoutManager.overviewGroup.insert_child_at_index(bgActor, 0);
+
+                this._bgActors.push(bgActor);
+                this._bgManagers.push(bgManager);
             }
         } catch (e) {
-            log.warn(`OverviewWallpaperStyle: blur failed: ${e}`);
-            this._bgBlurEffect = null;
+            log.warn(`OverviewWallpaperStyle: bg blur failed: ${e}`);
+            this._removeBackgroundBlur();
         }
     }
 
     private _removeBackgroundBlur(): void {
-        if (!this._bgBlurEffect) return;
+        this._bgManagers.forEach(m => m.destroy());
+        this._bgManagers = [];
 
-        const controls = this._getOverviewControls();
-        if (controls) {
-            controls.remove_effect_by_name('o-tiling-overview-blur');
+        this._bgActors.forEach(a => {
+            if (a.get_parent()) {
+                a.get_parent()?.remove_child(a);
+            }
+            a.destroy();
+        });
+        this._bgActors = [];
+    }
+
+    // ── Shell UI blur (behind workspace-thumbnails strip) ─────────────────
+
+    private _getThumbnailsBox(): Clutter.Actor | null {
+        const ov = (Main as any).overview;
+        if (!ov) return null;
+
+        // GNOME 50+
+        if (ov._overviewControls?._thumbnailsBox)
+            return ov._overviewControls._thumbnailsBox;
+
+        const mgr = ov._overviewControls || ov._controls || ov._overview?._controls;
+        return mgr?._thumbnailsBox ?? mgr?._controls?._thumbnailsBox ?? null;
+    }
+
+    private _applyShellUIBlur(): void {
+        if (this._shellUIBlurEffect) return;
+
+        try {
+            this._shellUIBlurEffect = new Shell.BlurEffect();
+            (this._shellUIBlurEffect as any).brightness = 0.75;
+
+            const blurMode = (Shell as any).BlurMode;
+            if (blurMode !== undefined && 'mode' in (this._shellUIBlurEffect as any)) {
+                // BACKGROUND mode blurs what is behind the actor (the wallpaper)
+                // giving a frosted-glass look to the thumbnails strip
+                (this._shellUIBlurEffect as any).mode = blurMode.BACKGROUND ?? 1;
+            }
+
+            // Slightly stronger blur for the UI panel (40px radius)
+            if ('radius' in (this._shellUIBlurEffect as any)) {
+                (this._shellUIBlurEffect as any).radius = 40;
+            } else if ('sigma' in (this._shellUIBlurEffect as any)) {
+                (this._shellUIBlurEffect as any).sigma = 20;
+            }
+
+            const thumbnailsBox = this._getThumbnailsBox();
+            if (thumbnailsBox) {
+                thumbnailsBox.add_effect_with_name('o-tiling-shell-blur', this._shellUIBlurEffect);
+                log.info('OverviewWallpaperStyle: shell UI blur applied to thumbnails box');
+            } else {
+                log.warn('OverviewWallpaperStyle: could not find thumbnails box for shell UI blur');
+                this._shellUIBlurEffect = null;
+            }
+        } catch (e) {
+            log.warn(`OverviewWallpaperStyle: shell UI blur failed: ${e}`);
+            this._shellUIBlurEffect = null;
         }
-        this._bgBlurEffect = null;
+    }
+
+    private _removeShellUIBlur(): void {
+        if (!this._shellUIBlurEffect) return;
+
+        const thumbnailsBox = this._getThumbnailsBox();
+        if (thumbnailsBox) {
+            try { thumbnailsBox.remove_effect_by_name('o-tiling-shell-blur'); } catch (_) { }
+        }
+        this._shellUIBlurEffect = null;
     }
 
     private _unpatchAppFolderDialog(): void {
-        // We generally don't unpatch prototypes at runtime to avoid instability,
-        // but the effect itself is managed by the Shell lifecycle.
+        // Best-effort; Shell handles lifecycle of the effect itself
     }
 }
