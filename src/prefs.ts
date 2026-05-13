@@ -116,14 +116,6 @@ export default class OTilingPreferences extends ExtensionPreferences {
         settings.bind('workspace-switcher-style', switcherStyleRow as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
 
-        const overviewLargeActive = new Adw.SwitchRow({
-            title: _('Enlarge Active Workspace'),
-            subtitle: _('Whether the active workspace in the overview should be larger than others (GNOME default)'),
-        });
-        overviewGroup.add(overviewLargeActive);
-        settings.bind('workspace-overview-large-active', overviewLargeActive as any, 'active', Gio.SettingsBindFlags.DEFAULT);
-
-
         // Panel Transparency Group
         const panelGroup = new Adw.PreferencesGroup({
             title: _('Appearance — Panel'),

@@ -479,15 +479,90 @@ export class AutoTiler {
         return this.attach_to_window(ext, attach_to, win, placement);
     }
 
-    /** Schedules a fork to be reflowed */
+    /** Schedules a fork to be reflowed.
+     *
+     * If a window's actual size exceeds its allocated tile space (e.g. because
+     * Mutter enforced a minimum-size constraint), the fork's split ratio is
+     * adjusted to accommodate the window's real size. Without this, apps like
+     * GNOME Resources would fight the tiler in an infinite resize loop,
+     * producing a broken grid.
+     */
     reflow(ext: Ext, win: Entity) {
         const fork_entity = this.attached.get(win);
         if (!fork_entity) return;
 
         ext.register_fn(() => {
             const fork = this.forest.forks.get(fork_entity);
-            if (fork) this.tile(ext, fork, fork.area);
+            if (!fork) return;
+
+            // Only adjust ratios for two-child forks; single-child forks
+            // simply re-tile without ratio concerns.
+            if (fork.right) {
+                const window = ext.windows.get(win);
+                if (window) {
+                    this._adjust_for_minimum_size(ext, fork, window, win);
+                }
+            }
+
+            this.tile(ext, fork, fork.area);
         });
+    }
+
+    /**
+     * If a window's actual (Mutter-enforced) size exceeds the space the fork
+     * allocated to it, shift the split ratio so the window fits without
+     * overlapping its sibling.
+     */
+    private _adjust_for_minimum_size(
+        ext: Ext,
+        fork: Fork,
+        window: ShellWindow,
+        win: Entity,
+    ): void {
+        // Don't fight the user during manual resize
+        if (ext.grab_op !== null) return;
+
+        const actual = window.rect();
+        const is_left = fork.left.is_window(win) || fork.left.is_in_stack(win);
+        const is_right = !is_left && fork.right !== null &&
+            (fork.right.is_window(win) || fork.right.is_in_stack(win));
+
+        if (!is_left && !is_right) return;
+
+        const fork_length = fork.length();
+        // Minimum 256px guaranteed for the sibling (same as Fork.set_ratio)
+        const MIN_SIBLING = 256;
+
+        if (fork.is_horizontal()) {
+            const allocated = is_left
+                ? fork.length_left - ext.gap_inner_half
+                : fork_length - fork.length_left - ext.gap_inner_half;
+
+            // Only adjust if the window is noticeably larger than allocated
+            if (actual.width > allocated + 2) {
+                const needed = actual.width + ext.gap_inner_half;
+                const new_length = is_left
+                    ? Math.min(fork_length - MIN_SIBLING, needed)
+                    : Math.max(MIN_SIBLING, fork_length - needed);
+
+                fork.length_left = Math.round(new_length);
+                fork.prev_length_left = fork.length_left;
+            }
+        } else {
+            const allocated = is_left
+                ? fork.length_left - ext.gap_inner_half
+                : fork_length - fork.length_left - ext.gap_inner_half;
+
+            if (actual.height > allocated + 2) {
+                const needed = actual.height + ext.gap_inner_half;
+                const new_length = is_left
+                    ? Math.min(fork_length - MIN_SIBLING, needed)
+                    : Math.max(MIN_SIBLING, fork_length - needed);
+
+                fork.length_left = Math.round(new_length);
+                fork.prev_length_left = fork.length_left;
+            }
+        }
     }
 
     tile(ext: Ext, fork: Fork, area: Rectangle) {

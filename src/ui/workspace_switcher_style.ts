@@ -112,7 +112,9 @@ export class WorkspaceSwitcherStyle {
     private _workspaceAddedId: number | null = null;
     private _workspaceRemovedId: number | null = null;
     private _overviewShowingId: number | null = null;
+    private _origUpdateMaxThumbnailScale: any = null;
     private _origUpdateBorderRadius: any = null;
+
 
     constructor(
         accentColor: string,
@@ -243,9 +245,40 @@ export class WorkspaceSwitcherStyle {
             null;
     }
 
+    private _getPreferredScale(): number {
+        const monitor = (Main as any).layoutManager.primaryMonitor;
+        if (!monitor || !monitor.width || !monitor.height) return 0.15;
+
+        const availWidth = monitor.width - 64; // Account for safe margins
+        const nWorkspaces = (global as any).workspace_manager.n_workspaces;
+        if (nWorkspaces <= 0) return 0.15;
+
+        const aspectRatio = monitor.width / monitor.height;
+        if (!Number.isFinite(aspectRatio) || aspectRatio <= 0) return 0.15;
+
+        const spacing = 12; // Matching CSS spacing
+
+        // Calculate scale based on hardcoded 15% preference
+        let scale = 15 / 100;
+
+        // Calculate total width if we used the preferred scale
+        const preferredWidth = (monitor.height * scale * aspectRatio + spacing) * nWorkspaces - spacing;
+
+        if (preferredWidth > availWidth) {
+            // Shrink scale so all thumbnails fit on screen
+            const maxThumbWidth = (availWidth + spacing) / nWorkspaces - spacing;
+            scale = (maxThumbWidth / aspectRatio) / monitor.height;
+            // Minimum usable scale
+            scale = Math.max(scale, 0.02);
+        }
+
+        if (!Number.isFinite(scale)) return 0.15;
+        return scale;
+    }
+
     /**
-     * Applies the percentage-based scale to ThumbnailsBox._maxThumbnailScale,
-     * mirroring what Just Perfection's workspaceSwitcherSetSize() does.
+     * Applies the percentage-based scale to ThumbnailsBox.
+     * Patches the instance's _updateMaxThumbnailScale to ensure it's sticky.
      */
     private _applyThumbnailScale(): void {
         if (!isGnome50()) return;
@@ -254,40 +287,39 @@ export class WorkspaceSwitcherStyle {
             if (!thumbnailsBox) return;
 
             // 1. Center the thumbnails strip horizontally
-            // Setting x_expand to false allows the box to take its natural width,
-            // while x_align CENTER centers that width within the parent.
             thumbnailsBox.set_x_expand(false);
             thumbnailsBox.set_x_align(Clutter.ActorAlign.CENTER);
 
             const parent = thumbnailsBox.get_parent();
             if (parent) {
                 parent.set_x_expand(true);
-                parent.set_x_align(Clutter.ActorAlign.FILL); 
+                parent.set_x_align(Clutter.ActorAlign.FILL);
             }
 
-            // 2. Dynamic scale calculation ("Auto Small") to fit all thumbnails
-            const monitor = (Main as any).layoutManager.primaryMonitor;
-            if (!monitor) return;
+            // 2. Patch the update method so Shell can't override our scale
+            if (!this._origUpdateMaxThumbnailScale && typeof thumbnailsBox._updateMaxThumbnailScale === 'function') {
+                this._origUpdateMaxThumbnailScale = thumbnailsBox._updateMaxThumbnailScale;
 
-            const availWidth = monitor.width - 64; // Account for safe margins
-            const nWorkspaces = (global as any).workspace_manager.n_workspaces;
-            const aspectRatio = monitor.width / monitor.height;
-            const spacing = 12; // Matching CSS spacing
+                const self = this;
+                thumbnailsBox._updateMaxThumbnailScale = function (this: any, ...args: any[]) {
+                    // Call original to let Shell do its thing (calculating its own internal _maxThumbnailScale)
+                    self._origUpdateMaxThumbnailScale.apply(this, args);
 
-            // Calculate scale based on hardcoded 15% preference
-            let scale = 15 / 100;
+                    // Then override with our preferred scale
+                    const scale = self._getPreferredScale();
+                    this._maxThumbnailScale = scale;
+                    this._minThumbnailScale = scale;
 
-            // Calculate total width if we used the preferred scale
-            const preferredWidth = (monitor.height * scale * aspectRatio + spacing) * nWorkspaces - spacing;
+                    // Ensure alignment is also enforced during updates
+                    this.set_x_expand(false);
+                    this.set_x_align(Clutter.ActorAlign.CENTER);
 
-            if (preferredWidth > availWidth) {
-                // Shrink scale so all thumbnails fit on screen
-                const maxThumbWidth = (availWidth + spacing) / nWorkspaces - spacing;
-                scale = (maxThumbWidth / aspectRatio) / monitor.height;
-                // Minimum usable scale
-                scale = Math.max(scale, 0.02); // Allow very small thumbnails if many workspaces
+                    this.queue_relayout();
+                };
             }
 
+            // Initial force update
+            const scale = this._getPreferredScale();
             if (this._origMaxThumbnailScale === null) {
                 this._origMaxThumbnailScale = thumbnailsBox._maxThumbnailScale ?? null;
             }
@@ -295,7 +327,6 @@ export class WorkspaceSwitcherStyle {
                 this._origMinThumbnailScale = thumbnailsBox._minThumbnailScale ?? null;
             }
 
-            // Overriding both ensures it can shrink below default 0.05
             thumbnailsBox._maxThumbnailScale = scale;
             thumbnailsBox._minThumbnailScale = scale;
 
@@ -314,10 +345,19 @@ export class WorkspaceSwitcherStyle {
         try {
             const thumbnailsBox = this._getThumbnailsBox();
             if (thumbnailsBox) {
+                if (this._origUpdateMaxThumbnailScale) {
+                    thumbnailsBox._updateMaxThumbnailScale = this._origUpdateMaxThumbnailScale;
+                    this._origUpdateMaxThumbnailScale = null;
+                }
+
                 if (this._origMaxThumbnailScale !== null)
                     thumbnailsBox._maxThumbnailScale = this._origMaxThumbnailScale;
                 if (this._origMinThumbnailScale !== null)
                     thumbnailsBox._minThumbnailScale = this._origMinThumbnailScale;
+
+                // Restore alignment
+                thumbnailsBox.set_x_expand(true);
+                thumbnailsBox.set_x_align(Clutter.ActorAlign.FILL);
 
                 thumbnailsBox.queue_relayout?.();
             }
@@ -373,7 +413,17 @@ export class WorkspaceSwitcherStyle {
             const child = children[activeIndex];
             if (!child) return;
 
+            // Guard: if the child hasn't been allocated yet, its allocation box
+            // will contain INT_MIN sentinel values (-2147483648) which propagate
+            // NaN through StDrawingArea / StBin allocation assertions.
+            if (!child.has_allocation?.() && typeof child.has_allocation === 'function') return;
+
             const box = child.get_allocation_box();
+
+            // Sanity-check: reject sentinel / unallocated boxes
+            if (!Number.isFinite(box.x1) || !Number.isFinite(box.x2) ||
+                box.x1 < -1e9 || box.x2 < -1e9) return;
+
             const childCenter = (box.x1 + box.x2) / 2;
 
             const scroll = thumbnailsBox.get_parent();
@@ -381,6 +431,8 @@ export class WorkspaceSwitcherStyle {
 
             const adjustment = scroll.get_hadjustment();
             const pageSize = adjustment.page_size;
+            if (!Number.isFinite(pageSize) || pageSize <= 0) return;
+
             adjustment.value = childCenter - pageSize / 2;
         } catch (e) {
             log.warn(`WorkspaceSwitcherStyle: _scrollToActiveWorkspace failed: ${e}`);

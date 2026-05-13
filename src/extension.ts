@@ -344,6 +344,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         // Workspace switcher style — react to toggle and accent-color changes
         const id_ws_style = this.settings.ext.connect('changed::workspace-switcher-style', () => {
             this.toggle_workspace_switcher_style(this.settings.workspace_switcher_style());
+            this.overview_scaling_manager?.updateSetting(this.settings.workspace_overview_large_active());
         });
         this._settings_signal_ids.push([this.settings.ext, id_ws_style]);
 

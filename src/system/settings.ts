@@ -261,6 +261,10 @@ export class ExtensionSettings {
     }
 
     workspace_overview_large_active(): boolean {
+        // If workspace switcher style is enabled, we force large active to false
+        if (this.workspace_switcher_style()) {
+            return false;
+        }
         return this.ext.get_boolean(WORKSPACE_OVERVIEW_LARGE_ACTIVE);
     }
 

@@ -51,6 +51,11 @@ export class OverviewLayoutManager {
                 const containerWidth = container.width;
                 const containerHeight = container.height;
 
+                // Guard: if container or monitor has zero dimensions, skip to
+                // avoid NaN propagating into Clutter allocation (GNOME 50 crash)
+                if (!containerWidth || !containerHeight ||
+                    !monitorArea.width || !monitorArea.height) return;
+
                 for (const preview of previews) {
                     const metaWin = preview.metaWindow;
                     if (!metaWin) continue;
@@ -78,6 +83,13 @@ export class OverviewLayoutManager {
                         width: wRel * containerWidth,
                         height: hRel * containerHeight,
                     };
+
+                    // Guard: reject any rect containing NaN or Infinity before
+                    // it reaches Clutter's allocation pipeline
+                    if (!Number.isFinite(targetRect.x) || !Number.isFinite(targetRect.y) ||
+                        !Number.isFinite(targetRect.width) || !Number.isFinite(targetRect.height)) {
+                        continue;
+                    }
 
                     // GNOME 45+ uses _setTargetRect for animated layout updates
                     if (typeof preview._setTargetRect === 'function') {

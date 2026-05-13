@@ -9,6 +9,7 @@ import * as log from '../utils/log.js';
  */
 export class OverviewScalingManager {
     private _origUpdateWorkspacesState: any = null;
+    private _origWindowPreviewOnHoverChanged: any = null;
     private _enabled: boolean;
 
     constructor(enabled: boolean = true) {
@@ -18,6 +19,8 @@ export class OverviewScalingManager {
     async enable(): Promise<void> {
         try {
             const { WorkspacesView } = await import('resource:///org/gnome/shell/ui/workspacesView.js');
+            const { WindowPreview } = await import('resource:///org/gnome/shell/ui/windowPreview.js');
+
             if (!WorkspacesView) return;
 
             const proto = WorkspacesView.prototype as any;
@@ -73,6 +76,22 @@ export class OverviewScalingManager {
                 };
             }
 
+            // Patch WindowPreview hover scaling
+            if (WindowPreview && !this._origWindowPreviewOnHoverChanged) {
+                const wpProto = WindowPreview.prototype as any;
+                this._origWindowPreviewOnHoverChanged = wpProto._onHoverChanged;
+
+                const self = this;
+                wpProto._onHoverChanged = function (this: any, ...args: any[]) {
+                    // If enlargement is disabled, we suppress hover scaling by NOT calling the original logic
+                    // which usually triggers a scale-up update.
+                    if (!self._enabled) {
+                        return;
+                    }
+                    return self._origWindowPreviewOnHoverChanged.apply(this, args);
+                };
+            }
+
             this.update();
         } catch (e) {
             log.warn(`OverviewScalingManager: failed to enable: ${e}`);
@@ -86,10 +105,20 @@ export class OverviewScalingManager {
                 if (WorkspacesView) {
                     (WorkspacesView.prototype as any)._updateWorkspacesState = this._origUpdateWorkspacesState;
                     this._origUpdateWorkspacesState = null;
-                    this.update();
                 }
             }).catch(() => { /* best-effort */ });
         }
+
+        if (this._origWindowPreviewOnHoverChanged) {
+            import('resource:///org/gnome/shell/ui/windowPreview.js').then(({ WindowPreview }) => {
+                if (WindowPreview) {
+                    (WindowPreview.prototype as any)._onHoverChanged = this._origWindowPreviewOnHoverChanged;
+                    this._origWindowPreviewOnHoverChanged = null;
+                }
+            }).catch(() => { /* best-effort */ });
+        }
+
+        this.update();
     }
 
     updateSetting(enabled: boolean): void {
