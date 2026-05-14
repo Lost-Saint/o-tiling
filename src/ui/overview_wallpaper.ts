@@ -38,11 +38,6 @@ function buildWorkspaceBgCss(): string {
     background-color: transparent !important;
 }
 
-/* Individual thumbnail cards — slight tint */
-.workspace-thumbnail {
-    background-color: rgba(255, 255, 255, 0.04) !important;
-}
-
 /* App grid / dash area */
 .dash-background {
     background-color: rgba(0, 0, 0, 0.30) !important;
@@ -100,33 +95,40 @@ function buildWorkspaceBgCss(): string {
     color: rgba(255, 255, 255, 0.7) !important;
 }
 
-/* ── App folder dialog — frosted-glass ── */
-.app-folder-dialog {
-    background-color: rgba(0, 0, 0, 0.20) !important;
-    border-radius: 32px !important;
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
-}
-
-.app-folder-dialog .folder-name-entry {
-    background-color: transparent !important;
-}
-
-.app-folder-dialog .folder-name-label {
-    color: rgba(255, 255, 255, 0.9) !important;
-}
-
-/* App folder dialog scrim (the dimming overlay behind the dialog) */
+/* ── App folder dialog — solid card, blur-paired ── */
 .app-folder-dialog-container {
     background-color: transparent !important;
 }
 
-/* Closed app folder icon */
+.app-folder-dialog {
+    background-color: rgba(20, 20, 28, 0.92) !important;
+    border-radius: 28px !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+        0 20px 60px rgba(0, 0, 0, 0.65) !important;
+}
+
+.app-folder-dialog .folder-name-entry {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: white !important;
+    font-weight: 600 !important;
+}
+
+.app-folder-dialog .folder-name-label {
+    color: white !important;
+    font-weight: 700 !important;
+    font-size: 1.2em !important;
+}
+
 .app-folder,
 .app-folder-icon,
 .overview-icon.app-folder {
-    background-color: rgba(0, 0, 0, 0.2) !important;
-    border-radius: 18px !important;
+    background-color: rgba(255, 255, 255, 0.10) !important;
+    border-radius: 20px !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
 }
 `;
 }
@@ -161,13 +163,12 @@ export class OverviewWallpaperStyle {
 
             if (theme) {
                 theme.load_stylesheet(this._file);
-                this._patchAppFolderDialog();
                 this._setupBlurSignals();
 
                 // If overview is already open, apply immediately
                 if (Main.overview.visible || (Main.overview as any).showing) {
                     this._applyBackgroundBlur();
-                    this._applyShellUIBlur();
+                    // Shell UI blur on thumbnails removed — causes square bg artifact
                 }
             }
         } catch (e) {
@@ -189,7 +190,7 @@ export class OverviewWallpaperStyle {
             if (this._file.query_exists(null)) {
                 this._file.delete(null);
             }
-            this._unpatchAppFolderDialog();
+
             this._removeBackgroundBlur();
             this._removeShellUIBlur();
         } catch (_) { /* best-effort cleanup */ }
@@ -201,58 +202,12 @@ export class OverviewWallpaperStyle {
 
     // ── Private ──────────────────────────────────────────────────────────────
 
-    private _patchAppFolderDialog(): void {
-        const { AppFolderDialog } = AppDisplay as any;
-        if (!AppFolderDialog) {
-            log.warn('OverviewWallpaperStyle: AppFolderDialog not found in AppDisplay');
-            return;
-        }
-
-        const proto = AppFolderDialog.prototype as any;
-        if (!proto._o_tiling_patched) {
-            const origOpen = proto.open;
-            proto._o_tiling_orig_open = origOpen;
-            proto.open = function (this: any, ...args: any[]) {
-                if (origOpen) origOpen.apply(this, args);
-                
-                if (!this._blurEffect) {
-                    try {
-                        this._blurEffect = new Shell.BlurEffect();
-                        (this._blurEffect as any).brightness = 0.55;
-
-                        const blurMode = (Shell as any).BlurMode;
-                        if (blurMode !== undefined && 'mode' in this._blurEffect) {
-                            this._blurEffect.mode = blurMode.BACKGROUND ?? 1;
-                        }
-
-                        const sigma = 30;
-                        if ('radius' in this._blurEffect) {
-                            this._blurEffect.radius = sigma * 2;
-                        } else if ('sigma' in this._blurEffect) {
-                            this._blurEffect.sigma = sigma;
-                        }
-
-                        // Apply to the main dialog actor for full coverage
-                        const target = this;
-                        target.add_effect_with_name('o-tiling-appfolder-blur', this._blurEffect);
-                        log.info('OverviewWallpaperStyle: Applied high-quality blur to AppFolderDialog');
-                    } catch (e) {
-                        log.warn(`OverviewWallpaperStyle: Failed to apply blur to AppFolderDialog: ${e}`);
-                    }
-                }
-            };
-            proto._o_tiling_patched = true;
-        }
-    }
-
     private _setupBlurSignals(): void {
         this._signals.push(Main.overview.connect('showing', () => {
             this._applyBackgroundBlur();
-            this._applyShellUIBlur();
         }));
         this._signals.push(Main.overview.connect('hiding', () => {
             this._removeBackgroundBlur();
-            this._removeShellUIBlur();
         }));
     }
 
@@ -382,37 +337,4 @@ export class OverviewWallpaperStyle {
         this._shellUIBlurEffect = null;
     }
 
-    private _unpatchAppFolderDialog(): void {
-        const { AppFolderDialog } = AppDisplay as any;
-        if (!AppFolderDialog) return;
-
-        const proto = AppFolderDialog.prototype as any;
-        if (proto._o_tiling_patched) {
-            // Clean up blur effects on any live dialog instances
-            try {
-                const appDisplay = (Main as any).overview?._controls?._appDisplay
-                    ?? (Main as any).overview?._overview?._controls?._appDisplay;
-                const folders = appDisplay?._folderIcons;
-                if (folders) {
-                    for (const folder of folders) {
-                        const dialog = folder?._dialog;
-                        if (dialog?._blurEffect) {
-                            // Clean up from both potential targets (legacy and new)
-                            try { dialog.remove_effect_by_name('o-tiling-appfolder-blur'); } catch (_) { }
-                            try { dialog._viewBox?.remove_effect_by_name('o-tiling-appfolder-blur'); } catch (_) { }
-                            
-                            try { dialog._blurEffect.destroy?.(); } catch (_) { }
-                            dialog._blurEffect = null;
-                        }
-                    }
-                }
-            } catch (_) { /* best-effort cleanup of live instances */ }
-
-            if (proto._o_tiling_orig_open) {
-                proto.open = proto._o_tiling_orig_open;
-            }
-            delete proto._o_tiling_orig_open;
-            delete proto._o_tiling_patched;
-        }
-    }
 }
