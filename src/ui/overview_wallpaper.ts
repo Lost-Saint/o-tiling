@@ -31,12 +31,11 @@ function buildWorkspaceBgCss(): string {
     background-color: rgba(0, 0, 0, 0.18) !important;
 }
 
-/* Workspace thumbnails strip — semi-transparent so blur shows through */
+/* Workspace thumbnails strip — completely transparent */
 .workspace-thumbnails,
 .thumbnails-box,
 .workspace-thumbnails-container {
-    background-color: rgba(0, 0, 0, 0.22) !important;
-    border-radius: 12px !important;
+    background-color: transparent !important;
 }
 
 /* Individual thumbnail cards — slight tint */
@@ -179,8 +178,9 @@ export class OverviewWallpaperStyle {
                             this._blurEffect.sigma = sigma;
                         }
 
-                        this.add_effect_with_name('o-tiling-appfolder-blur', this._blurEffect);
-                        log.info('OverviewWallpaperStyle: Applied blur to AppFolderDialog');
+                        const target = this._viewBox || this;
+                        target.add_effect_with_name('o-tiling-appfolder-blur', this._blurEffect);
+                        log.info('OverviewWallpaperStyle: Applied blur to AppFolderDialog target');
                     } catch (e) {
                         log.warn(`OverviewWallpaperStyle: Failed to apply blur to AppFolderDialog: ${e}`);
                     }

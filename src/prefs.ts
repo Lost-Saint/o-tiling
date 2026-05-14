@@ -12,20 +12,21 @@ export default class OTilingPreferences extends ExtensionPreferences {
     async fillPreferencesWindow(window: Adw.PreferencesWindow) {
         const settings = this.getSettings();
 
-        const page = new Adw.PreferencesPage({
-            title: _('General'),
+        const behaviorPage = new Adw.PreferencesPage({
+            title: _('Behavior'),
             icon_name: 'dialog-information-symbolic',
         });
-        window.add(page);
+        window.add(behaviorPage);
 
         // Tiling Group
         const tilingGroup = new Adw.PreferencesGroup({
             title: _('Tiling'),
         });
-        page.add(tilingGroup);
+        behaviorPage.add(tilingGroup);
 
         const tileByDefault = new Adw.SwitchRow({
             title: _('Tile Windows by Default'),
+            subtitle: _('Automatically tile new windows as they are opened'),
         });
         tilingGroup.add(tileByDefault);
         settings.bind('tile-by-default', tileByDefault as any, 'active', Gio.SettingsBindFlags.DEFAULT);
@@ -33,36 +34,47 @@ export default class OTilingPreferences extends ExtensionPreferences {
 
         const snapToGrid = new Adw.SwitchRow({
             title: _('Snap to Grid (Floating Mode)'),
+            subtitle: _('Snap floating windows to a grid while moving or resizing'),
         });
         tilingGroup.add(snapToGrid);
         settings.bind('snap-to-grid', snapToGrid as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
         const smartGaps = new Adw.SwitchRow({
             title: _('Smart Gaps'),
+            subtitle: _('Remove gaps when only one window is tiled on the screen'),
         });
         tilingGroup.add(smartGaps);
         settings.bind('smart-gaps', smartGaps as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
+        const appearancePage = new Adw.PreferencesPage({
+            title: _('Appearance'),
+            icon_name: 'preferences-desktop-theme-symbolic',
+        });
+        window.add(appearancePage);
+
         // Appearance Group
         const appearanceGroup = new Adw.PreferencesGroup({
-            title: _('Appearance — General'),
+            title: _('Window'),
         });
-        page.add(appearanceGroup);
+        appearancePage.add(appearanceGroup);
 
         const showTitle = new Adw.SwitchRow({
             title: _('Show Window Titles'),
+            subtitle: _('Display title bars on tiled windows'),
         });
         appearanceGroup.add(showTitle);
         settings.bind('show-title', showTitle as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
         const showMinMax = new Adw.SwitchRow({
             title: _('Show Minimize and Maximize Buttons'),
+            subtitle: _('Show standard window controls on title bars'),
         });
         appearanceGroup.add(showMinMax);
         settings.bind('show-minimize-maximize-buttons', showMinMax as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
         const showClose = new Adw.SwitchRow({
             title: _('Show Close Button'),
+            subtitle: _('Show the close button on title bars'),
         });
         appearanceGroup.add(showClose);
         settings.bind('show-close-button', showClose as any, 'active', Gio.SettingsBindFlags.DEFAULT);
@@ -97,9 +109,9 @@ export default class OTilingPreferences extends ExtensionPreferences {
 
         // Overview Group
         const overviewGroup = new Adw.PreferencesGroup({
-            title: _('Appearance — Workspace Overview'),
+            title: _('Workspace Overview'),
         });
-        page.add(overviewGroup);
+        appearancePage.add(overviewGroup);
 
         const skipOverview = new Adw.SwitchRow({
             title: _('Skip Overview on Startup'),
@@ -118,9 +130,9 @@ export default class OTilingPreferences extends ExtensionPreferences {
 
         // Panel Transparency Group
         const panelGroup = new Adw.PreferencesGroup({
-            title: _('Appearance — Panel'),
+            title: _('Panel'),
         });
-        page.add(panelGroup);
+        appearancePage.add(panelGroup);
 
         const panelTransRow = new Adw.SwitchRow({
             title: _('Transparent Panel'),
@@ -146,18 +158,20 @@ export default class OTilingPreferences extends ExtensionPreferences {
 
         // Aura Group
         const auraGroup = new Adw.PreferencesGroup({
-            title: _('Appearance — Active Hint (Aura)'),
+            title: _('Active Hint (Aura)'),
         });
-        page.add(auraGroup);
+        appearancePage.add(auraGroup);
 
         const activeHint = new Adw.SwitchRow({
             title: _('Show Active Hint (Aura)'),
+            subtitle: _('Highlight the currently focused window with a colored border'),
         });
         auraGroup.add(activeHint);
         settings.bind('active-hint', activeHint as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
         const borderRadius = new Adw.SpinRow({
             title: _('Active Border Radius'),
+            subtitle: _('Corner roundness of the active window hint'),
             adjustment: new Gtk.Adjustment({ lower: 0, upper: 30, step_increment: 1 }),
         });
         auraGroup.add(borderRadius);
@@ -165,6 +179,7 @@ export default class OTilingPreferences extends ExtensionPreferences {
 
         const borderWidth = new Adw.SpinRow({
             title: _('Active Border Width'),
+            subtitle: _('Thickness of the active window hint'),
             adjustment: new Gtk.Adjustment({ lower: 1, upper: 10, step_increment: 1 }),
         });
         auraGroup.add(borderWidth);
@@ -172,6 +187,7 @@ export default class OTilingPreferences extends ExtensionPreferences {
 
         const overlayOpacity = new Adw.SpinRow({
             title: _('Active Hint Overlay Opacity (%)'),
+            subtitle: _('Opacity of the overlay color on the active window'),
             adjustment: new Gtk.Adjustment({ lower: 0, upper: 100, step_increment: 1 }),
         });
         auraGroup.add(overlayOpacity);
@@ -179,6 +195,7 @@ export default class OTilingPreferences extends ExtensionPreferences {
 
         const glowOpacity = new Adw.SpinRow({
             title: _('Active Hint Glow Opacity (%)'),
+            subtitle: _('Opacity of the outer glow on the active window'),
             adjustment: new Gtk.Adjustment({ lower: 0, upper: 100, step_increment: 1 }),
         });
         auraGroup.add(glowOpacity);
@@ -186,6 +203,7 @@ export default class OTilingPreferences extends ExtensionPreferences {
 
         const colorRow = new Adw.ActionRow({
             title: _('Active Border Color'),
+            subtitle: _('Color of the active window hint'),
         });
         auraGroup.add(colorRow);
 
@@ -214,18 +232,20 @@ export default class OTilingPreferences extends ExtensionPreferences {
 
         // Behavior Group
         const behaviorGroup = new Adw.PreferencesGroup({
-            title: _('Behavior'),
+            title: _('Miscellaneous Behavior'),
         });
-        page.add(behaviorGroup);
+        behaviorPage.add(behaviorGroup);
 
         const mouseFollows = new Adw.SwitchRow({
             title: _('Mouse Cursor Follows Active Window'),
+            subtitle: _('Automatically move the mouse pointer when focus changes'),
         });
         behaviorGroup.add(mouseFollows);
         settings.bind('mouse-cursor-follows-active-window', mouseFollows as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
         const stackingWithMouse = new Adw.SwitchRow({
             title: _('Allow Stacking with Mouse'),
+            subtitle: _('Create window stacks by dragging windows over each other'),
         });
         behaviorGroup.add(stackingWithMouse);
         settings.bind('stacking-with-mouse', stackingWithMouse as any, 'active', Gio.SettingsBindFlags.DEFAULT);
@@ -234,10 +254,11 @@ export default class OTilingPreferences extends ExtensionPreferences {
         const gapsGroup = new Adw.PreferencesGroup({
             title: _('Gaps'),
         });
-        page.add(gapsGroup);
+        behaviorPage.add(gapsGroup);
 
         const innerGap = new Adw.SpinRow({
             title: _('Inner Gap'),
+            subtitle: _('Spacing between tiled windows'),
             adjustment: new Gtk.Adjustment({ lower: 0, upper: 100, step_increment: 1 }),
         });
         gapsGroup.add(innerGap);
@@ -245,6 +266,7 @@ export default class OTilingPreferences extends ExtensionPreferences {
 
         const outerGap = new Adw.SpinRow({
             title: _('Outer Gap'),
+            subtitle: _('Spacing between windows and screen edges'),
             adjustment: new Gtk.Adjustment({ lower: 0, upper: 100, step_increment: 1 }),
         });
         gapsGroup.add(outerGap);
@@ -324,7 +346,7 @@ export default class OTilingPreferences extends ExtensionPreferences {
         const resetGroup = new Adw.PreferencesGroup({
             title: _('Danger Zone'),
         });
-        page.add(resetGroup);
+        behaviorPage.add(resetGroup);
 
         const resetRow = new Adw.ActionRow({
             title: _('Reset All Settings'),
