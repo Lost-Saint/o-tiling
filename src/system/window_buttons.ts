@@ -44,29 +44,31 @@ export class WindowButtonsManager {
         const show_close = this._settings.show_close_button();
 
         let layout = wm.get_string('button-layout');
-        let [left, right] = layout.split(':');
-        if (right === undefined) {
-            right = left;
-            left = '';
-        }
+        let [left, right] = layout.split(":");
+        const isRight = right ? true : false;
 
-        let right_buttons = right.split(',').map((s) => s.trim()).filter((s) => s !== '');
-        let left_buttons = left.split(',').map((s) => s.trim()).filter((s) => s !== '');
+        // removes controls
+        const BTN = ["maximize", "minimize", "close"];
+        right = (right ?? "").split(",").filter((s) => !BTN.includes(s));
+        left = (left ?? "").split(",").filter((s) => !BTN.includes(s));
 
-        // Remove minimize/maximize/close from both sides
-        right_buttons = right_buttons.filter((s) => s !== 'minimize' && s !== 'maximize' && s !== 'close');
-        left_buttons = left_buttons.filter((s) => s !== 'minimize' && s !== 'maximize' && s !== 'close');
-
-        // Add back to right side in order: minimize, maximize, close
         if (show_min_max) {
-            right_buttons.push('minimize');
-            right_buttons.push('maximize');
-        }
-        if (show_close) {
-            right_buttons.push('close');
+          if (isRight) {
+            right.push("minimize", "maximize");
+          } else {
+            left = ["minimize", "maximize", ...left];
+          }
         }
 
-        const new_layout = `${left_buttons.join(',')}:${right_buttons.join(',')}`;
-        wm.set_string('button-layout', new_layout);
+        if (show_close) {
+          if (isRight) {
+            right.push("close");
+          } else {
+            left = ["close", ...left];
+          }
+        }
+
+        const new_layout = `${left.join(",")}:${right.join(",")}`;
+        wm.set_string("button-layout", new_layout);
     }
 }
