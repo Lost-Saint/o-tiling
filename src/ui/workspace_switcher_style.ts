@@ -33,12 +33,61 @@ export function isGnome50(): boolean {
  *   .workspace-thumbnail:focus    – active / focused card
  */
 function buildCss(accentColor: string): string {
-    const thumbnailCornerRadius = 10;
+    const radius = 12;
+    const border = 3;
+    const innerRadius = radius - border;
     const activeColor = (accentColor === 'auto' || !Utils.isValidColor(accentColor))
         ? '#3584e4'
         : accentColor;
 
-    return `.workspace-thumbnails,.thumbnails-box,.workspace-thumbnails-container{background-color:transparent !important;background:transparent !important;}.workspace-thumbnails{padding:12px 16px;spacing:12px;border-radius:0px;border:none !important;}.workspace-thumbnail{border-radius:${thumbnailCornerRadius}px !important;border:3px solid transparent;}.workspace-thumbnail-background{border-radius:${thumbnailCornerRadius}px !important;background-color:transparent;}.workspace-thumbnail:focus,.workspace-thumbnail.selected{border-color:${activeColor} !important;border-width:3px !important;border-radius:${thumbnailCornerRadius}px !important;}.workspace-thumbnail:hover{border-color:rgba(255,255,255,0.25) !important;background-color:rgba(255,255,255,0.06);border-radius:${thumbnailCornerRadius}px !important;}.workspace-label{color:rgba(255,255,255,0.85);font-size:12px;font-weight:600;text-align:center;padding-top:6px;}`;
+    return `
+        .workspace-thumbnails,
+        .thumbnails-box,
+        .workspace-thumbnails-container {
+            background-color: transparent !important;
+            background: transparent !important;
+        }
+
+        .workspace-thumbnails {
+            padding: 12px 16px;
+            spacing: 12px;
+            border-radius: 0px;
+            border: none !important;
+        }
+
+        .workspace-thumbnail {
+            border-radius: ${radius}px !important;
+            border: ${border}px solid transparent;
+            transition: border-color 200ms ease-out, background-color 200ms ease-out;
+        }
+
+        .workspace-thumbnail-background {
+            border-radius: ${innerRadius}px !important;
+            background-color: transparent;
+        }
+
+        .workspace-thumbnail:focus,
+        .workspace-thumbnail.selected {
+            border-color: ${activeColor} !important;
+            border-width: ${border}px !important;
+            border-radius: ${radius}px !important;
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .workspace-thumbnail:hover {
+            border-color: rgba(255, 255, 255, 0.25) !important;
+            background-color: rgba(255, 255, 255, 0.06);
+            border-radius: ${radius}px !important;
+        }
+
+        .workspace-label {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+            padding-top: 6px;
+        }
+    `.replace(/\s+/g, ' ').trim();
 }
 
 
@@ -55,7 +104,6 @@ export class WorkspaceSwitcherStyle {
     private _workspaceRemovedId: number | null = null;
     private _overviewShowingId: number | null = null;
     private _origUpdateMaxThumbnailScale: any = null;
-    private _origUpdateBorderRadius: any = null;
 
 
     constructor(
