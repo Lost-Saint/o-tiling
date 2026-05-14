@@ -25,6 +25,9 @@ export var window_tracker = Shell.WindowTracker.get_default();
 /** Contains SourceID of an active hint operation. */
 let ACTIVE_HINT_SHOW_ID: number | null = null;
 
+/** Duration (ms) for the active-hint border ease animation. */
+const BORDER_TRANSITION_DURATION = 200;
+
 const WM_TITLE_BLACKLIST: Array<string> = [
     'Firefox',
     'Nightly', // Firefox Nightly
@@ -84,6 +87,9 @@ export class ShellWindow {
     private _update_id: number | null = null;
 
     prev_rect: null | Rectangle = null;
+
+    /** True after the border has been placed at least once (prevents animating from origin). */
+    private _border_positioned: boolean = false;
 
     window_app: any;
 
@@ -365,7 +371,11 @@ export class ShellWindow {
             return;
         }
 
-        this.hide_border();
+        // Keep the border visible for the focused window so it can
+        // smoothly animate to the new position via ease().
+        if (!this.meta.appears_focused) {
+            this.hide_border();
+        }
 
         const max_width = ext.settings.max_window_width();
         if (max_width > 0 && rect.width > max_width) {
@@ -611,7 +621,10 @@ export class ShellWindow {
 
     hide_border() {
         const b = this.border;
-        if (b) b.hide();
+        if (b) {
+            b.remove_all_transitions();
+            b.hide();
+        }
     }
 
     update_border_layout() {
@@ -659,10 +672,20 @@ export class ShellWindow {
 
                 if (workspace === null) return;
 
-                // Removed screen-edge clipping that was cutting off rounded bottom corners
-
-                border.set_position(x, y);
-                border.set_size(width, height);
+                // Smoothly animate the border to the new position when it is
+                // already visible and not being interactively grabbed.
+                if (border.visible && !this.grab && this._border_positioned) {
+                    border.remove_all_transitions();
+                    (border as any).ease({
+                        x, y, width, height,
+                        duration: BORDER_TRANSITION_DURATION,
+                        mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                    });
+                } else {
+                    border.set_position(x, y);
+                    border.set_size(width, height);
+                    this._border_positioned = true;
+                }
             }
         }
     }
