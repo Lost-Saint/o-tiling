@@ -80,7 +80,6 @@ All keybindings are editable in the **Shortcuts** tab of the preferences window.
 - **Special Thanks:** This project incorporates code and ideas from the following extensions:
   - [Forge](https://github.com/forge-ext/forge)
   - [Just Perfection](https://gitlab.gnome.org/jesserivera/just-perfection)
-  - [Blur my Shell](https://github.com/aunetx/blur-my-shell)
 - **License:** GPLv3 — Extended with Aura border, skip overview, panel transparency, theme consistency, and more.
 
 ---

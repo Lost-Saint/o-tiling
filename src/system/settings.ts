@@ -70,7 +70,7 @@ const SHOW_TITLE = 'show-title';
 const SMART_GAPS = 'smart-gaps';
 const SNAP_TO_GRID = 'snap-to-grid';
 const TILE_BY_DEFAULT = 'tile-by-default';
-const NEW_WORKSPACES_TILED = 'new-workspaces-tiled';
+
 const HINT_COLOR_RGBA = 'hint-color-rgba';
 const DEFAULT_RGBA_COLOR = 'rgba(53, 132, 228, 1)'; // Aura Blue
 const LOG_LEVEL = 'log-level';
@@ -82,7 +82,7 @@ const ACTIVE_HINT_OVERLAY_OPACITY = 'active-hint-overlay-opacity';
 const ACTIVE_HINT_GLOW_OPACITY = 'active-hint-glow-opacity';
 const ACTIVE_HINT_GLOW = 'active-hint-glow';
 const WORKSPACE_SWITCHER_STYLE = 'workspace-switcher-style';
-const OVERVIEW_BLUR_EFFECT = 'overview-blur-effect';
+
 const THEME_CONSISTENCY_STYLE = 'theme-consistency-style';
 const SKIP_OVERVIEW = 'skip-overview';
 const SHOW_MINIMIZE_MAXIMIZE_BUTTONS = 'show-minimize-maximize-buttons';
@@ -195,9 +195,7 @@ export class ExtensionSettings {
         return this.ext.get_boolean(TILE_BY_DEFAULT);
     }
 
-    new_workspaces_tiled(): boolean {
-        return this.ext.get_boolean(NEW_WORKSPACES_TILED);
-    }
+
 
     workspaces_only_on_primary(): boolean {
         return this.mutter ? this.mutter.get_boolean('workspaces-only-on-primary') : false;
@@ -239,9 +237,7 @@ export class ExtensionSettings {
         return this.ext.get_boolean(WORKSPACE_SWITCHER_STYLE);
     }
     
-    overview_blur_effect(): boolean {
-        return this.ext.get_boolean(OVERVIEW_BLUR_EFFECT);
-    }
+
 
 
 
@@ -344,9 +340,7 @@ export class ExtensionSettings {
         this.ext.set_boolean(TILE_BY_DEFAULT, set);
     }
 
-    set_new_workspaces_tiled(set: boolean) {
-        this.ext.set_boolean(NEW_WORKSPACES_TILED, set);
-    }
+
 
     set_log_level(set: number) {
         this.ext.set_uint(LOG_LEVEL, set);
@@ -384,9 +378,7 @@ export class ExtensionSettings {
         this.ext.set_boolean(WORKSPACE_SWITCHER_STYLE, set);
     }
 
-    set_overview_blur_effect(set: boolean) {
-        this.ext.set_boolean(OVERVIEW_BLUR_EFFECT, set);
-    }
+
 
 
 

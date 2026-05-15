@@ -29,7 +29,7 @@ export class Indicator {
 
     toggle_tiled: any;
     toggle_workspace_tiled: any;
-    toggle_new_workspaces_tiled: any;
+
     toggle_active: any;
     border_radius: any;
 
@@ -84,8 +84,7 @@ export class Indicator {
         this.toggle_workspace_tiled = workspace_tiled(ext);
         bm.addMenuItem(this.toggle_workspace_tiled);
 
-        this.toggle_new_workspaces_tiled = new_workspaces_tiled(ext);
-        bm.addMenuItem(this.toggle_new_workspaces_tiled);
+
 
         bm.addMenuItem(new PopupSeparatorMenuItem());
 
@@ -349,14 +348,7 @@ function workspace_tiled(ext: Ext): any {
     );
 }
 
-function new_workspaces_tiled(ext: Ext): any {
-    return toggle(
-        _('Tile New Workspaces'),
-        ext.settings.new_workspaces_tiled(),
-        { on: 'tab-new-symbolic', off: 'tab-new-symbolic' },
-        (state) => ext.settings.set_new_workspaces_tiled(state),
-    );
-}
+
 
 
 

@@ -47,14 +47,6 @@
             <summary>Apply custom styling to the workspace switcher bar (GNOME 50+ only)</summary>
         </key>
 
-        <key type="b" name="overview-blur-effect">
-            <default>false</default>
-            <summary>Apply a frosted-glass blur effect to the overview background (GNOME 50+ only)</summary>
-        </key>
-
-
-
-
         <key type="b" name="skip-overview">
             <default>false</default>
             <summary>Skip the activities overview on startup</summary>
@@ -150,10 +142,6 @@
             <summary>Tile launched windows by default</summary>
         </key>
 
-        <key type="b" name="new-workspaces-tiled">
-            <default>true</default>
-            <summary>Automatically tile windows on new workspaces</summary>
-        </key>
 
         <key type="b" name="stacking-with-mouse">
             <default>true</default>

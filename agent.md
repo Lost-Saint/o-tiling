@@ -87,7 +87,6 @@ src/
   ui/
     workspace_switcher_style.ts — GNOME 48+ workspace overview styling
     overview_layout.ts  — WorkspaceLayout patch to mirror tile positions in overview
-    overview_wallpaper.ts — Frosted-glass blur effect for the Activities overview
     panel_settings.ts   — Panel indicator (Indicator class)
     panel_transparency.ts — CSS-injection panel transparency manager
     theme_consistency/   — Rounded/Sharp corners logic for GTK/Shell
@@ -138,30 +137,27 @@ Premium customization for the GNOME 48+ workspace overview.
 - **Background Corners**: Programmatically overrides `_updateBorderRadius` on `WorkspaceBackground` to apply `rounded_clip_radius` to the wallpaper content in the overview.
 - **Auto-scroll**: Connects to `active-workspace-changed`, `workspace-added`, and `workspace-removed` to rescale and scroll-to-active on every change.
 
-### 5.3 Overview Blur Effect (`src/ui/overview_wallpaper.ts`)
-Applies a `Shell.BlurEffect` to `BackgroundManager` actors injected into `Main.layoutManager.overviewGroup`. Also injects CSS targeting search results, dash, and app-folder dialogs with frosted-glass styling. Enabled/disabled via GSettings `overview-blur-effect`.
-
-### 5.4 Overview Layout Manager (`src/ui/overview_layout.ts`)
+### 5.3 Overview Layout Manager (`src/ui/overview_layout.ts`)
 Patches `WorkspaceLayout.prototype._updateWindowPositions` to map each tiled window's actual desktop frame rect into the overview workspace card coordinates, making the overview thumbnail accurately reflect the real tiled layout. Falls back gracefully when `_setTargetRect` is unavailable.
 
-### 5.5 Theme Consistency / RoundedShell (`src/ui/theme_consistency/`)
+### 5.4 Theme Consistency / RoundedShell (`src/ui/theme_consistency/`)
 Applies uniform rounded corners across the desktop environment.
 - **Shell Components**: Rounds panel, menus, popovers via CSS (`gnome_shell.ts`).
 - **GTK Applications**: Injects local CSS into user's `~/.config/gtk-4.0/gtk.css` and `~/.config/gtk-3.0/gtk.css` (`gtk.ts`). The `apply.ts` module is safe to call from the preferences process (no St/Clutter dependency).
 - **Initialization**: Explicitly applied in `Ext.setup()` to ensure activation on startup.
 
-### 5.6 Panel Transparency (`src/ui/panel_transparency.ts`)
+### 5.5 Panel Transparency (`src/ui/panel_transparency.ts`)
 CSS-injection manager that makes the GNOME panel transparent or semi-transparent.
 - Injects a temp CSS file into `St.ThemeContext` (same lifecycle pattern as other managers).
 - Supports configurable opacity (0–100%), blur-style dark gradient backdrop, and hot-reload on setting change without full disable/enable cycle.
 - Fully EGO-compliant: temp file is deleted on `disable()`.
 
-### 5.7 Window Buttons Manager (`src/system/window_buttons.ts`)
+### 5.6 Window Buttons Manager (`src/system/window_buttons.ts`)
 Manages the global GNOME button layout (Minimize, Maximize, Close).
 - **Synchronization**: Bridges extension settings to the `org.gnome.desktop.wm.preferences` schema.
 - **Cleanup**: Restores default layout and disconnects signals on extension disable.
 
-### 5.8 Extension Soft Disable
+### 5.7 Extension Soft Disable
 Halt-mode implemented in `extension.ts` using the `_ext_soft_disabled` flag.
 - **Functionality**: Disables all tiling, keybindings, and injections without removing the panel indicator.
 - **State Recovery**: Re-enabling the extension triggers a full re-tiling of the current workspace.
@@ -206,4 +202,4 @@ Halt-mode implemented in `extension.ts` using the `_ext_soft_disabled` flag.
 
 ---
 
-*Document Version: 2.8.3 | Updated: May 14, 2026*
+*Document Version: 2.8.4 | Updated: May 15, 2026*
