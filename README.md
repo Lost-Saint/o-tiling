@@ -9,7 +9,7 @@ A lightweight, keyboard-driven auto-tiling extension for GNOME Shell. It started
 ## ⚡ One-liner Install
 
 ```bash
-curl -L https://github.com/oliwebd/o-tiling/releases/download/v2.8.4/o-tiling@oliwebd.github.com-v2.8.4.zip -o /tmp/o-tiling.zip && gnome-extensions install --force /tmp/o-tiling.zip && gnome-extensions enable o-tiling@oliwebd.github.com
+curl -L https://github.com/oliwebd/o-tiling/releases/download/v2.8.3/o-tiling@oliwebd.github.com.zip -o /tmp/o-tiling.zip && gnome-extensions install --force /tmp/o-tiling.zip && gnome-extensions enable o-tiling@oliwebd.github.com
 ```
 
 Then **log out and back in** (Wayland requires a session restart to activate).
@@ -18,11 +18,11 @@ Then **log out and back in** (Wayland requires a session restart to activate).
 
 ## 🔧 Manual Installation
 
-1. **Download** `o-tiling@oliwebd.github.com-v2.8.4.zip` from the [GitHub Releases page](https://github.com/oliwebd/o-tiling/releases/tag/v2.8.4).
+1. **Download** `o-tiling@oliwebd.github.com.zip` from the [GitHub Releases page](https://github.com/oliwebd/o-tiling/releases/tag/v2.8.3).
 
 2. **Install** via terminal:
    ```bash
-   gnome-extensions install --force ~/Downloads/o-tiling@oliwebd.github.com-v2.8.4.zip
+   gnome-extensions install --force ~/Downloads/o-tiling@oliwebd.github.com-v2.8.3.zip
    ```
 
 3. **Restart GNOME Shell** — Log out and log back in (Wayland).
