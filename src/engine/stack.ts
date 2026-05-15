@@ -199,8 +199,9 @@ export class Stack {
 
         const tab: Tab = { active, entity, signals: [], button: id, button_signal: null };
         const comp = this.tabs.length;
-        this.bind_hint_events(tab);
         this.tabs.push(tab);
+        this.bind_hint_events(tab);
+        for (const t of this.tabs) this.change_tab_color(t);
         this.watch_signals(comp, id, window);
         this.widgets.tabs.add_child(button);
     }
@@ -506,6 +507,7 @@ export class Stack {
         }
 
         this.tabs.splice(idx, 1);
+        for (const t of this.tabs) this.change_tab_color(t);
     }
 
     /** Removes the tab associated with the entity */
