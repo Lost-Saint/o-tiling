@@ -112,6 +112,8 @@ export class PanelTransparencyManager {
     box-shadow: none !important;
     border-bottom: none !important;
     padding: 0 !important;
+    margin: 0 !important;
+    spacing: 0 !important;
 }
 
 /* Panel buttons — keep them readable on transparent background */
@@ -120,6 +122,8 @@ export class PanelTransparencyManager {
     border: none !important;
     margin: 0 !important;
     padding: 0 !important;
+    -natural-hpadding: 0 !important;
+    -minimum-hpadding: 0 !important;
 }
 
 /* Override default theme hover fill (uses capsule look) */
@@ -156,6 +160,8 @@ export class PanelTransparencyManager {
     background-color: transparent !important;
     background-image: none !important;
     box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
 }
 
 
@@ -165,11 +171,15 @@ export class PanelTransparencyManager {
 #panel .clock {
     color: rgba(255, 255, 255, 0.92) !important;
     font-weight: 600;
+    padding: 0 !important;
+    margin: 0 !important;
 }
 
 /* System status area icons */
 #panel .system-status-icon {
     color: rgba(255, 255, 255, 0.92) !important;
+    padding: 0 !important;
+    margin: 0 !important;
 }
 
 /* Blur-style backdrop (only applied when blurStyle = true) */
