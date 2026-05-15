@@ -111,12 +111,15 @@ export class PanelTransparencyManager {
     background-image: none !important;
     box-shadow: none !important;
     border-bottom: none !important;
+    padding: 0 !important;
 }
 
 /* Panel buttons — keep them readable on transparent background */
 #panel .panel-button {
     color: rgba(255, 255, 255, 0.92) !important;
     border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 /* Override default theme hover fill (uses capsule look) */
@@ -126,7 +129,11 @@ export class PanelTransparencyManager {
 #panel .panel-button:checked {
     background-color: rgba(255, 255, 255, 0.15) !important;
     background-image: none !important;
+    border-radius: 999px !important;
     box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    -st-shadow: none !important;
 }
 
 /* Clock-display uses highlighted_child pattern: hover fill is on .clock child,
@@ -137,6 +144,8 @@ export class PanelTransparencyManager {
 #panel .panel-button.clock-display:checked .clock {
     box-shadow: none !important;
     background: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
 }
 
 /* Also clear any other child backgrounds to be safe */
