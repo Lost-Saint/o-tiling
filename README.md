@@ -82,7 +82,8 @@ As a result, the application may **overlap** other windows or break the visual g
 - **Add to Exceptions:** The easiest solution is to open the O-Tiling settings from the top panel menu, go to **Floating Window Exceptions**, and add the application (e.g., `gnome-system-monitor`). This will tell the tiling engine to ignore the app and let it float normally.
 - **Resize Manually:** Alternatively, you can use Adjustment Mode (`Super + Enter`) to manually drag the window borders to give the large application the space it needs.
 
-*Note: O-Tiling does not attempt to automatically "swap" or "force" these windows to fit, as doing so conflicts with GNOME's window manager (Mutter) and can cause crashes or infinite resize loops. This limitation is a known architectural boundary shared with upstream Pop Shell.*
+> [!NOTE]
+> O-tiling does not attempt to automatically "swap" or "force" these windows to fit, as doing so conflicts with GNOME's window manager (Mutter) and can cause crashes or infinite resize loops. This limitation is a known architectural boundary shared with upstream pop-shell.
 
 ---
 
