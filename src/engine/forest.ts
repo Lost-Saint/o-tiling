@@ -301,11 +301,6 @@ export class Forest extends Ecs.World {
 
         const right_node = Node.Node.window(new_entity);
 
-        // When auto-tiling ({ auto: 0 }), new windows should create grid forks
-        // alongside stacks rather than being merged into them. Stacking should
-        // only happen on explicit user placement (drag-drop center / keyboard).
-        const isAutoPlace = 'auto' in place_by;
-
         for (const [entity, fork] of this.forks.iter()) {
             if (fork.left.is_window(onto_entity)) {
                 if (fork.right) {
@@ -322,30 +317,14 @@ export class Forest extends Ecs.World {
                     return this._attach(onto_entity, new_entity, this.on_attach, entity, fork, null);
                 }
             } else if (fork.left.is_in_stack(onto_entity)) {
-                if (isAutoPlace) {
-                    // Auto-tiling: create a fork alongside the stack (grid layout)
-                    if (fork.right) {
-                        return fork_and_place_on_left(entity, fork);
-                    } else {
-                        fork.right = right_node;
-                        fork.set_ratio(fork.length() / 2);
-                        return this._attach(onto_entity, new_entity, this.on_attach, entity, fork, null);
-                    }
-                } else {
-                    const stack = fork.left.inner as Node.NodeStack;
-                    return this.attach_stack(ext, stack, fork, new_entity, stack_from_left);
-                }
+                const stack = fork.left.inner as Node.NodeStack;
+                return this.attach_stack(ext, stack, fork, new_entity, stack_from_left);
             } else if (fork.right) {
                 if (fork.right.is_window(onto_entity)) {
                     return fork_and_place_on_right(entity, fork, fork.right);
                 } else if (fork.right.is_in_stack(onto_entity)) {
-                    if (isAutoPlace) {
-                        // Auto-tiling: create a fork alongside the stack (grid layout)
-                        return fork_and_place_on_right(entity, fork, fork.right);
-                    } else {
-                        const stack = fork.right.inner as Node.NodeStack;
-                        return this.attach_stack(ext, stack, fork, new_entity, stack_from_left);
-                    }
+                    const stack = fork.right.inner as Node.NodeStack;
+                    return this.attach_stack(ext, stack, fork, new_entity, stack_from_left);
                 }
             }
         }
@@ -975,14 +954,5 @@ function move_window(ext: Ext, window: ShellWindow, rect: Rectangle, on_complete
     window.move(ext, rect, () => {
         on_complete();
         ext.size_signals_unblock(window);
-
-        // If the window's actual size differs from the requested size (Mutter enforced min-size),
-        // explicitly trigger reflow to adjust the tiling layout.
-        if (ext.auto_tiler) {
-            const actual = window.rect();
-            if (!actual.eq(rect)) {
-                ext.auto_tiler.reflow(ext, window.entity);
-            }
-        }
     });
 }
