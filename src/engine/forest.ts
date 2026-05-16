@@ -379,7 +379,8 @@ export class Forest extends Ecs.World {
     ): [Entity, Fork.Fork] {
         const entity = this.create_entity();
         const orient = area.width > area.height ? Lib.Orientation.HORIZONTAL : Lib.Orientation.VERTICAL;
-        const fork = new Fork.Fork(entity, left, right, area, workspace, monitor, orient);
+        const primary = Fork.get_primary_monitor_index() === monitor;
+        const fork = new Fork.Fork(entity, left, right, area, workspace, monitor, orient, primary);
         this.forks.insert(entity, fork);
         return [entity, fork];
     }
@@ -516,10 +517,8 @@ export class Forest extends Ecs.World {
 
     /** Finds the top level fork associated with the given entity. */
     find_toplevel([src_mon, src_work]: [number, number]): Entity | null {
-        for (const [entity, fork] of this.forks.iter()) {
-            if (!fork.is_toplevel) continue;
-            const { monitor, workspace } = fork;
-            if (monitor == src_mon && workspace == src_work) {
+        for (const [entity, id] of this.toplevel.values()) {
+            if (id[0] === src_mon && id[1] === src_work) {
                 return entity;
             }
         }

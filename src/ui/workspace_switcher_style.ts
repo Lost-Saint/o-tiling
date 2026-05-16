@@ -16,7 +16,7 @@ import type { Ext } from '../extension.js';
 export function isGnome50(): boolean {
     try {
         const major = parseInt(PACKAGE_VERSION.split('.')[0], 10);
-        return major >= 48;
+        return major >= 50;
     } catch (_) {
         return true;
     }
@@ -33,7 +33,7 @@ export function isGnome50(): boolean {
  *   .workspace-thumbnail:focus    – active / focused card
  */
 function buildCss(accentColor: string): string {
-    const radius = 12;
+    const radius = 3;
     const border = 3;
     const innerRadius = radius - border;
     const activeColor = (accentColor === 'auto' || !Utils.isValidColor(accentColor))

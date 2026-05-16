@@ -466,6 +466,11 @@ export class Ext extends Ecs.System<ExtEvent> {
         this._destroyed = true;
 
 
+        if (this._resume_timeout) {
+            GLib.source_remove(this._resume_timeout);
+            this._resume_timeout = null;
+        }
+
         if (this._resume_timeout_source !== null) {
             GLib.source_remove(this._resume_timeout_source);
             this._resume_timeout_source = null;
@@ -1531,7 +1536,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         const prev_area = win.meta.get_work_area_for_monitor(prev_monitor);
         const next_area = win.meta.get_work_area_for_monitor(next_monitor);
 
-        if (prev_area && next_area) {
+        if (prev_area && next_area && prev_area.width > 0 && prev_area.height > 0) {
             // get the current window rect
             const rect = win.rect();
 
@@ -2174,13 +2179,17 @@ export class Ext extends Ecs.System<ExtEvent> {
         this.disabled_workspaces.delete(number);
 
         // Disconnect all signals for the removed workspace
+        const to_delete = [];
         for (const [ws, signals] of this.workspace_signals) {
             if (ws.index() === -1) { // -1 means it's being/has been removed
                 for (const signal of signals) {
                     try { ws.disconnect(signal); } catch (_) { }
                 }
-                this.workspace_signals.delete(ws);
+                to_delete.push(ws);
             }
+        }
+        for (const ws of to_delete) {
+            this.workspace_signals.delete(ws);
         }
 
         this.on_workspace_modify(
@@ -2534,7 +2543,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         this._resume_timeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 600, () => {
             this._resume_timeout = null;
             // GUARD: ext may have been destroyed during the 600ms window
-            if (!this || this.suspended) return GLib.SOURCE_REMOVE;
+            if (this._destroyed || this.suspended) return GLib.SOURCE_REMOVE;
 
             this._resuming = false;
 
@@ -2757,7 +2766,6 @@ export class Ext extends Ecs.System<ExtEvent> {
         }
 
         // 10. Update the toggle_tiled switch state in the menu
-        const indicator = (PanelSettings as any).indicator;
         if (indicator) {
             indicator.toggle_tiled.setToggleState(false);
             if (indicator.toggle_tiled.updateIcon) indicator.toggle_tiled.updateIcon(false);
@@ -3346,7 +3354,8 @@ export class Ext extends Ecs.System<ExtEvent> {
         const cursor = cursor_rect();
         // Mtk.Rectangle is the standard API for GNOME 45+
         const rect = new Mtk.Rectangle({ x: cursor.x, y: cursor.y, width: 1, height: 1 });
-        const monitor = display.get_monitor_index_for_rect(rect);
+        let monitor = display.get_monitor_index_for_rect(rect);
+        if (monitor < 0) monitor = display.get_current_monitor();
         return [cursor, monitor];
     }
 

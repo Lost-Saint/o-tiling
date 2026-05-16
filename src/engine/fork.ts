@@ -57,8 +57,9 @@ export class Fork {
         workspace: WorkspaceID,
         monitor: MonitorID,
         orient: Lib.Orientation,
+        primary: boolean = false,
     ) {
-        this.on_primary_display = get_primary_monitor_index() === monitor;
+        this.on_primary_display = primary;
         this.area = area;
         this.left = left;
         this.right = right;
@@ -84,11 +85,13 @@ export class Fork {
         let area: [number, number, number, number];
 
         if (this.is_horizontal()) {
-            const width = this.area.width - this.length_left + ext.gap_inner;
-            area = [width, this.area.y, this.area.width - width, this.area.height];
+            const x = this.area.x + this.length_left + ext.gap_inner_half;
+            const width = this.area.width - this.length_left - ext.gap_inner_half;
+            area = [x, this.area.y, width, this.area.height];
         } else {
-            const height = this.area.height - this.length_left + ext.gap_inner;
-            area = [this.area.x, height, this.area.width, this.area.height - height];
+            const y = this.area.y + this.length_left + ext.gap_inner_half;
+            const height = this.area.height - this.length_left - ext.gap_inner_half;
+            area = [this.area.x, y, this.area.width, height];
         }
 
         return new Rect.Rectangle(area);

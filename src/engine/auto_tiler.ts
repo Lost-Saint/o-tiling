@@ -6,6 +6,8 @@ import * as result from '../utils/result.js';
 import * as stack from './stack.js';
 import * as geom from '../utils/geom.js';
 import * as tiling from './tiling.js';
+import * as utils from '../utils/utils.js';
+import Meta from 'gi://Meta';
 
 import type { Entity } from '../core/ecs.js';
 import type { Ext } from '../extension.js';
@@ -720,6 +722,13 @@ export class AutoTiler {
 
                 container.update_positions(stack.rect);
                 container.auto_activate();
+
+                if (container.tabs.length !== stack.entities.length && stack.entities.length > 0) {
+                    utils.later_add(Meta.LaterType.BEFORE_REDRAW, () => {
+                        this.update_stack(ext, stack);
+                        return false;
+                    });
+                }
             }
         } else {
             log.warn('stack rect was null');

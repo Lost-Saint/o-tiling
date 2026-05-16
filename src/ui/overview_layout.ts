@@ -10,18 +10,20 @@ import type { Ext } from '../extension.js';
 export class OverviewLayoutManager {
     private _ext: Ext;
     private _origUpdateWindowPositions: any = null;
+    private _enabled: boolean = false;
 
     constructor(ext: Ext) {
         this._ext = ext;
     }
 
     async enable(): Promise<void> {
+        this._enabled = true;
         try {
             // Workspace and WorkspaceLayout are in workspace.js
             // Cast to any because WorkspaceLayout might not be in the type definitions
             const { WorkspaceLayout } = await import('resource:///org/gnome/shell/ui/workspace.js') as any;
 
-            if (!WorkspaceLayout) return;
+            if (!WorkspaceLayout || !this._enabled) return;
 
             const proto = WorkspaceLayout.prototype as any;
             if (this._origUpdateWindowPositions) return;
@@ -107,6 +109,7 @@ export class OverviewLayoutManager {
 
 
     disable(): void {
+        this._enabled = false;
         if (this._origUpdateWindowPositions) {
             (import('resource:///org/gnome/shell/ui/workspace.js') as Promise<any>).then(({ WorkspaceLayout }) => {
 
