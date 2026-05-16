@@ -9,7 +9,7 @@ Technical reference for AI agents and contributors working on the **O-tiling** G
 | Field | Value |
 |---|---|
 | Name | O-tiling |
-| Version | 2.8.3 |
+| Version | 2.8.5 |
 | UUID | `o-tiling@oliwebd.github.com` |
 | GSettings Schema | `org.gnome.shell.extensions.o-tiling` |
 | D-Bus Interface | `org.gnome.shell.extensions.OTiling` |
@@ -164,6 +164,9 @@ Halt-mode implemented in `extension.ts` using the `_ext_soft_disabled` flag.
 
 > **⚠️ Bug fixed in 2.8.3:** `ext_soft_disable()` previously contained `const indicator = (PanelSettings as any).indicator` which shadowed the module-level `indicator` with `undefined` (since `panel_settings.ts` exports no `indicator` instance). The toggle state in the panel menu was never updated on soft-disable. Fix: remove the shadowing local declaration and use the module-level `indicator` directly.
 
+### 5.8 Large Window Handling (Floating Exceptions)
+Windows with large minimum size constraints (e.g., GNOME System Monitor) are handled via **Floating Window Exceptions**. The extension relies on standard upstream behavior (allowing the window to overlap if tiled in a space that is too small) and expects the user to either toggle the window to floating mode or add its WM_CLASS to the exception list. The experimental Auto-Swap logic was removed due to instability.
+
 ---
 
 ## 6. Build System
@@ -200,6 +203,11 @@ Halt-mode implemented in `extension.ts` using the `_ext_soft_disabled` flag.
 ### Bug I — Synchronous X11 Roundtrip on Focus (scheduler.ts)
 - **Fix:** `setForeground()` now does a single async name-owner check on first call; subsequent calls skip entirely if the scheduler service is absent, preventing `meta_x11_display_get_current_time_roundtrip` from blocking the compositor thread.
 
+### Bug J — Large Window Layout Overlap (GNOME System Monitor, etc.)
+- **Issue:** Applications with a hard-coded minimum size that exceeds the allocated tile split (e.g., GNOME System Monitor requiring > 600px) will visually overlap other tiles.
+- **Cause:** To prevent infinite resize loops and crashes (which occurred in previous Auto-Swap implementations), O-Tiling enforces a minimum split size of 256px and does not auto-correct windows that refuse to shrink. This mirrors the upstream Pop Shell stability approach.
+- **Resolution:** This is a known architectural limitation. Users should add the problematic application's `WM_CLASS` to the **Floating Exceptions** list or use Adjustment Mode (`Super + Enter`) to manually resize the tile grid to accommodate the window.
+
 ---
 
-*Document Version: 2.8.4 | Updated: May 15, 2026*
+*Document Version: 2.8.5 | Updated: May 16, 2026*

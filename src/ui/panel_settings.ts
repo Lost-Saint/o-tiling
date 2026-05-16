@@ -136,6 +136,7 @@ export class Indicator {
 
         // ── Actions ─────────────────────────────────────────────
         bm.addMenuItem(settings_button(bm));
+        bm.addMenuItem(floating_window_exceptions(ext, bm));
 
         bm.addMenuItem(new PopupSeparatorMenuItem());
 
@@ -194,6 +195,34 @@ function settings_button(menu: any): any {
         }
 
         menu.close();
+    });
+
+    return item;
+}
+
+function floating_window_exceptions(ext: Ext, menu: any): any {
+    const item = new PopupMenuItem(_('Floating Window Exceptions'));
+    const icon = new St.Icon({
+        icon_name: 'go-next-symbolic',
+        icon_size: 16,
+        style_class: 'popup-menu-icon'
+    });
+    
+    if (typeof (item as any).insert_child_at_index === 'function') {
+        (item as any).insert_child_at_index(icon, 0);
+    } else {
+        item.add_child(icon);
+    }
+
+    item.connect('activate', () => {
+        if (typeof ext.exception_dialog === 'function') {
+            ext.exception_dialog();
+        }
+
+        GLib.timeout_add(GLib.PRIORITY_LOW, 300, () => {
+            menu.close();
+            return false;
+        });
     });
 
     return item;

@@ -499,8 +499,8 @@ export class Tiler {
     resize_auto(ext: Ext, direction: Direction) {
         let mov1: [number, number, number, number], mov2: [number, number, number, number];
 
-        const hrow = 64;
-        const hcolumn = 64;
+        const hrow = ext.row_size;
+        const hcolumn = ext.column_size;
 
         switch (direction) {
             case Direction.Left:

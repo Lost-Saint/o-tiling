@@ -12,7 +12,8 @@
     "deploy": "pnpm run lint && pnpm run type-check && pnpm run build",
     "debug": "bash scripts/debug.sh",
     "shexli": "make shexli",
-    "log": "journalctl -f -o cat /usr/bin/gnome-shell | grep o-tiling"
+    "log": "journalctl -f -o cat /usr/bin/gnome-shell | grep o-tiling",
+    "local-install": "make install"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

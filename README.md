@@ -71,6 +71,19 @@ These features don't exist in the original pop-shell:
 
 All keybindings are editable in the **Shortcuts** tab of the preferences window.
 
+## ⚠️ Known Issues & Limitations
+
+### Large Windows Overlapping the Grid
+Some applications (such as **GNOME System Monitor**, Steam, or certain games) have a "minimum window size" built into their code. If you try to tile these applications into a space that is smaller than their minimum size, the tiling engine will not force them to shrink further.
+
+As a result, the application may **overlap** other windows or break the visual grid layout.
+
+**How to fix this:**
+- **Add to Exceptions:** The easiest solution is to open the O-Tiling settings from the top panel menu, go to **Floating Window Exceptions**, and add the application (e.g., `gnome-system-monitor`). This will tell the tiling engine to ignore the app and let it float normally.
+- **Resize Manually:** Alternatively, you can use Adjustment Mode (`Super + Enter`) to manually drag the window borders to give the large application the space it needs.
+
+*Note: O-Tiling does not attempt to automatically "swap" or "force" these windows to fit, as doing so conflicts with GNOME's window manager (Mutter) and can cause crashes or infinite resize loops. This limitation is a known architectural boundary shared with upstream Pop Shell.*
+
 ---
 
 ## 🔗 Credits & Links

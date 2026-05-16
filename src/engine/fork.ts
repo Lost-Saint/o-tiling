@@ -253,13 +253,15 @@ export class Fork {
 
             const half = this.area.array[l] / 2;
 
+            const grid_size = this.is_horizontal() ? ext.column_size : ext.row_size;
+
             let length;
-            if (this.length_left > half - 32 && this.length_left < half + 32) {
+            if (this.length_left > half - grid_size && this.length_left < half + grid_size) {
                 length = half;
             } else {
-                const diff = (startpos + this.length_left) % 32;
-                length = this.length_left - diff + (diff > 16 ? 32 : 0);
-                if (length == 0) length = 32;
+                const diff = (startpos + this.length_left) % grid_size;
+                length = this.length_left - diff + (diff > grid_size / 2 ? grid_size : 0);
+                if (length == 0) length = grid_size;
             }
 
             region.array[l] = length - ext.gap_inner_half;

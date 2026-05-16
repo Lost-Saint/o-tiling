@@ -310,52 +310,52 @@ export class ShellWindow {
         return this.meta.maximized_vertically && !this.meta.maximized_horizontally;
     }
 
+    is_eligible_for_tiling(ext: Ext): boolean {
+        let wm_class = this.meta.get_wm_class();
+
+        if (wm_class !== null && wm_class.trim().length === 0) {
+            wm_class = this.name(ext);
+        }
+
+        // If name resolution also returns empty/null, defer tiling
+        // (this can happen during first-launch initialization).
+        if (wm_class === null || wm_class.trim().length === 0) {
+            return false;
+        }
+
+        const role = this.meta.get_role();
+
+        // Quake-style terminals such as Tilix's quake mode.
+        if (role === 'quake') return false;
+
+        // Steam loading window is less than 400px wide and 200px tall
+        if (this.meta.get_title() === 'Steam') {
+            const rect = this.rect();
+
+            const is_dialog = rect.width < 400 && rect.height < 200;
+            const is_first_login = rect.width === 432 && rect.height === 438;
+
+            if (is_dialog || is_first_login) return false;
+        }
+
+        // Blacklist any windows that happen to leak through our filter
+        // Windows that are tagged ForceTile are considered tilable despite exemption
+        if (wm_class !== null && ext.conf.window_shall_float(wm_class, this.title())) {
+            return ext.contains_tag(this.entity, Tags.ForceTile);
+        }
+
+        // Only normal windows will be considered for tiling
+        return (
+            this.meta.window_type == Meta.WindowType.NORMAL &&
+            // Transient windows are most likely dialogs
+            !this.is_transient() &&
+            // If a window lacks a class, it's probably a web browser dialog
+            wm_class !== null
+        );
+    }
+
     is_tilable(ext: Ext): boolean {
-        const tile_checks = () => {
-            let wm_class = this.meta.get_wm_class();
-
-            if (wm_class !== null && wm_class.trim().length === 0) {
-                wm_class = this.name(ext);
-            }
-
-            // If name resolution also returns empty/null, defer tiling
-            // (this can happen during first-launch initialization).
-            if (wm_class === null || wm_class.trim().length === 0) {
-                return false;
-            }
-
-            const role = this.meta.get_role();
-
-            // Quake-style terminals such as Tilix's quake mode.
-            if (role === 'quake') return false;
-
-            // Steam loading window is less than 400px wide and 200px tall
-            if (this.meta.get_title() === 'Steam') {
-                const rect = this.rect();
-
-                const is_dialog = rect.width < 400 && rect.height < 200;
-                const is_first_login = rect.width === 432 && rect.height === 438;
-
-                if (is_dialog || is_first_login) return false;
-            }
-
-            // Blacklist any windows that happen to leak through our filter
-            // Windows that are tagged ForceTile are considered tilable despite exemption
-            if (wm_class !== null && ext.conf.window_shall_float(wm_class, this.title())) {
-                return ext.contains_tag(this.entity, Tags.ForceTile);
-            }
-
-            // Only normal windows will be considered for tiling
-            return (
-                this.meta.window_type == Meta.WindowType.NORMAL &&
-                // Transient windows are most likely dialogs
-                !this.is_transient() &&
-                // If a window lacks a class, it's probably a web browser dialog
-                wm_class !== null
-            );
-        };
-
-        return !ext.contains_tag(this.entity, Tags.Floating) && tile_checks();
+        return !ext.contains_tag(this.entity, Tags.Floating) && this.is_eligible_for_tiling(ext);
     }
 
     is_transient(): boolean {

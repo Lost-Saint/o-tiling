@@ -16,6 +16,7 @@ import * as Window from './window/window.js';
 import * as auto_tiler from './engine/auto_tiler.js';
 import * as node from './engine/node.js';
 import * as utils from './utils/utils.js';
+import * as add_exception from './ui/dialog_add_exception.js';
 import * as Executor from './system/executor.js';
 const exec = Executor;
 import * as movement from './window/movement.js';
@@ -178,9 +179,7 @@ export class Ext extends Ecs.System<ExtEvent> {
     drag_signal: null | SignalID = null;
 
     /** If set, the user is currently selecting a window to add to floating exceptions */
-
-
-    /** The number of pixels between windows */
+    exception_selecting: boolean = false;    /** The number of pixels between windows */
     gap_inner: number = 0;
 
     /** Exactly half of the value of the inner gap */
@@ -469,6 +468,11 @@ export class Ext extends Ecs.System<ExtEvent> {
         if (this._resume_timeout) {
             GLib.source_remove(this._resume_timeout);
             this._resume_timeout = null;
+        }
+
+        if (this._exception_select_timeout !== null) {
+            GLib.source_remove(this._exception_select_timeout);
+            this._exception_select_timeout = null;
         }
 
         if (this._resume_timeout_source !== null) {
@@ -819,6 +823,88 @@ export class Ext extends Ecs.System<ExtEvent> {
         ]);
     }
 
+    exception_add(win: Window.ShellWindow) {
+        this.exception_selecting = false;
+        let d = new add_exception.AddExceptionDialog(
+            // Cancel
+            () => this.exception_dialog(),
+            // this_app
+            () => {
+                let wmclass = win.meta.get_wm_class();
+                if (wmclass !== null && wmclass.length === 0) {
+                    wmclass = win.name(this);
+                }
+
+                if (wmclass) this.conf.add_app_exception(wmclass);
+                this.exception_dialog();
+            },
+            // current-window
+            () => {
+                let wmclass = win.meta.get_wm_class();
+                if (wmclass) this.conf.add_window_exception(wmclass, win.title());
+                this.exception_dialog();
+            },
+            // Reload the tiling config on dialog close
+            () => {
+                this.conf.reload();
+                this.tiling_config_reapply();
+            },
+        );
+        d.open();
+    }
+
+    exception_dialog() {
+        let path = get_current_path() + '/floating_exceptions/main.js';
+
+        const event_handler = (event: string): boolean => {
+            switch (event) {
+                case 'MODIFIED':
+                    this.register_fn(() => {
+                        this.conf.reload();
+                        this.tiling_config_reapply();
+                    });
+                    break;
+                case 'SELECT':
+                    this.register_fn(() => this.exception_select());
+                    return false;
+            }
+
+            return true;
+        };
+
+        const ipc = utils.async_process_ipc(['gjs', '--module', path]);
+
+        if (ipc) {
+            const generator = (stdout: any, res: any) => {
+                try {
+                    const [bytes] = stdout.read_line_finish(res);
+                    if (bytes) {
+                        if (event_handler((new TextDecoder().decode(bytes) as string).trim())) {
+                            ipc.stdout.read_line_async(0, ipc.cancellable, generator);
+                        }
+                    }
+                } catch (why) {
+                    log.error(`failed to read response from floating exceptions dialog: ${why}`);
+                }
+            };
+
+            ipc.stdout.read_line_async(0, ipc.cancellable, generator);
+        }
+    }
+
+    _exception_select_timeout: number | null = null;
+
+    exception_select() {
+        if (this._exception_select_timeout !== null) {
+            GLib.source_remove(this._exception_select_timeout);
+        }
+        this._exception_select_timeout = GLib.timeout_add(GLib.PRIORITY_LOW, 500, () => {
+            this.exception_selecting = true;
+            (Main as any).overview.show();
+            this._exception_select_timeout = null;
+            return false;
+        });
+    }
 
     exit_modes() {
         this.tiler.exit(this);
@@ -846,8 +932,6 @@ export class Ext extends Ecs.System<ExtEvent> {
         const tiled_windows = new Array<Window.ShellWindow>();
 
         for (const [window] of this.auto_tiler.attached.iter()) {
-            if (!this.auto_tiler.attached.contains(window)) continue;
-
             const win = this.windows.get(window);
 
             if (win && !win.reassignment && win.meta.get_monitor() === monitor) tiled_windows.push(win);
@@ -1108,14 +1192,15 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         const stack = window.stack;
 
-        window.destroy();
-
-        // Disconnect all signals on this window
+        // Disconnect all signals on this window BEFORE destroying it
+        // to prevent use-after-destroy race conditions.
         this.window_signals.take_with(win, (signals) => {
             for (const signal of signals) {
-                window.meta.disconnect(signal);
+                try { window.meta.disconnect(signal); } catch (_) { }
             }
         });
+
+        window.destroy();
 
         if (this.auto_tiler) {
             const entity = this.auto_tiler.attached.get(win);
@@ -1163,6 +1248,10 @@ export class Ext extends Ecs.System<ExtEvent> {
         scheduler.setForeground(win.meta);
 
         this.size_signals_unblock(win);
+
+        if (this.exception_selecting) {
+            this.exception_add(win);
+        }
 
         // Track history of focused windows, but do not permit duplicates.
         if (this.prev_focused[1] !== win.entity) {
@@ -1386,7 +1475,7 @@ export class Ext extends Ecs.System<ExtEvent> {
             win.grab = false;
         }
 
-        if (null === win || !win.is_tilable(this)) {
+        if (null === win || (!win.is_tilable(this) && !win.is_eligible_for_tiling(this))) {
             this.unset_grab_op();
             return;
         }
@@ -1410,18 +1499,20 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         const grab_op = this.grab_op;
 
-        if (!win) {
-            log.error('an entity was dropped, but there is no window');
-            return;
-        }
-
         if (this.auto_tiler && op === undefined) {
+            const is_floating = this.contains_tag(win.entity, Tags.Floating);
             const mon = this.monitors.get(win.entity);
             if (mon) {
                 const rect = win.meta.get_work_area_for_monitor(mon[0]);
                 const drop_cur = drop_cursor ?? cursor_rect();
                 if (rect && Rect.Rectangle.from_meta(rect as any).contains(drop_cur)) {
-                    this.auto_tiler.reflow(this, win.entity);
+                    if (is_floating) {
+                        if (this.settings.snap_to_grid()) {
+                            this.tiler.snap(this, win);
+                        }
+                    } else {
+                        this.auto_tiler.reflow(this, win.entity);
+                    }
                 } else {
                     this.auto_tiler.on_drop(this, win, true, drop_cursor);
                 }
@@ -1438,6 +1529,8 @@ export class Ext extends Ecs.System<ExtEvent> {
         if (this.auto_tiler) {
             const crect = win.rect();
             const rect = grab_op.rect;
+            const is_floating = this.contains_tag(win.entity, Tags.Floating);
+
             if (is_move_op(op)) {
                 const cmon = win.meta.get_monitor();
                 const prev_mon = this.monitors.get(win.entity);
@@ -1449,6 +1542,10 @@ export class Ext extends Ecs.System<ExtEvent> {
                     if (rect.contains(drop_cursor ?? cursor_rect())) {
                         if (this.auto_tiler.attached.contains(win.entity)) {
                             this.auto_tiler.on_drop(this, win, mon_drop, drop_cursor);
+                        } else if (is_floating) {
+                            if (this.settings.snap_to_grid()) {
+                                this.tiler.snap(this, win);
+                            }
                         } else {
                             this.auto_tiler.reflow(this, win.entity);
                         }
@@ -1484,6 +1581,8 @@ export class Ext extends Ecs.System<ExtEvent> {
                     } else {
                         log.error(`no fork component found`);
                     }
+                } else if (is_floating && this.settings.snap_to_grid()) {
+                    this.tiler.snap(this, win);
                 } else {
                     log.error(`no fork entity found`);
                 }
@@ -1815,17 +1914,26 @@ export class Ext extends Ecs.System<ExtEvent> {
 
                     const { orientation, swap } = result;
 
-                    const half_width = area.width / 2;
-                    const half_height = area.height / 2;
+                    const is_snap = this.settings.snap_to_grid();
+                    const grid_w = this.column_size;
+                    const grid_h = this.row_size;
+
+                    let half_width = area.width / 2;
+                    let half_height = area.height / 2;
+
+                    if (is_snap) {
+                        half_width = Lib.round_increment(half_width, grid_w);
+                        half_height = Lib.round_increment(half_height, grid_h);
+                    }
 
                     const new_area: [number, number, number, number] =
                         orientation === Lib.Orientation.HORIZONTAL
                             ? swap
                                 ? [area.x, area.y, half_width, area.height]
-                                : [area.x + half_width, area.y, half_width, area.height]
+                                : [area.x + area.width - half_width, area.y, half_width, area.height]
                             : swap
                                 ? [area.x, area.y, area.width, half_height]
-                                : [area.x, area.y + half_height, area.width, half_height];
+                                : [area.x, area.y + area.height - half_height, area.width, half_height];
 
                     this.overlay.x = new_area[0];
                     this.overlay.y = new_area[1];
@@ -2029,11 +2137,6 @@ export class Ext extends Ecs.System<ExtEvent> {
 
 
             actor.connect('destroy', () => {
-                if (win && win.border) {
-                    win.border.destroy();
-                    win.border = null;
-                }
-
                 this.on_destroy(entity);
 
                 return false;
@@ -3228,20 +3331,14 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     update_scale() {
         const new_dpi = St.ThemeContext.get_for_stage(((global as any).stage as any)).scale_factor;
-        const diff = new_dpi / this.dpi;
         this.dpi = new_dpi;
 
-        this.column_size *= diff;
-        this.row_size *= diff;
+        // Reload gap and grid values from settings using the new DPI.
+        // This avoids accumulating rounding errors from repeated scaling.
+        this.load_settings();
 
-        this.gap_inner_prev *= diff;
-        this.gap_inner *= diff;
-        this.gap_inner_half *= diff;
-        this.gap_outer_prev *= diff;
-        this.gap_outer *= diff;
-
+        // Retile all forks with updated gap/grid values.
         this.update_inner_gap();
-        this.update_outer_gap(diff);
     }
 
     update_snapped() {
@@ -3777,3 +3874,4 @@ function is_valid_minimize_to_tray(meta_win: Meta.Window, ext: Ext) {
 
     return valid_min_to_tray;
 }
+

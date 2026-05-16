@@ -6,6 +6,7 @@ import * as movement from '../window/movement.js';
 import * as Rect from '../utils/rectangle.js';
 import * as Node from './node.js';
 import * as Fork from './fork.js';
+import * as utils from '../utils/utils.js';
 import * as geom from '../utils/geom.js';
 
 import type { Entity } from '../core/ecs.js';
@@ -16,6 +17,7 @@ import { Stack } from './stack.js';
 
 const { Arena } = arena;
 import Meta from 'gi://Meta';
+import GLib from 'gi://GLib';
 const { Movement } = movement;
 
 const { DOWN, UP, LEFT, RIGHT } = Movement;
@@ -947,16 +949,25 @@ export class Forest extends Ecs.World {
     }
 }
 
-function move_window(ext: Ext, window: ShellWindow, rect: Rectangle, on_complete: () => void) {
+function move_window(ext: Ext, window: ShellWindow, rect: Rectangle, on_complete: () => void, retries = 0) {
+    if (window.destroying) return;
+
     if (!(window.meta instanceof Meta.Window)) {
-        log.error(`attempting to a window entity in a tree which lacks a Meta.Window`);
+        log.error(`attempting to move a window entity in a tree which lacks a Meta.Window`);
         return;
     }
 
     const actor = window.meta.get_compositor_private();
 
     if (!actor) {
-        log.warn(`Window(${window.entity}) does not have an actor, and therefore cannot be moved`);
+        if (retries < 10) {
+            utils.later_add(Meta.LaterType.BEFORE_REDRAW, () => {
+                move_window(ext, window, rect, on_complete, retries + 1);
+                return GLib.SOURCE_REMOVE;
+            });
+        } else {
+            log.warn(`Window(${window.entity}) does not have an actor after ${retries} retries, and therefore cannot be moved`);
+        }
         return;
     }
 
@@ -964,5 +975,14 @@ function move_window(ext: Ext, window: ShellWindow, rect: Rectangle, on_complete
     window.move(ext, rect, () => {
         on_complete();
         ext.size_signals_unblock(window);
+
+        // If the window's actual size differs from the requested size (Mutter enforced min-size),
+        // explicitly trigger reflow to adjust the tiling layout.
+        if (ext.auto_tiler) {
+            const actual = window.rect();
+            if (!actual.eq(rect)) {
+                ext.auto_tiler.reflow(ext, window.entity);
+            }
+        }
     });
 }
