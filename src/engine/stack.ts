@@ -38,6 +38,7 @@ function stack_widgets_new(): StackWidgets {
     const tabs = new St.BoxLayout({
         style_class: 'o-tiling-stack',
         x_expand: true,
+        reactive: true,
     });
 
     tabs.get_layout_manager()?.set_homogeneous(true);
@@ -130,6 +131,18 @@ export class Stack {
 
     widgets: null | StackWidgets = null;
 
+    /** Returns true if the tabs widget has been disposed by GNOME (e.g. during workspace reparenting). */
+    private is_disposed(): boolean {
+        if (!this.widgets) return true;
+        try {
+            // Accessing a property on a disposed GObject throws in GJS
+            void this.widgets.tabs.visible;
+            return false;
+        } catch (_) {
+            return true;
+        }
+    }
+
     active: Entity;
 
     active_id: number = 0;
@@ -175,7 +188,7 @@ export class Stack {
 
     /** Adds a new window to the stack */
     add(window: ShellWindow) {
-        if (!this.widgets) return;
+        if (!this.widgets || this.is_disposed()) return;
 
         const entity = window.entity;
         const active = Ecs.entity_eq(entity, this.active);
@@ -185,8 +198,9 @@ export class Stack {
 
         const tab: Tab = { active, entity, signals: [], button: id, button_signal: null };
         const comp = this.tabs.length;
-        this.bind_hint_events(tab);
         this.tabs.push(tab);
+        this.bind_hint_events(tab);
+        for (const t of this.tabs) this.change_tab_color(t);
         this.watch_signals(comp, id, window);
         this.widgets.tabs.add_child(button);
     }
@@ -213,6 +227,8 @@ export class Stack {
 
     /** Activates the tab of this entity */
     activate(entity: Entity) {
+        if (this.is_disposed()) return;
+
         const permitted = this.permitted_to_show();
 
         if (this.widgets) this.widgets.tabs.visible = permitted;
@@ -487,7 +503,7 @@ export class Stack {
     }
 
     remove_tab_component(c: Tab, idx: number) {
-        if (!this.widgets) return;
+        if (!this.widgets || this.is_disposed()) return;
 
         this.tab_disconnect(c);
 
@@ -499,6 +515,7 @@ export class Stack {
         }
 
         this.tabs.splice(idx, 1);
+        for (const t of this.tabs) this.change_tab_color(t);
     }
 
     /** Removes the tab associated with the entity */
@@ -547,7 +564,12 @@ export class Stack {
 
     /** Repositions the stack, arranging the stack's actors around the active window */
     reposition() {
-        if (!this.widgets) return;
+        if (!this.widgets || this.is_disposed()) {
+            // If the widget was disposed (e.g. by GNOME during workspace reparenting),
+            // trigger recreation rather than crashing.
+            if (this.widgets) this.recreate_widgets();
+            return;
+        }
 
         const window = this.ext.windows.get(this.active);
         if (!window) return;
@@ -623,7 +645,7 @@ export class Stack {
 
     /** Changes visibility of the stack's actors */
     set_visible(visible: boolean) {
-        if (!this.widgets) return;
+        if (!this.widgets || this.is_disposed()) return;
 
         this.widgets.tabs.visible = visible;
 
@@ -636,7 +658,7 @@ export class Stack {
 
     /** Updates the dimensions and positions of the stack's actors */
     update_positions(rect: Rectangular) {
-        if (!this.widgets) return;
+        if (!this.widgets || this.is_disposed()) return;
 
         this.rect = rect;
 
