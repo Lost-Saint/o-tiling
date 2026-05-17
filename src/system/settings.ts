@@ -204,6 +204,11 @@ export class ExtensionSettings {
         return this.mutter ? this.mutter.get_boolean('workspaces-only-on-primary') : false;
     }
 
+    focus_change_on_pointer_rest(): boolean {
+        return this.mutter ? this.mutter.get_boolean('focus-change-on-pointer-rest') : false;
+    }
+
+
     log_level(): number {
         return this.ext.get_uint(LOG_LEVEL);
     }
@@ -339,6 +344,11 @@ export class ExtensionSettings {
     set_edge_tiling(enable: boolean) {
         this.mutter?.set_boolean(EDGE_TILING, enable);
     }
+
+    set_focus_change_on_pointer_rest(enable: boolean) {
+        this.mutter?.set_boolean('focus-change-on-pointer-rest', enable);
+    }
+
 
 
     set_gap_inner(gap: number) {

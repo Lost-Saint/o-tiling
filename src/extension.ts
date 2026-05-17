@@ -287,6 +287,7 @@ export class Ext extends Ecs.System<ExtEvent> {
     _resume_timeout_source: number | null = null;
     private _bordered_entity: Entity | null = null;
     private _border_cleanup_pending: boolean = false;
+    private _original_focus_change_on_pointer_rest: boolean | null = null;
     private _destroyed: boolean = false;
     private _startup_complete_id: number = 0;
     executor: Executor.GLibExecutor<ExtEvent>;
@@ -308,6 +309,24 @@ export class Ext extends Ecs.System<ExtEvent> {
         this._first_startup = true;
         this.keybindings = new Keybindings.Keybindings(this);
         this.settings = new Settings.ExtensionSettings();
+
+        // Prevent GNOME Shell Wayland crashes inside focus_on_pointer_rest_callback
+        this._original_focus_change_on_pointer_rest = null;
+        if (utils.is_wayland() && this.settings.mutter) {
+            try {
+                const keys = this.settings.mutter.list_keys();
+                if (keys.includes('focus-change-on-pointer-rest')) {
+                    const original = this.settings.focus_change_on_pointer_rest();
+                    if (original) {
+                        this._original_focus_change_on_pointer_rest = true;
+                        this.settings.set_focus_change_on_pointer_rest(false);
+                        log.info('Auto-disabled Mutter focus-change-on-pointer-rest to prevent Wayland compositor crashes');
+                    }
+                }
+            } catch (e) {
+                log.error(`Failed to handle focus-change-on-pointer-rest: ${e}`);
+            }
+        }
         log.init_log_level(this.settings.ext);
         this.overlay = new St.BoxLayout({
             style_class: "o-tiling-overlay",
@@ -467,6 +486,16 @@ export class Ext extends Ecs.System<ExtEvent> {
         this.unset_grab_op();
         this.executor.stop();
         this._destroyed = true;
+
+        if (this._original_focus_change_on_pointer_rest !== null && this.settings.mutter) {
+            try {
+                this.settings.set_focus_change_on_pointer_rest(this._original_focus_change_on_pointer_rest);
+                log.info('Restored Mutter focus-change-on-pointer-rest setting');
+            } catch (e) {
+                log.error(`Failed to restore focus-change-on-pointer-rest: ${e}`);
+            }
+            this._original_focus_change_on_pointer_rest = null;
+        }
 
 
         if (this._resume_timeout) {
