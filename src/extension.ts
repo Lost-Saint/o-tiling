@@ -1094,7 +1094,7 @@ export class Ext extends Ecs.System<ExtEvent> {
     on_active_workspace_changed() {
         this.register_fn(() => {
             this.exit_modes();
-            this.hide_all_borders();
+            this.hide_all_borders(true);
             this.restack();
 
             // Always update the workspace tiling toggle when switching workspaces
@@ -1348,10 +1348,10 @@ export class Ext extends Ecs.System<ExtEvent> {
         }
     }
 
-    hide_all_borders() {
+    hide_all_borders(instant: boolean = false) {
         if (this._bordered_entity !== null) {
             const w = this.windows.get(this._bordered_entity);
-            w?.hide_border();
+            w?.hide_border(instant);
             this._bordered_entity = null;
             this._border_cleanup_pending = true;
         }
@@ -2535,7 +2535,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         });
 
         this.connect(wim, 'switch-workspace', () => {
-            this.hide_all_borders();
+            this.hide_all_borders(true);
         });
 
         this.connect(workspace_manager, 'active-workspace-changed', () => {
@@ -2552,7 +2552,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         // Bind show desktop and remove the active hint
         this.connect(workspace_manager, 'showing-desktop-changed', () => {
-            this.hide_all_borders();
+            this.hide_all_borders(true);
             this.prev_focused = [null, null];
         });
 

@@ -20,7 +20,7 @@ const INACTIVE_TAB = 'o-tiling-tab o-tiling-tab-inactive';
 const URGENT_TAB = 'o-tiling-tab o-tiling-tab-urgent';
 const INACTIVE_TAB_STYLE = '#9B8E8A';
 
-export var TAB_HEIGHT: number = 24;
+export var TAB_HEIGHT: number = 38;
 
 interface Tab {
     active: boolean;
@@ -72,7 +72,7 @@ const TabButton = GObject.registerClass(
     class TabButton extends St.Button {
         _title: any;
         constructor(window: ShellWindow) {
-            const icon = window.icon(window.ext, 24);
+            const icon = window.icon(window.ext, 18);
             icon.set_x_align(Clutter.ActorAlign.START);
 
             const label = new St.Label({
@@ -92,7 +92,7 @@ const TabButton = GObject.registerClass(
             const close_button = new ContainerButton(
                 new St.Icon({
                     icon_name: 'window-close-symbolic',
-                    icon_size: 24,
+                    icon_size: 16,
                     y_align: Clutter.ActorAlign.CENTER,
                 }),
             );

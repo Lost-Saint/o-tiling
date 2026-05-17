@@ -201,15 +201,9 @@ export class AutoTiler {
      * - Then tries to tile onto a monitor
      */
     auto_tile(ext: Ext, win: ShellWindow, ignore_focus: boolean = false) {
-        const result = this.fetch_mode(ext, win, ignore_focus);
         this.detach_window(ext, win.entity);
-        if (result.kind == ERR) {
-            log.debug(`attach to workspace: ${result.value}`);
-            this.attach_to_workspace(ext, win, ext.workspace_id(win));
-        } else {
-            log.debug(`attaching to window ${win.entity}`);
-            this.attach_to_window(ext, result.value, win, { auto: 0 });
-        }
+        log.debug(`attach to workspace: finding largest window`);
+        this.attach_to_workspace(ext, win, ext.workspace_id(win));
     }
 
     /** Destroy all widgets owned by this object. Call before dropping. */

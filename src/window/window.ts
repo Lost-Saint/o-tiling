@@ -484,7 +484,16 @@ export class ShellWindow {
 
             if (permitted()) {
                 if (this.meta.appears_focused) {
-                    if (!border.visible) border.show();
+                    if (!border.visible) {
+                        border.opacity = 0;
+                        border.show();
+                    }
+                    border.remove_all_transitions();
+                    (border as any).ease({
+                        opacity: 255,
+                        duration: 150,
+                        mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                    });
 
                     // Ensure that the border is shown (workaround for certain windows)
                     if (ACTIVE_HINT_SHOW_ID === null) {
@@ -503,7 +512,20 @@ export class ShellWindow {
                     }
                 }
             } else {
-                border.hide();
+                border.remove_all_transitions();
+                if (this.destroying || !this.same_workspace()) {
+                    border.opacity = 0;
+                    border.hide();
+                } else {
+                    (border as any).ease({
+                        opacity: 0,
+                        duration: 150,
+                        mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                        onComplete: () => {
+                            border.hide();
+                        },
+                    });
+                }
                 if (ACTIVE_HINT_SHOW_ID !== null) {
                     GLib.source_remove(ACTIVE_HINT_SHOW_ID);
                     ACTIVE_HINT_SHOW_ID = null;
@@ -535,11 +557,12 @@ export class ShellWindow {
                 this.update_border_style();
                 this.update_border_layout();
                 this.restack(RESTACK_STATE.NORMAL, true);
-                this.ext.show_border_on_focused();
             }
             return GLib.SOURCE_REMOVE;
         });
     }
+
+
 
     /**
      * Sort the window group/always top group with each window border
@@ -621,11 +644,23 @@ export class ShellWindow {
         }
     }
 
-    hide_border() {
+    hide_border(instant: boolean = false) {
         const b = this.border;
         if (b) {
             b.remove_all_transitions();
-            b.hide();
+            if (this.destroying || instant || !this.same_workspace()) {
+                b.opacity = 0;
+                b.hide();
+            } else {
+                (b as any).ease({
+                    opacity: 0,
+                    duration: 150,
+                    mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                    onComplete: () => {
+                        b.hide();
+                    },
+                });
+            }
         }
     }
 
@@ -674,20 +709,9 @@ export class ShellWindow {
 
                 if (workspace === null) return;
 
-                // Smoothly animate the border to the new position when it is
-                // already visible and not being interactively grabbed.
-                if (border.visible && !this.grab && this._border_positioned) {
-                    border.remove_all_transitions();
-                    (border as any).ease({
-                        x, y, width, height,
-                        duration: BORDER_TRANSITION_DURATION,
-                        mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-                    });
-                } else {
-                    border.set_position(x, y);
-                    border.set_size(width, height);
-                    this._border_positioned = true;
-                }
+                border.set_position(x, y);
+                border.set_size(width, height);
+                this._border_positioned = true;
             }
         }
     }
@@ -758,10 +782,8 @@ export class ShellWindow {
     }
 
     private window_changed() {
-        if (this._update_id === null) {
-            this.ext.show_border_on_focused();
-        }
         this.queue_update();
+        this.ext.show_border_on_focused();
     }
 
     private window_raised() {
@@ -770,7 +792,7 @@ export class ShellWindow {
     }
 
     private workspace_changed() {
-        this.restack(RESTACK_STATE.WORKSPACE_CHANGED);
+        this.restack(RESTACK_STATE.WORKSPACE_CHANGED, true);
     }
 
 

@@ -18,7 +18,7 @@ export function init_log_level(settings: any) {
 }
 
 /**
- * parse level at runtime so we don't have to restart popshell
+ * parse level at runtime so we don't have to restart extension
  */
 export function log_level() {
     return _level;
