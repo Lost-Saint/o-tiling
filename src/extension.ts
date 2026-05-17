@@ -267,7 +267,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     /** Calculates window placements when tiling and focus-switching */
     tiler: Tiling.Tiler = new Tiling.Tiler(this);
- 
+
 
 
     /** Manages theme consistency (session injection) */
@@ -416,7 +416,7 @@ export class Ext extends Ecs.System<ExtEvent> {
                 this._startup_complete_id = Main.layoutManager.connect('startup-complete', () => {
                     // Final hide check in case it managed to show up
                     if (Main.overview.visible) Main.overview.hide();
-                    
+
                     // Cleanup the showing interceptor
                     Main.overview.disconnect(showingId);
 
@@ -538,11 +538,11 @@ export class Ext extends Ecs.System<ExtEvent> {
                 // Disconnect signals stored in window_signals and size_signals for THIS window
                 const win_sigs = this.window_signals.get(entity);
                 if (win_sigs) {
-                    for (const sig of win_sigs) try { win.meta.disconnect(sig); } catch (_) {}
+                    for (const sig of win_sigs) try { win.meta.disconnect(sig); } catch (_) { }
                 }
                 const size_sigs = this.size_signals.get(entity);
                 if (size_sigs) {
-                    for (const sig of size_sigs) try { win.meta.disconnect(sig); } catch (_) {}
+                    for (const sig of size_sigs) try { win.meta.disconnect(sig); } catch (_) { }
                 }
 
                 win.destroy();
@@ -1340,20 +1340,40 @@ export class Ext extends Ecs.System<ExtEvent> {
     }
 
     show_border_on_focused() {
-        this.hide_all_borders();
-        const focus = this.focus_window();
-        if (focus && focus.same_workspace()) {
-            focus.show_border();
-            this._bordered_entity = focus.entity;
+        const overlay_all = this.settings.active_hint_overlay_all_windows();
+        if (overlay_all) {
+            for (const window of this.windows.values()) {
+                if (window.same_workspace()) {
+                    window.show_border();
+                } else {
+                    window.hide_border(true);
+                }
+            }
+            this._bordered_entity = this.focus_window()?.entity ?? null;
+        } else {
+            this.hide_all_borders();
+            const focus = this.focus_window();
+            if (focus && focus.same_workspace()) {
+                focus.show_border();
+                this._bordered_entity = focus.entity;
+            }
         }
     }
 
     hide_all_borders(instant: boolean = false) {
-        if (this._bordered_entity !== null) {
-            const w = this.windows.get(this._bordered_entity);
-            w?.hide_border(instant);
+        if (this.settings.active_hint_overlay_all_windows()) {
+            for (const window of this.windows.values()) {
+                window.hide_border(instant);
+            }
             this._bordered_entity = null;
             this._border_cleanup_pending = true;
+        } else {
+            if (this._bordered_entity !== null) {
+                const w = this.windows.get(this._bordered_entity);
+                w?.hide_border(instant);
+                this._bordered_entity = null;
+                this._border_cleanup_pending = true;
+            }
         }
         if (this._border_cleanup_pending) {
             Window.cleanup_main_loop_sources();
@@ -2387,8 +2407,11 @@ export class Ext extends Ecs.System<ExtEvent> {
                 case 'active-hint-overlay-opacity':
                 case 'active-hint-glow-opacity':
                 case 'hint-color-rgba':
+                case 'active-hint-overlay-color-rgba':
+                case 'active-hint-glow-color-rgba':
                 case 'active-hint-border-radius':
                 case 'active-hint-border-width':
+                case 'active-hint-overlay-all-windows':
                     this.show_border_on_focused();
                     break;
                 case 'gap-inner':
@@ -2803,11 +2826,11 @@ export class Ext extends Ecs.System<ExtEvent> {
                 // Disconnect signals stored in window_signals and size_signals for THIS window
                 const win_sigs = this.window_signals.get(entity);
                 if (win_sigs) {
-                    for (const sig of win_sigs) try { win.meta.disconnect(sig); } catch (_) {}
+                    for (const sig of win_sigs) try { win.meta.disconnect(sig); } catch (_) { }
                 }
                 const size_sigs = this.size_signals.get(entity);
                 if (size_sigs) {
-                    for (const sig of size_sigs) try { win.meta.disconnect(sig); } catch (_) {}
+                    for (const sig of size_sigs) try { win.meta.disconnect(sig); } catch (_) { }
                 }
 
                 win.destroy();
@@ -2819,7 +2842,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         // 4. Disable all keybindings
         this.keybindings.disable(this.keybindings.global)
-                        .disable(this.keybindings.window_focus);
+            .disable(this.keybindings.window_focus);
 
         // 5. Remove all global window/workspace/display signals
         this.signals_remove();
@@ -2900,7 +2923,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         // 3. Re-enable all keybindings
         this.keybindings.enable(this.keybindings.global)
-                        .enable(this.keybindings.window_focus);
+            .enable(this.keybindings.window_focus);
 
         if (!this.window_buttons_manager) {
             this.window_buttons_manager = new WindowButtonsManager(this.settings);
@@ -3006,7 +3029,7 @@ export class Ext extends Ecs.System<ExtEvent> {
                 this.theme_consistency_handler = new ThemeConsistencyManager();
             }
             this.theme_consistency_handler.enable(style as any);
-            
+
             // Also apply GTK theme consistency
             applyThemeConsistency(style as 'rounded' | 'sharp');
         } else {
@@ -3638,13 +3661,13 @@ let default_isoverviewwindow_ws_thumbnail: any = null;
 // Determine method name once (works for GNOME 46-48 and 49-50).
 const WS_OVERVIEW_KEY: string | null =
     '_isOverviewWindow' in (Workspace.prototype as any) ? '_isOverviewWindow'
-    : 'isOverviewWindow'  in (Workspace.prototype as any) ? 'isOverviewWindow'
-    : null;
+        : 'isOverviewWindow' in (Workspace.prototype as any) ? 'isOverviewWindow'
+            : null;
 
 const WST_OVERVIEW_KEY: string | null =
     '_isOverviewWindow' in (WorkspaceThumbnail.prototype as any) ? '_isOverviewWindow'
-    : 'isOverviewWindow'  in (WorkspaceThumbnail.prototype as any) ? 'isOverviewWindow'
-    : null;
+        : 'isOverviewWindow' in (WorkspaceThumbnail.prototype as any) ? 'isOverviewWindow'
+            : null;
 let default_init_appswitcher: any;
 let default_getwindowlist_windowswitcher: any;
 let default_getcaption_windowpreview: any;

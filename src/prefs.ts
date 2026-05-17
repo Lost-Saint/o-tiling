@@ -91,7 +91,7 @@ export default class OTilingPreferences extends ExtensionPreferences {
             const selected = themesConsistencyRow.selected;
             const style = selected === 0 ? 'default' : selected === 1 ? 'rounded' : 'sharp';
             settings.set_string('theme-consistency-style', style);
-            
+
             // Apply GTK theme consistency immediately
             if (style !== 'default') {
                 applyThemeConsistency(style as 'rounded' | 'sharp');
@@ -101,7 +101,7 @@ export default class OTilingPreferences extends ExtensionPreferences {
         // Set initial value
         const currentStyle = settings.get_string('theme-consistency-style');
         themesConsistencyRow.selected = currentStyle === 'rounded' ? 1 : currentStyle === 'sharp' ? 2 : 0;
-        
+
         // Ensure GTK consistency is applied if active
         if (currentStyle !== 'default') {
             applyThemeConsistency(currentStyle as 'rounded' | 'sharp');
@@ -230,6 +230,116 @@ export default class OTilingPreferences extends ExtensionPreferences {
         colorButton.connect('notify::rgba', () => {
             const rgba = colorButton.rgba;
             settings.set_string('hint-color-rgba', rgba.to_string());
+        });
+
+        // Overlay (Tint) Color Customization
+        const useOverlayColor = new Adw.SwitchRow({
+            title: _('Use Custom Tint Color'),
+            subtitle: _('Override default active border color for the window background tint overlay'),
+        });
+        auraGroup.add(useOverlayColor);
+
+        const overlayColorRow = new Adw.ActionRow({
+            title: _('Active Hint Overlay (Tint) Color'),
+            subtitle: _('Custom tint color to overlay on the active window'),
+        });
+        auraGroup.add(overlayColorRow);
+
+        const overlayColorDialog = new Gtk.ColorDialog({ with_alpha: true });
+        const overlayColorButton = new Gtk.ColorDialogButton({
+            dialog: overlayColorDialog,
+            valign: Gtk.Align.CENTER,
+        });
+        overlayColorRow.add_suffix(overlayColorButton);
+
+        const currentOverlayVal = settings.get_string('active-hint-overlay-color-rgba');
+        const overlayIsCustom = currentOverlayVal !== 'auto';
+        useOverlayColor.active = overlayIsCustom;
+        overlayColorRow.sensitive = overlayIsCustom;
+
+        try {
+            const initialOverlayColor = new Gdk.RGBA();
+            const colorStringToParse = overlayIsCustom ? currentOverlayVal : settings.get_string('hint-color-rgba');
+            if (initialOverlayColor.parse(colorStringToParse)) {
+                overlayColorButton.rgba = initialOverlayColor;
+            }
+        } catch (e) {
+            log.warn('Could not set initial overlay color: ' + e);
+        }
+
+        useOverlayColor.connect('notify::active', () => {
+            const active = useOverlayColor.active;
+            overlayColorRow.sensitive = active;
+            if (active) {
+                settings.set_string('active-hint-overlay-color-rgba', overlayColorButton.rgba.to_string());
+            } else {
+                settings.set_string('active-hint-overlay-color-rgba', 'auto');
+            }
+        });
+
+        overlayColorButton.connect('notify::rgba', () => {
+            if (useOverlayColor.active) {
+                settings.set_string('active-hint-overlay-color-rgba', overlayColorButton.rgba.to_string());
+            }
+        });
+
+        // Apply Tint to All Windows Switch
+        const overlayAll = new Adw.SwitchRow({
+            title: _('Apply Tint to All Windows'),
+            subtitle: _('Render the background overlay tint on all tiled windows on the workspace, instead of only the active window'),
+        });
+        auraGroup.add(overlayAll);
+        settings.bind('active-hint-overlay-all-windows', overlayAll as any, 'active', Gio.SettingsBindFlags.DEFAULT);
+
+        // Glow Color Customization
+        const useGlowColor = new Adw.SwitchRow({
+            title: _('Use Custom Glow Color'),
+            subtitle: _('Override default active border color for the outer glow effect'),
+        });
+        auraGroup.add(useGlowColor);
+
+        const glowColorRow = new Adw.ActionRow({
+            title: _('Active Glow (Aura) Color'),
+            subtitle: _('Custom glow/aura color for the active window'),
+        });
+        auraGroup.add(glowColorRow);
+
+        const glowColorDialog = new Gtk.ColorDialog({ with_alpha: true });
+        const glowColorButton = new Gtk.ColorDialogButton({
+            dialog: glowColorDialog,
+            valign: Gtk.Align.CENTER,
+        });
+        glowColorRow.add_suffix(glowColorButton);
+
+        const currentGlowVal = settings.get_string('active-hint-glow-color-rgba');
+        const glowIsCustom = currentGlowVal !== 'auto';
+        useGlowColor.active = glowIsCustom;
+        glowColorRow.sensitive = glowIsCustom;
+
+        try {
+            const initialGlowColor = new Gdk.RGBA();
+            const colorStringToParse = glowIsCustom ? currentGlowVal : settings.get_string('hint-color-rgba');
+            if (initialGlowColor.parse(colorStringToParse)) {
+                glowColorButton.rgba = initialGlowColor;
+            }
+        } catch (e) {
+            log.warn('Could not set initial glow color: ' + e);
+        }
+
+        useGlowColor.connect('notify::active', () => {
+            const active = useGlowColor.active;
+            glowColorRow.sensitive = active;
+            if (active) {
+                settings.set_string('active-hint-glow-color-rgba', glowColorButton.rgba.to_string());
+            } else {
+                settings.set_string('active-hint-glow-color-rgba', 'auto');
+            }
+        });
+
+        glowColorButton.connect('notify::rgba', () => {
+            if (useGlowColor.active) {
+                settings.set_string('active-hint-glow-color-rgba', glowColorButton.rgba.to_string());
+            }
         });
 
         // Behavior Group

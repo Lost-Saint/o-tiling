@@ -175,12 +175,15 @@ export class ShellWindow {
         const settings = this.ext.settings;
         const change_id = settings.ext.connect('changed', (_, key) => {
             if (this.border) {
-                if (key === 'hint-color-rgba' || 
-                    key === 'active-hint-border-radius' || 
+                if (key === 'hint-color-rgba' ||
+                    key === 'active-hint-overlay-color-rgba' ||
+                    key === 'active-hint-glow-color-rgba' ||
+                    key === 'active-hint-border-radius' ||
                     key === 'active-hint-border-width' ||
                     key === 'active-hint-overlay-opacity' ||
                     key === 'active-hint-glow-opacity' ||
-                    key === 'active-hint-glow'
+                    key === 'active-hint-glow' ||
+                    key === 'active-hint-overlay-all-windows'
                 ) {
                     this.update_hint_colors();
                     this.update_border_layout();
@@ -207,15 +210,21 @@ export class ShellWindow {
     private update_hint_colors() {
         const settings = this.ext.settings;
         const color_value = settings.hint_color_rgba();
+        const overlay_color_val = settings.active_hint_overlay_color_rgba();
+        const overlay_base = overlay_color_val === 'auto' ? color_value : overlay_color_val;
 
         if (this.ext.overlay) {
             const orig_overlay = 'rgba(53, 132, 228, 0.3)';
-            let final_color = color_value;
+            let final_color = overlay_base;
 
-            if (utils.is_dark(color_value)) {
-                final_color = orig_overlay;
+            if (overlay_color_val === 'auto') {
+                if (utils.is_dark(color_value)) {
+                    final_color = orig_overlay;
+                } else {
+                    final_color = utils.set_alpha(color_value, 0.3);
+                }
             } else {
-                final_color = utils.set_alpha(color_value, 0.3);
+                final_color = utils.set_alpha(overlay_base, 0.3);
             }
 
             const radius_value = settings.active_hint_border_radius();
@@ -470,11 +479,12 @@ export class ShellWindow {
 
             const permitted = () => {
                 const actor = this.meta.get_compositor_private() as any;
+                const overlay_all = this.ext.settings.active_hint_overlay_all_windows();
                 return (
                     actor !== null &&
                     actor.mapped &&
                     this.same_workspace() &&
-                    this.ext.focus_window() == this &&
+                    (this.ext.focus_window() == this || overlay_all) &&
                     !this.meta.is_fullscreen() &&
                     (!this.is_single_max_screen() || this.is_snap_edge()) &&
                     !this.meta.minimized &&
@@ -483,33 +493,31 @@ export class ShellWindow {
             };
 
             if (permitted()) {
-                if (this.meta.appears_focused) {
-                    if (!border.visible) {
-                        border.opacity = 0;
-                        border.show();
-                    }
-                    border.remove_all_transitions();
-                    (border as any).ease({
-                        opacity: 255,
-                        duration: 150,
-                        mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                if (!border.visible) {
+                    border.opacity = 0;
+                    border.show();
+                }
+                border.remove_all_transitions();
+                (border as any).ease({
+                    opacity: 255,
+                    duration: 150,
+                    mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                });
+
+                // Ensure that the border is shown (workaround for certain windows)
+                if (ACTIVE_HINT_SHOW_ID === null) {
+                    let applications = 0;
+                    ACTIVE_HINT_SHOW_ID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
+                        if (!permitted() || applications >= 5) {
+                            ACTIVE_HINT_SHOW_ID = null;
+                            if (!permitted()) border.hide();
+                            return GLib.SOURCE_REMOVE;
+                        }
+
+                        applications += 1;
+                        if (!border.visible) border.show();
+                        return GLib.SOURCE_CONTINUE;
                     });
-
-                    // Ensure that the border is shown (workaround for certain windows)
-                    if (ACTIVE_HINT_SHOW_ID === null) {
-                        let applications = 0;
-                        ACTIVE_HINT_SHOW_ID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
-                            if (!permitted() || applications >= 5) {
-                                ACTIVE_HINT_SHOW_ID = null;
-                                if (!permitted()) border.hide();
-                                return GLib.SOURCE_REMOVE;
-                            }
-
-                            applications += 1;
-                            if (!border.visible) border.show();
-                            return GLib.SOURCE_CONTINUE;
-                        });
-                    }
                 }
             } else {
                 border.remove_all_transitions();
@@ -725,9 +733,16 @@ export class ShellWindow {
         const glow_opacity = settings.active_hint_glow_opacity() / 100;
 
         if (this.border) {
+            const is_focused = this.meta.appears_focused;
+            const overlay_color_val = settings.active_hint_overlay_color_rgba();
+            const overlay_base = overlay_color_val === 'auto' ? color_value : overlay_color_val;
+
+            const glow_color_val = settings.active_hint_glow_color_rgba();
+            const glow_base = glow_color_val === 'auto' ? color_value : glow_color_val;
+
             // Using a semi-transparent version of the color for the glow (Aura)
-            const glow_color = utils.set_alpha(color_value, glow_opacity);
-            
+            const glow_color = utils.set_alpha(glow_base, glow_opacity);
+
             // The radius of the border actor should be the window radius plus the border width
             // to ensure the curves are concentric and match perfectly.
             // Only force square corners if truly maximized by the OS or snapped to an edge.
@@ -741,30 +756,47 @@ export class ShellWindow {
                 current_radius = Math.min(current_radius, 12);
             }
 
-            const total_radius = current_radius + width_value;
-            
-            // Subtler glow (Aura) to prevent it from overlaying window content
-            const blur_radius = width_value + 2;
-            const show_glow = settings.active_hint_glow();
-            
-            let style = `border-color: ${color_value}; border-radius: ${total_radius}px; border-width: ${width_value}px; outline: none; background-clip: padding-box;`;
-            
-            if (show_glow) {
-                style += ` box-shadow: 0 0 ${blur_radius}px ${glow_color};`;
-            } else {
-                style += ' box-shadow: none;';
-            }
-            
-            if (overlay_opacity > 0 && !is_maximized_os) {
-                const overlay_color = utils.set_alpha(color_value, overlay_opacity);
-                style += ` background-color: ${overlay_color};`;
-            } else {
-                // Using nearly invisible background instead of 'transparent' 
-                // to force the renderer to respect the border radius for shadows.
-                style += ' background-color: rgba(0, 0, 0, 0.01);';
-            }
+            if (is_focused) {
+                const total_radius = current_radius + width_value;
+                
+                // Subtler glow (Aura) to prevent it from overlaying window content
+                const blur_radius = width_value + 2;
+                const show_glow = settings.active_hint_glow();
+                
+                let style = `border-color: ${color_value}; border-radius: ${total_radius}px; border-width: ${width_value}px; outline: none; background-clip: padding-box;`;
+                
+                if (show_glow) {
+                    style += ` box-shadow: 0 0 ${blur_radius}px ${glow_color};`;
+                } else {
+                    style += ' box-shadow: none;';
+                }
+                
+                if (overlay_opacity > 0 && !is_maximized_os) {
+                    const overlay_color = utils.set_alpha(overlay_base, overlay_opacity);
+                    style += ` background-color: ${overlay_color};`;
+                } else {
+                    // Using nearly invisible background instead of 'transparent' 
+                    // to force the renderer to respect the border radius for shadows.
+                    style += ' background-color: rgba(0, 0, 0, 0.01);';
+                }
 
-            this.border.set_style(style);
+                this.border.set_style(style);
+            } else {
+                // Inactive window: render the same background overlay tint (without border and shadow)
+                const total_radius = current_radius;
+                
+                let style = `border-color: transparent; border-radius: ${total_radius}px; border-width: 0px; outline: none; background-clip: padding-box;`;
+                style += ' box-shadow: none;';
+                
+                if (overlay_opacity > 0 && !is_maximized_os) {
+                    const overlay_color = utils.set_alpha(overlay_base, overlay_opacity);
+                    style += ` background-color: ${overlay_color};`;
+                } else {
+                    style += ' background-color: rgba(0, 0, 0, 0.01);';
+                }
+
+                this.border.set_style(style);
+            }
 
             // Note: force-rounded-corners is a user preference stored in GSettings.
             // The GLSL shader approach has been updated to use the robust technique 
