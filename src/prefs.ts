@@ -158,56 +158,46 @@ export default class OTilingPreferences extends ExtensionPreferences {
         panelGroup.add(panelBlurRow);
         settings.bind('panel-transparency-blur-style', panelBlurRow as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
-        // Aura Group
-        const auraGroup = new Adw.PreferencesGroup({
+        // Aura Master Group
+        const auraMasterGroup = new Adw.PreferencesGroup({
             title: _('Active Hint (Aura)'),
         });
-        appearancePage.add(auraGroup);
+        appearancePage.add(auraMasterGroup);
 
         const activeHint = new Adw.SwitchRow({
             title: _('Show Active Hint (Aura)'),
             subtitle: _('Highlight the currently focused window with a colored border'),
         });
-        auraGroup.add(activeHint);
+        auraMasterGroup.add(activeHint);
         settings.bind('active-hint', activeHint as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
-        const borderRadius = new Adw.SpinRow({
-            title: _('Active Border Radius'),
-            subtitle: _('Corner roundness of the active window hint'),
-            adjustment: new Gtk.Adjustment({ lower: 0, upper: 30, step_increment: 1 }),
+        // Border Outline Group
+        const auraBorderGroup = new Adw.PreferencesGroup({
+            title: _('Active Border Outline'),
         });
-        auraGroup.add(borderRadius);
-        settings.bind('active-hint-border-radius', borderRadius as any, 'value', Gio.SettingsBindFlags.DEFAULT);
+        appearancePage.add(auraBorderGroup);
 
         const borderWidth = new Adw.SpinRow({
             title: _('Active Border Width'),
             subtitle: _('Thickness of the active window hint'),
             adjustment: new Gtk.Adjustment({ lower: 1, upper: 10, step_increment: 1 }),
         });
-        auraGroup.add(borderWidth);
+        auraBorderGroup.add(borderWidth);
         settings.bind('active-hint-border-width', borderWidth as any, 'value', Gio.SettingsBindFlags.DEFAULT);
 
-        const overlayOpacity = new Adw.SpinRow({
-            title: _('Active Hint Overlay Opacity (%)'),
-            subtitle: _('Opacity of the overlay color on the active window'),
-            adjustment: new Gtk.Adjustment({ lower: 0, upper: 100, step_increment: 1 }),
+        const borderRadius = new Adw.SpinRow({
+            title: _('Active Border Radius'),
+            subtitle: _('Corner roundness of the active window hint'),
+            adjustment: new Gtk.Adjustment({ lower: 0, upper: 30, step_increment: 1 }),
         });
-        auraGroup.add(overlayOpacity);
-        settings.bind('active-hint-overlay-opacity', overlayOpacity as any, 'value', Gio.SettingsBindFlags.DEFAULT);
-
-        const glowOpacity = new Adw.SpinRow({
-            title: _('Active Hint Glow Opacity (%)'),
-            subtitle: _('Opacity of the outer glow on the active window'),
-            adjustment: new Gtk.Adjustment({ lower: 0, upper: 100, step_increment: 1 }),
-        });
-        auraGroup.add(glowOpacity);
-        settings.bind('active-hint-glow-opacity', glowOpacity as any, 'value', Gio.SettingsBindFlags.DEFAULT);
+        auraBorderGroup.add(borderRadius);
+        settings.bind('active-hint-border-radius', borderRadius as any, 'value', Gio.SettingsBindFlags.DEFAULT);
 
         const colorRow = new Adw.ActionRow({
             title: _('Active Border Color'),
             subtitle: _('Color of the active window hint'),
         });
-        auraGroup.add(colorRow);
+        auraBorderGroup.add(colorRow);
 
         const colorDialog = new Gtk.ColorDialog({ with_alpha: true });
         const colorButton = new Gtk.ColorDialogButton({
@@ -232,18 +222,32 @@ export default class OTilingPreferences extends ExtensionPreferences {
             settings.set_string('hint-color-rgba', rgba.to_string());
         });
 
+        // Inner Overlay Group
+        const auraOverlayGroup = new Adw.PreferencesGroup({
+            title: _('Active Window Tint Overlay'),
+        });
+        appearancePage.add(auraOverlayGroup);
+
+        const overlayOpacity = new Adw.SpinRow({
+            title: _('Active Hint Overlay Opacity (%)'),
+            subtitle: _('Opacity of the overlay color on the active window'),
+            adjustment: new Gtk.Adjustment({ lower: 0, upper: 100, step_increment: 1 }),
+        });
+        auraOverlayGroup.add(overlayOpacity);
+        settings.bind('active-hint-overlay-opacity', overlayOpacity as any, 'value', Gio.SettingsBindFlags.DEFAULT);
+
         // Overlay (Tint) Color Customization
         const useOverlayColor = new Adw.SwitchRow({
             title: _('Use Custom Tint Color'),
             subtitle: _('Override default active border color for the window background tint overlay'),
         });
-        auraGroup.add(useOverlayColor);
+        auraOverlayGroup.add(useOverlayColor);
 
         const overlayColorRow = new Adw.ActionRow({
             title: _('Active Hint Overlay (Tint) Color'),
             subtitle: _('Custom tint color to overlay on the active window'),
         });
-        auraGroup.add(overlayColorRow);
+        auraOverlayGroup.add(overlayColorRow);
 
         const overlayColorDialog = new Gtk.ColorDialog({ with_alpha: true });
         const overlayColorButton = new Gtk.ColorDialogButton({
@@ -288,21 +292,35 @@ export default class OTilingPreferences extends ExtensionPreferences {
             title: _('Apply Tint to All Windows'),
             subtitle: _('Render the background overlay tint on all tiled windows on the workspace, instead of only the active window'),
         });
-        auraGroup.add(overlayAll);
+        auraOverlayGroup.add(overlayAll);
         settings.bind('active-hint-overlay-all-windows', overlayAll as any, 'active', Gio.SettingsBindFlags.DEFAULT);
+
+        // Outer Glow Group
+        const auraGlowGroup = new Adw.PreferencesGroup({
+            title: _('Active Window Outer Glow'),
+        });
+        appearancePage.add(auraGlowGroup);
+
+        const glowOpacity = new Adw.SpinRow({
+            title: _('Active Hint Glow Opacity (%)'),
+            subtitle: _('Opacity of the outer glow on the active window'),
+            adjustment: new Gtk.Adjustment({ lower: 0, upper: 100, step_increment: 1 }),
+        });
+        auraGlowGroup.add(glowOpacity);
+        settings.bind('active-hint-glow-opacity', glowOpacity as any, 'value', Gio.SettingsBindFlags.DEFAULT);
 
         // Glow Color Customization
         const useGlowColor = new Adw.SwitchRow({
             title: _('Use Custom Glow Color'),
             subtitle: _('Override default active border color for the outer glow effect'),
         });
-        auraGroup.add(useGlowColor);
+        auraGlowGroup.add(useGlowColor);
 
         const glowColorRow = new Adw.ActionRow({
             title: _('Active Glow (Aura) Color'),
             subtitle: _('Custom glow/aura color for the active window'),
         });
-        auraGroup.add(glowColorRow);
+        auraGlowGroup.add(glowColorRow);
 
         const glowColorDialog = new Gtk.ColorDialog({ with_alpha: true });
         const glowColorButton = new Gtk.ColorDialogButton({
@@ -341,6 +359,17 @@ export default class OTilingPreferences extends ExtensionPreferences {
                 settings.set_string('active-hint-glow-color-rgba', glowColorButton.rgba.to_string());
             }
         });
+
+        // Set up sensitivity based on active-hint master switch
+        const updateAuraGroupsSensitivity = () => {
+            const isEnabled = activeHint.active;
+            auraBorderGroup.sensitive = isEnabled;
+            auraOverlayGroup.sensitive = isEnabled;
+            auraGlowGroup.sensitive = isEnabled;
+        };
+        activeHint.connect('notify::active', updateAuraGroupsSensitivity);
+        // Set initial sensitivity state
+        updateAuraGroupsSensitivity();
 
         // Behavior Group
         const behaviorGroup = new Adw.PreferencesGroup({

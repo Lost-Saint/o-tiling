@@ -758,19 +758,19 @@ export class ShellWindow {
 
             if (is_focused) {
                 const total_radius = current_radius + width_value;
-                
+
                 // Subtler glow (Aura) to prevent it from overlaying window content
                 const blur_radius = width_value + 2;
                 const show_glow = settings.active_hint_glow();
-                
+
                 let style = `border-color: ${color_value}; border-radius: ${total_radius}px; border-width: ${width_value}px; outline: none; background-clip: padding-box;`;
-                
+
                 if (show_glow) {
                     style += ` box-shadow: 0 0 ${blur_radius}px ${glow_color};`;
                 } else {
                     style += ' box-shadow: none;';
                 }
-                
+
                 if (overlay_opacity > 0 && !is_maximized_os) {
                     const overlay_color = utils.set_alpha(overlay_base, overlay_opacity);
                     style += ` background-color: ${overlay_color};`;
@@ -784,10 +784,10 @@ export class ShellWindow {
             } else {
                 // Inactive window: render the same background overlay tint (without border and shadow)
                 const total_radius = current_radius;
-                
+
                 let style = `border-color: transparent; border-radius: ${total_radius}px; border-width: 0px; outline: none; background-clip: padding-box;`;
                 style += ' box-shadow: none;';
-                
+
                 if (overlay_opacity > 0 && !is_maximized_os) {
                     const overlay_color = utils.set_alpha(overlay_base, overlay_opacity);
                     style += ` background-color: ${overlay_color};`;
