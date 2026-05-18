@@ -49,26 +49,26 @@ export class WindowButtonsManager {
 
         // removes controls
         const BTN = ["maximize", "minimize", "close"];
-        right = (right ?? "").split(",").filter((s) => !BTN.includes(s));
-        left = (left ?? "").split(",").filter((s) => !BTN.includes(s));
+        const BtnRight = (right ?? "").split(",").filter((s) => !BTN.includes(s));
+        const BtnLeft = (left ?? "").split(",").filter((s) => !BTN.includes(s));
 
         if (show_min_max) {
           if (isRight) {
-            right.push("minimize", "maximize");
+            BtnRight.push("minimize", "maximize");
           } else {
-            left = ["minimize", "maximize", ...left];
+            BtnLeft.splice(0, 0, "minimize", "maximize");
           }
         }
 
         if (show_close) {
           if (isRight) {
-            right.push("close");
+            BtnRight.push("close");
           } else {
-            left = ["close", ...left];
+            BtnLeft.splice(0, 0, "close");
           }
         }
 
-        const new_layout = `${left.join(",")}:${right.join(",")}`;
+        const new_layout = `${BtnLeft.join(",")}:${BtnRight.join(",")}`;
         wm.set_string("button-layout", new_layout);
     }
 }
