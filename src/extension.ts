@@ -1380,9 +1380,22 @@ export class Ext extends Ecs.System<ExtEvent> {
             }
             this._bordered_entity = this.focus_window()?.entity ?? null;
         } else {
-            this.hide_all_borders();
             const focus = this.focus_window();
-            if (focus && focus.same_workspace()) {
+
+            // When the mouse enters a panel icon or menu, GNOME temporarily sets
+            // focus to null. Calling hide_all_borders() then show_border() in that
+            // short cycle produces a visible flash. Bail out here — the border stays
+            // put until a real window focus change occurs.
+            if (!focus) return;
+
+            // Hide only the border of the window that is LOSING focus, not all borders.
+            if (this._bordered_entity !== null && !Ecs.entity_eq(this._bordered_entity, focus.entity)) {
+                const prev = this.windows.get(this._bordered_entity);
+                prev?.hide_border();
+            }
+            this._bordered_entity = null;
+
+            if (focus.same_workspace()) {
                 focus.show_border();
                 this._bordered_entity = focus.entity;
             }
