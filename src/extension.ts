@@ -77,7 +77,7 @@ function is_modal_blocking_focus(): boolean {
     } catch (_) { }
     // Fallback: use pushModal count if available (GNOME 50 compatible)
     try {
-        const count = (Main as any)._modalCount ?? (Main as any).modalCount;
+        const count = (Main as any)._modalCount ?? (Main as any).modalCount ?? (Main as any).layoutManager?._modalDialogCount;
         if (typeof count === 'number') return count > 0;
     } catch (_) { }
     return false;
@@ -267,7 +267,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     /** Calculates window placements when tiling and focus-switching */
     tiler: Tiling.Tiler = new Tiling.Tiler(this);
- 
+
 
 
     /** Manages theme consistency (session injection) */
@@ -287,6 +287,7 @@ export class Ext extends Ecs.System<ExtEvent> {
     _resume_timeout_source: number | null = null;
     private _bordered_entity: Entity | null = null;
     private _border_cleanup_pending: boolean = false;
+    private _original_focus_change_on_pointer_rest: boolean | null = null;
     private _destroyed: boolean = false;
     private _startup_complete_id: number = 0;
     executor: Executor.GLibExecutor<ExtEvent>;
@@ -302,9 +303,31 @@ export class Ext extends Ecs.System<ExtEvent> {
         super.register(event);
     }
 
+    _first_startup: boolean = true;
+
     setup() {
+        this._first_startup = true;
         this.keybindings = new Keybindings.Keybindings(this);
         this.settings = new Settings.ExtensionSettings();
+
+        // Prevent GNOME Shell Wayland crashes inside focus_on_pointer_rest_callback
+        this._original_focus_change_on_pointer_rest = null;
+        if (utils.is_wayland() && this.settings.mutter) {
+            try {
+                const keys = this.settings.mutter.list_keys();
+                if (keys.includes('focus-change-on-pointer-rest')) {
+                    const original = this.settings.focus_change_on_pointer_rest();
+                    if (original) {
+                        this._original_focus_change_on_pointer_rest = true;
+                        this.settings.set_focus_change_on_pointer_rest(false);
+                        log.info('Auto-disabled Mutter focus-change-on-pointer-rest to prevent Wayland compositor crashes');
+                    }
+                }
+            } catch (e) {
+                log.error(`Failed to handle focus-change-on-pointer-rest: ${e}`);
+            }
+        }
+        log.init_log_level(this.settings.ext);
         this.overlay = new St.BoxLayout({
             style_class: "o-tiling-overlay",
             visible: false,
@@ -317,7 +340,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         this.load_settings();
         load_theme();
 
-        this.conf.reload();
+        this.conf.reload().catch((e: any) => log.error(e));
 
         if (this.settings.int) {
             const id1 = this.settings.int.connect("changed::gtk-theme", () => {
@@ -412,7 +435,7 @@ export class Ext extends Ecs.System<ExtEvent> {
                 this._startup_complete_id = Main.layoutManager.connect('startup-complete', () => {
                     // Final hide check in case it managed to show up
                     if (Main.overview.visible) Main.overview.hide();
-                    
+
                     // Cleanup the showing interceptor
                     Main.overview.disconnect(showingId);
 
@@ -463,6 +486,16 @@ export class Ext extends Ecs.System<ExtEvent> {
         this.unset_grab_op();
         this.executor.stop();
         this._destroyed = true;
+
+        if (this._original_focus_change_on_pointer_rest !== null && this.settings.mutter) {
+            try {
+                this.settings.set_focus_change_on_pointer_rest(this._original_focus_change_on_pointer_rest);
+                log.info('Restored Mutter focus-change-on-pointer-rest setting');
+            } catch (e) {
+                log.error(`Failed to restore focus-change-on-pointer-rest: ${e}`);
+            }
+            this._original_focus_change_on_pointer_rest = null;
+        }
 
 
         if (this._resume_timeout) {
@@ -534,11 +567,11 @@ export class Ext extends Ecs.System<ExtEvent> {
                 // Disconnect signals stored in window_signals and size_signals for THIS window
                 const win_sigs = this.window_signals.get(entity);
                 if (win_sigs) {
-                    for (const sig of win_sigs) try { win.meta.disconnect(sig); } catch (_) {}
+                    for (const sig of win_sigs) try { win.meta.disconnect(sig); } catch (_) { }
                 }
                 const size_sigs = this.size_signals.get(entity);
                 if (size_sigs) {
-                    for (const sig of size_sigs) try { win.meta.disconnect(sig); } catch (_) {}
+                    for (const sig of size_sigs) try { win.meta.disconnect(sig); } catch (_) { }
                 }
 
                 win.destroy();
@@ -550,10 +583,6 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.suspend_timeout = null;
         }
 
-        if (this._resume_timeout) {
-            GLib.source_remove(this._resume_timeout);
-            this._resume_timeout = null;
-        }
 
         if (this.displays_updating) {
             GLib.source_remove(this.displays_updating);
@@ -847,8 +876,9 @@ export class Ext extends Ecs.System<ExtEvent> {
             },
             // Reload the tiling config on dialog close
             () => {
-                this.conf.reload();
-                this.tiling_config_reapply();
+                this.conf.reload().then(() => {
+                    this.tiling_config_reapply();
+                }).catch((e: any) => log.error(e));
             },
         );
         d.open();
@@ -861,8 +891,9 @@ export class Ext extends Ecs.System<ExtEvent> {
             switch (event) {
                 case 'MODIFIED':
                     this.register_fn(() => {
-                        this.conf.reload();
-                        this.tiling_config_reapply();
+                        this.conf.reload().then(() => {
+                            this.tiling_config_reapply();
+                        }).catch((e: any) => log.error(e));
                     });
                     break;
                 case 'SELECT':
@@ -1092,7 +1123,7 @@ export class Ext extends Ecs.System<ExtEvent> {
     on_active_workspace_changed() {
         this.register_fn(() => {
             this.exit_modes();
-            this.hide_all_borders();
+            this.hide_all_borders(true);
             this.restack();
 
             // Always update the workspace tiling toggle when switching workspaces
@@ -1338,20 +1369,40 @@ export class Ext extends Ecs.System<ExtEvent> {
     }
 
     show_border_on_focused() {
-        this.hide_all_borders();
-        const focus = this.focus_window();
-        if (focus && focus.same_workspace()) {
-            focus.show_border();
-            this._bordered_entity = focus.entity;
+        const overlay_all = this.settings.active_hint_overlay_all_windows();
+        if (overlay_all) {
+            for (const window of this.windows.values()) {
+                if (window.same_workspace()) {
+                    window.show_border();
+                } else {
+                    window.hide_border(true);
+                }
+            }
+            this._bordered_entity = this.focus_window()?.entity ?? null;
+        } else {
+            this.hide_all_borders();
+            const focus = this.focus_window();
+            if (focus && focus.same_workspace()) {
+                focus.show_border();
+                this._bordered_entity = focus.entity;
+            }
         }
     }
 
-    hide_all_borders() {
-        if (this._bordered_entity !== null) {
-            const w = this.windows.get(this._bordered_entity);
-            w?.hide_border();
+    hide_all_borders(instant: boolean = false) {
+        if (this.settings.active_hint_overlay_all_windows()) {
+            for (const window of this.windows.values()) {
+                window.hide_border(instant);
+            }
             this._bordered_entity = null;
             this._border_cleanup_pending = true;
+        } else {
+            if (this._bordered_entity !== null) {
+                const w = this.windows.get(this._bordered_entity);
+                w?.hide_border(instant);
+                this._bordered_entity = null;
+                this._border_cleanup_pending = true;
+            }
         }
         if (this._border_cleanup_pending) {
             Window.cleanup_main_loop_sources();
@@ -1585,7 +1636,7 @@ export class Ext extends Ecs.System<ExtEvent> {
                 } else if (is_floating && this.settings.snap_to_grid()) {
                     this.tiler.snap(this, win);
                 } else {
-                    log.error(`no fork entity found`);
+                    if (!this.auto_tiler) log.debug('on_grab_end_: no fork entity for ' + win.name(this));
                 }
             }
         } else if (this.settings.snap_to_grid()) {
@@ -2385,8 +2436,11 @@ export class Ext extends Ecs.System<ExtEvent> {
                 case 'active-hint-overlay-opacity':
                 case 'active-hint-glow-opacity':
                 case 'hint-color-rgba':
+                case 'active-hint-overlay-color-rgba':
+                case 'active-hint-glow-color-rgba':
                 case 'active-hint-border-radius':
                 case 'active-hint-border-width':
+                case 'active-hint-overlay-all-windows':
                     this.show_border_on_focused();
                     break;
                 case 'gap-inner':
@@ -2533,7 +2587,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         });
 
         this.connect(wim, 'switch-workspace', () => {
-            this.hide_all_borders();
+            this.hide_all_borders(true);
         });
 
         this.connect(workspace_manager, 'active-workspace-changed', () => {
@@ -2550,7 +2604,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         // Bind show desktop and remove the active hint
         this.connect(workspace_manager, 'showing-desktop-changed', () => {
-            this.hide_all_borders();
+            this.hide_all_borders(true);
             this.prev_focused = [null, null];
         });
 
@@ -2561,12 +2615,15 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         // Post-init
 
-        if (this.init) {
+        if (this._first_startup) {
             for (const window of this.tab_list(Meta.TabList.NORMAL, null)) {
                 this.register({ tag: 3, window: window.meta });
             }
 
-            this.register_fn(() => (this.init = false));
+            this.register_fn(() => {
+                this._first_startup = false;
+                this.init = false;
+            });
         }
     }
 
@@ -2798,11 +2855,11 @@ export class Ext extends Ecs.System<ExtEvent> {
                 // Disconnect signals stored in window_signals and size_signals for THIS window
                 const win_sigs = this.window_signals.get(entity);
                 if (win_sigs) {
-                    for (const sig of win_sigs) try { win.meta.disconnect(sig); } catch (_) {}
+                    for (const sig of win_sigs) try { win.meta.disconnect(sig); } catch (_) { }
                 }
                 const size_sigs = this.size_signals.get(entity);
                 if (size_sigs) {
-                    for (const sig of size_sigs) try { win.meta.disconnect(sig); } catch (_) {}
+                    for (const sig of size_sigs) try { win.meta.disconnect(sig); } catch (_) { }
                 }
 
                 win.destroy();
@@ -2811,11 +2868,10 @@ export class Ext extends Ecs.System<ExtEvent> {
         }
 
         // 3. Clear all ECS storages to ensure a fresh state on enable
-        this.init = true;
 
         // 4. Disable all keybindings
         this.keybindings.disable(this.keybindings.global)
-                        .disable(this.keybindings.window_focus);
+            .disable(this.keybindings.window_focus);
 
         // 5. Remove all global window/workspace/display signals
         this.signals_remove();
@@ -2862,6 +2918,10 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.window_buttons_manager.disable();
             this.window_buttons_manager = null;
         }
+        if (this.overview_layout_manager) {
+            this.overview_layout_manager.disable();
+            this.overview_layout_manager = null;
+        }
 
         // 9. Final UI cleanup
         this.hide_all_borders();
@@ -2892,7 +2952,16 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         // 3. Re-enable all keybindings
         this.keybindings.enable(this.keybindings.global)
-                        .enable(this.keybindings.window_focus);
+            .enable(this.keybindings.window_focus);
+
+        if (!this.window_buttons_manager) {
+            this.window_buttons_manager = new WindowButtonsManager(this.settings);
+            this.window_buttons_manager.enable();
+        }
+        if (!this.overview_layout_manager) {
+            this.overview_layout_manager = new OverviewLayoutManager(this);
+            this.overview_layout_manager.enable();
+        }
 
         // 4. Restore auto-tiling if user had it enabled
         if (this.settings.tile_by_default()) {
@@ -2989,7 +3058,7 @@ export class Ext extends Ecs.System<ExtEvent> {
                 this.theme_consistency_handler = new ThemeConsistencyManager();
             }
             this.theme_consistency_handler.enable(style as any);
-            
+
             // Also apply GTK theme consistency
             applyThemeConsistency(style as 'rounded' | 'sharp');
         } else {
@@ -3450,7 +3519,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     cursor_status(): [Rectangle, number] {
         const cursor = cursor_rect();
-        // Mtk.Rectangle is the standard API for GNOME 45+
+        // named-property Mtk.Rectangle safe on 48/49/50
         const rect = new Mtk.Rectangle({ x: cursor.x, y: cursor.y, width: 1, height: 1 });
         let monitor = display.get_monitor_index_for_rect(rect);
         if (monitor < 0) monitor = display.get_current_monitor();
@@ -3621,13 +3690,13 @@ let default_isoverviewwindow_ws_thumbnail: any = null;
 // Determine method name once (works for GNOME 46-48 and 49-50).
 const WS_OVERVIEW_KEY: string | null =
     '_isOverviewWindow' in (Workspace.prototype as any) ? '_isOverviewWindow'
-    : 'isOverviewWindow'  in (Workspace.prototype as any) ? 'isOverviewWindow'
-    : null;
+        : 'isOverviewWindow' in (Workspace.prototype as any) ? 'isOverviewWindow'
+            : null;
 
 const WST_OVERVIEW_KEY: string | null =
     '_isOverviewWindow' in (WorkspaceThumbnail.prototype as any) ? '_isOverviewWindow'
-    : 'isOverviewWindow'  in (WorkspaceThumbnail.prototype as any) ? 'isOverviewWindow'
-    : null;
+        : 'isOverviewWindow' in (WorkspaceThumbnail.prototype as any) ? 'isOverviewWindow'
+            : null;
 let default_init_appswitcher: any;
 let default_getwindowlist_windowswitcher: any;
 let default_getcaption_windowpreview: any;

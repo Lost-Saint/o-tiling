@@ -81,6 +81,9 @@ const MAX_WINDOW_WIDTH = 'max-window-width';
 const ACTIVE_HINT_OVERLAY_OPACITY = 'active-hint-overlay-opacity';
 const ACTIVE_HINT_GLOW_OPACITY = 'active-hint-glow-opacity';
 const ACTIVE_HINT_GLOW = 'active-hint-glow';
+const ACTIVE_HINT_OVERLAY_COLOR_RGBA = 'active-hint-overlay-color-rgba';
+const ACTIVE_HINT_GLOW_COLOR_RGBA = 'active-hint-glow-color-rgba';
+const ACTIVE_HINT_OVERLAY_ALL_WINDOWS = 'active-hint-overlay-all-windows';
 const WORKSPACE_SWITCHER_STYLE = 'workspace-switcher-style';
 
 const THEME_CONSISTENCY_STYLE = 'theme-consistency-style';
@@ -201,6 +204,11 @@ export class ExtensionSettings {
         return this.mutter ? this.mutter.get_boolean('workspaces-only-on-primary') : false;
     }
 
+    focus_change_on_pointer_rest(): boolean {
+        return this.mutter ? this.mutter.get_boolean('focus-change-on-pointer-rest') : false;
+    }
+
+
     log_level(): number {
         return this.ext.get_uint(LOG_LEVEL);
     }
@@ -233,10 +241,46 @@ export class ExtensionSettings {
         return this.ext.get_boolean(ACTIVE_HINT_GLOW);
     }
 
+    active_hint_overlay_color_rgba(): string {
+        const rgba = this.ext.get_string(ACTIVE_HINT_OVERLAY_COLOR_RGBA);
+
+        if (rgba === 'auto') {
+            return 'auto';
+        }
+
+        const valid_color = utils.isValidColor(rgba);
+
+        if (!valid_color) {
+            return 'auto';
+        }
+
+        return rgba;
+    }
+
+    active_hint_glow_color_rgba(): string {
+        const rgba = this.ext.get_string(ACTIVE_HINT_GLOW_COLOR_RGBA);
+
+        if (rgba === 'auto') {
+            return 'auto';
+        }
+
+        const valid_color = utils.isValidColor(rgba);
+
+        if (!valid_color) {
+            return 'auto';
+        }
+
+        return rgba;
+    }
+
+    active_hint_overlay_all_windows(): boolean {
+        return this.ext.get_boolean(ACTIVE_HINT_OVERLAY_ALL_WINDOWS);
+    }
+
     workspace_switcher_style(): boolean {
         return this.ext.get_boolean(WORKSPACE_SWITCHER_STYLE);
     }
-    
+
 
 
 
@@ -300,6 +344,11 @@ export class ExtensionSettings {
     set_edge_tiling(enable: boolean) {
         this.mutter?.set_boolean(EDGE_TILING, enable);
     }
+
+    set_focus_change_on_pointer_rest(enable: boolean) {
+        this.mutter?.set_boolean('focus-change-on-pointer-rest', enable);
+    }
+
 
 
     set_gap_inner(gap: number) {
@@ -372,6 +421,30 @@ export class ExtensionSettings {
 
     set_active_hint_glow(set: boolean) {
         this.ext.set_boolean(ACTIVE_HINT_GLOW, set);
+    }
+
+    set_active_hint_overlay_color_rgba(rgba: string) {
+        const valid_color = utils.isValidColor(rgba);
+
+        if (valid_color) {
+            this.ext.set_string(ACTIVE_HINT_OVERLAY_COLOR_RGBA, rgba);
+        } else {
+            this.ext.set_string(ACTIVE_HINT_OVERLAY_COLOR_RGBA, 'auto');
+        }
+    }
+
+    set_active_hint_glow_color_rgba(rgba: string) {
+        const valid_color = utils.isValidColor(rgba);
+
+        if (valid_color) {
+            this.ext.set_string(ACTIVE_HINT_GLOW_COLOR_RGBA, rgba);
+        } else {
+            this.ext.set_string(ACTIVE_HINT_GLOW_COLOR_RGBA, 'auto');
+        }
+    }
+
+    set_active_hint_overlay_all_windows(set: boolean) {
+        this.ext.set_boolean(ACTIVE_HINT_OVERLAY_ALL_WINDOWS, set);
     }
 
     set_workspace_switcher_style(set: boolean) {

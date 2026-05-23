@@ -20,7 +20,7 @@ const INACTIVE_TAB = 'o-tiling-tab o-tiling-tab-inactive';
 const URGENT_TAB = 'o-tiling-tab o-tiling-tab-urgent';
 const INACTIVE_TAB_STYLE = '#9B8E8A';
 
-export var TAB_HEIGHT: number = 24;
+export var TAB_HEIGHT: number = 38;
 
 interface Tab {
     active: boolean;
@@ -72,7 +72,7 @@ const TabButton = GObject.registerClass(
     class TabButton extends St.Button {
         _title: any;
         constructor(window: ShellWindow) {
-            const icon = window.icon(window.ext, 24);
+            const icon = window.icon(window.ext, 18);
             icon.set_x_align(Clutter.ActorAlign.START);
 
             const label = new St.Label({
@@ -92,7 +92,7 @@ const TabButton = GObject.registerClass(
             const close_button = new ContainerButton(
                 new St.Icon({
                     icon_name: 'window-close-symbolic',
-                    icon_size: 24,
+                    icon_size: 16,
                     y_align: Clutter.ActorAlign.CENTER,
                 }),
             );
@@ -200,7 +200,18 @@ export class Stack {
         const comp = this.tabs.length;
         this.tabs.push(tab);
         this.bind_hint_events(tab);
-        for (const t of this.tabs) this.change_tab_color(t);
+        const _n = this.tabs.length;
+        if (_n > 0) {
+            this.change_tab_color(this.tabs[0]);
+            if (_n > 1) {
+                this.change_tab_color(this.tabs[1]);
+                this.change_tab_color(this.tabs[_n - 1]);
+                if (_n > 2) this.change_tab_color(this.tabs[_n - 2]);
+            }
+        }
+        if (this.active_id !== -1 && this.tabs[this.active_id]) {
+            this.change_tab_color(this.tabs[this.active_id]);
+        }
         this.watch_signals(comp, id, window);
         this.widgets.tabs.add_child(button);
     }
@@ -515,7 +526,18 @@ export class Stack {
         }
 
         this.tabs.splice(idx, 1);
-        for (const t of this.tabs) this.change_tab_color(t);
+        const _n = this.tabs.length;
+        if (_n > 0) {
+            this.change_tab_color(this.tabs[0]);
+            if (_n > 1) {
+                this.change_tab_color(this.tabs[1]);
+                this.change_tab_color(this.tabs[_n - 1]);
+                if (_n > 2) this.change_tab_color(this.tabs[_n - 2]);
+            }
+        }
+        if (this.active_id !== -1 && this.tabs[this.active_id]) {
+            this.change_tab_color(this.tabs[this.active_id]);
+        }
     }
 
     /** Removes the tab associated with the entity */
