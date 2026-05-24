@@ -359,22 +359,7 @@ export class Forest extends Ecs.World {
         monitor: MonitorID,
     ): [Entity, Fork.Fork] {
         const entity = this.create_entity();
-        let orient = area.width > area.height ? Lib.Orientation.HORIZONTAL : Lib.Orientation.VERTICAL;
-
-        const toplevel = this.find_toplevel([monitor, workspace]);
-        if (toplevel) {
-            let win_count = 0;
-            for (const node of this.iter(toplevel)) {
-                if (node.inner.kind === 2) {
-                    win_count++;
-                } else if (node.inner.kind === 3) {
-                    win_count += node.inner.entities.length;
-                }
-            }
-            if (win_count >= 3) {
-                orient = Lib.Orientation.VERTICAL;
-            }
-        }
+        const orient = area.width > area.height ? Lib.Orientation.HORIZONTAL : Lib.Orientation.VERTICAL;
 
         const primary = Fork.get_primary_monitor_index() === monitor;
         const fork = new Fork.Fork(entity, left, right, area, workspace, monitor, orient, primary);

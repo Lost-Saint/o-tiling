@@ -18,7 +18,7 @@ export function isGnome50(): boolean {
         const major = parseInt(PACKAGE_VERSION.split('.')[0], 10);
         return major >= 50;
     } catch (_) {
-        return true;
+        return false;
     }
 }
 

@@ -108,7 +108,11 @@ export class PanelTransparencyManager {
 /* === O-Tiling: Panel Transparency === */
 
 /* The main panel bar */
-#panel {
+#panel,
+#panel.solid,
+#panel:overview,
+#panel.login-screen,
+#panel.unlock-screen {
     background-color: rgba(0, 0, 0, ${alpha}) !important;
     background-image: none !important;
     box-shadow: none !important;
@@ -146,7 +150,11 @@ export class PanelTransparencyManager {
 
 /* Blur-style backdrop (only applied when blurStyle = true) */
 ${this._blurStyle ? `
-#panel {
+#panel,
+#panel.solid,
+#panel:overview,
+#panel.login-screen,
+#panel.unlock-screen {
     background-image: ${bg} !important;
 }
 ` : ''}

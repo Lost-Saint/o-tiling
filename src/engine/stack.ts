@@ -200,15 +200,7 @@ export class Stack {
         const comp = this.tabs.length;
         this.tabs.push(tab);
         this.bind_hint_events(tab);
-        const _n = this.tabs.length;
-        if (_n > 0) {
-            this.change_tab_color(this.tabs[0]);
-            if (_n > 1) {
-                this.change_tab_color(this.tabs[1]);
-                this.change_tab_color(this.tabs[_n - 1]);
-                if (_n > 2) this.change_tab_color(this.tabs[_n - 2]);
-            }
-        }
+        for (const t of this.tabs) this.change_tab_color(t);
         if (this.active_id !== -1 && this.tabs[this.active_id]) {
             this.change_tab_color(this.tabs[this.active_id]);
         }
@@ -526,15 +518,7 @@ export class Stack {
         }
 
         this.tabs.splice(idx, 1);
-        const _n = this.tabs.length;
-        if (_n > 0) {
-            this.change_tab_color(this.tabs[0]);
-            if (_n > 1) {
-                this.change_tab_color(this.tabs[1]);
-                this.change_tab_color(this.tabs[_n - 1]);
-                if (_n > 2) this.change_tab_color(this.tabs[_n - 2]);
-            }
-        }
+        for (const t of this.tabs) this.change_tab_color(t);
         if (this.active_id !== -1 && this.tabs[this.active_id]) {
             this.change_tab_color(this.tabs[this.active_id]);
         }

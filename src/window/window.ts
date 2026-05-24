@@ -492,6 +492,12 @@ export class ShellWindow {
                 );
             };
 
+            // Cancel previous retry timeout before starting a new one
+            if (ACTIVE_HINT_SHOW_ID !== null) {
+                GLib.source_remove(ACTIVE_HINT_SHOW_ID);
+                ACTIVE_HINT_SHOW_ID = null;
+            }
+
             if (permitted()) {
                 if (!border.visible) {
                     border.opacity = 0;
@@ -505,20 +511,18 @@ export class ShellWindow {
                 });
 
                 // Ensure that the border is shown (workaround for certain windows)
-                if (ACTIVE_HINT_SHOW_ID === null) {
-                    let applications = 0;
-                    ACTIVE_HINT_SHOW_ID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
-                        if (!permitted() || applications >= 5) {
-                            ACTIVE_HINT_SHOW_ID = null;
-                            if (!permitted()) border.hide();
-                            return GLib.SOURCE_REMOVE;
-                        }
+                let applications = 0;
+                ACTIVE_HINT_SHOW_ID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
+                    if (!permitted() || applications >= 5) {
+                        ACTIVE_HINT_SHOW_ID = null;
+                        if (!permitted()) border.hide();
+                        return GLib.SOURCE_REMOVE;
+                    }
 
-                        applications += 1;
-                        if (!border.visible) border.show();
-                        return GLib.SOURCE_CONTINUE;
-                    });
-                }
+                    applications += 1;
+                    if (!border.visible) border.show();
+                    return GLib.SOURCE_CONTINUE;
+                });
             } else {
                 border.remove_all_transitions();
                 if (this.destroying || !this.same_workspace()) {
@@ -533,10 +537,6 @@ export class ShellWindow {
                             border.hide();
                         },
                     });
-                }
-                if (ACTIVE_HINT_SHOW_ID !== null) {
-                    GLib.source_remove(ACTIVE_HINT_SHOW_ID);
-                    ACTIVE_HINT_SHOW_ID = null;
                 }
             }
         }
@@ -808,7 +808,7 @@ export class ShellWindow {
         if (this.is_tilable(this.ext)) {
             this.ext.connect_window(this);
             if (!this.meta.minimized) {
-                this.ext.auto_tiler?.auto_tile(this.ext, this, this.ext.init);
+                this.ext.auto_tiler?.auto_tile(this.ext, this);
             }
         }
     }
