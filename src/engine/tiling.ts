@@ -846,7 +846,7 @@ export function locate_monitor(
     const from = win.meta.get_monitor();
     const ref = win.meta.get_work_area_for_monitor(from) as any;
     const mm = (global as any).backend.get_monitor_manager();
-    const n_monitors = mm ? mm.get_logical_monitors().length : 1;
+    const monitors = mm ? mm.get_logical_monitors() : [];
 
     const { UP, DOWN, LEFT } = Meta.DisplayDirection;
 
@@ -871,7 +871,8 @@ export function locate_monitor(
 
     let next: [number, number, Rectangular] | null = null;
 
-    for (let mon = 0; mon < n_monitors; mon += 1) {
+    for (const lm of monitors) {
+        const mon = lm.get_number();
         if (mon === from) continue;
 
         const work_area = win.meta.get_work_area_for_monitor(mon);

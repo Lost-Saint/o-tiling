@@ -1179,7 +1179,7 @@ export class Ext extends Ecs.System<ExtEvent> {
                 for (const window of this.windows.values()) {
                     if (window.workspace_id() === id && window.is_tilable(this)) {
                         if (!this.auto_tiler.attached.contains(window.entity)) {
-                            this.auto_tiler.auto_tile(this, window, true);
+                            this.auto_tiler.auto_tile(this, window);
                         }
                     }
                 }
@@ -1292,8 +1292,8 @@ export class Ext extends Ecs.System<ExtEvent> {
         }
 
         // Update the active tab in the stack.
-        if (null !== this.auto_tiler && null !== win.stack) {
-            ext?.auto_tiler?.forest.stacks.get(win.stack)?.activate(win.entity);
+        if (this.auto_tiler !== null && win.stack !== null) {
+            this.auto_tiler.forest.stacks.get(win.stack)?.activate(win.entity);
         }
 
         this.unmaximize_workspace(win);
@@ -2349,7 +2349,9 @@ export class Ext extends Ecs.System<ExtEvent> {
         // Disconnect all signals for the removed workspace
         const to_delete = [];
         for (const [ws, signals] of this.workspace_signals) {
-            if (ws.index() === -1) { // -1 means it's being/has been removed
+            let idx = -1;
+            try { idx = ws.index(); } catch (_) { idx = -1; }
+            if (idx === -1) { // -1 means it's being/has been removed
                 for (const signal of signals) {
                     try { ws.disconnect(signal); } catch (_) { }
                 }
@@ -2946,7 +2948,11 @@ export class Ext extends Ecs.System<ExtEvent> {
         if (indicator) {
             indicator.toggle_tiled.setToggleState(false);
             if (indicator.toggle_tiled.updateIcon) indicator.toggle_tiled.updateIcon(false);
+            indicator.toggle_workspace_tiled?.setToggleState(false);
         }
+
+        this.prev_focused = [null, null];
+        this.workspace_active.clear();
     }
 
     /**
@@ -3012,6 +3018,7 @@ export class Ext extends Ecs.System<ExtEvent> {
             // The toggle_tiled switch reflects overall "extension enabled" state
             indicator.toggle_tiled.setToggleState(true); // extension is ON now
             if (indicator.toggle_tiled.updateIcon) indicator.toggle_tiled.updateIcon(true);
+            indicator.update_workspace_tiling_state();
         }
     }
 

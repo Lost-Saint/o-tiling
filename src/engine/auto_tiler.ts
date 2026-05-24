@@ -200,7 +200,7 @@ export class AutoTiler {
      * - First tries to tile onto the focused window
      * - Then tries to tile onto a monitor
      */
-    auto_tile(ext: Ext, win: ShellWindow, ignore_focus: boolean = false) {
+    auto_tile(ext: Ext, win: ShellWindow, _ignore_focus?: boolean) {
         this.detach_window(ext, win.entity);
         log.debug(`attach to workspace: finding largest window`);
         this.attach_to_workspace(ext, win, ext.workspace_id(win));
@@ -520,6 +520,9 @@ export class AutoTiler {
                 if (fork_entity) {
                     this.detach_window(ext, focused.entity);
                     ext.add_tag(focused.entity, Tags.Floating);
+                } else if (!ext.contains_tag(focused.entity, Tags.Floating)) {
+                    // Window is unmanaged — tile it on toggle
+                    this.auto_tile(ext, focused, false);
                 }
             }
         }
@@ -656,10 +659,7 @@ export class AutoTiler {
         return null;
     }
 
-    private fetch_mode(ext: Ext, win: ShellWindow, ignore_focus: boolean = false): Result<ShellWindow, string> {
-        if (ignore_focus) {
-            return Err('ignoring focus');
-        }
+    private fetch_mode(ext: Ext, win: ShellWindow): Result<ShellWindow, string> {
 
         const prev = ext.previously_focused(win);
 

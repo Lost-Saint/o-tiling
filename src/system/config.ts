@@ -81,10 +81,7 @@ export const SKIPTASKBAR_EXCEPTIONS: Array<WindowRule> = [
     { class: 'plank' },
 ];
 
-export interface FloatRule {
-    class?: string;
-    title?: string;
-}
+
 
 /** Compiled rule with pre-built RegExp for hot-path matching. */
 interface CompiledRule {
