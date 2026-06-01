@@ -204,7 +204,7 @@ export class Ext extends Ecs.System<ExtEvent> {
     injections: Array<Injection> = [];
 
     /** The window that was focused before the last window */
-    private prev_focused: [null | Entity, null | Entity] = [null, null];
+    prev_focused: [null | Entity, null | Entity] = [null, null];
 
     /** Initially set to true when the extension is initializing */
     init: boolean = true;
@@ -1380,6 +1380,15 @@ export class Ext extends Ecs.System<ExtEvent> {
             }
             this._bordered_entity = this.focus_window()?.entity ?? null;
         } else {
+            // Clean up old bordered entity if it moved to another workspace or is no longer on the active workspace
+            if (this._bordered_entity !== null) {
+                const prev = this.windows.get(this._bordered_entity);
+                if (prev && !prev.same_workspace()) {
+                    prev.hide_border();
+                    this._bordered_entity = null;
+                }
+            }
+
             const focus = this.focus_window();
 
             // When the mouse enters a panel icon or menu, GNOME temporarily sets

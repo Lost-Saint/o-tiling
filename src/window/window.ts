@@ -22,8 +22,8 @@ const { OnceCell } = once_cell;
 
 export var window_tracker = Shell.WindowTracker.get_default();
 
-/** Contains SourceID of an active hint operation. */
-let ACTIVE_HINT_SHOW_ID: number | null = null;
+/** Active hint show timeouts. Used to clean up on extension disable. */
+const ACTIVE_HINT_SHOW_IDS = new Set<number>();
 
 /** Duration (ms) for the active-hint border ease animation. */
 const BORDER_TRANSITION_DURATION = 200;
@@ -54,10 +54,12 @@ interface X11Info {
 
 /** Cleanup global main loop sources in window module */
 export function cleanup_main_loop_sources() {
-    if (ACTIVE_HINT_SHOW_ID !== null) {
-        GLib.source_remove(ACTIVE_HINT_SHOW_ID);
-        ACTIVE_HINT_SHOW_ID = null;
+    for (const id of ACTIVE_HINT_SHOW_IDS) {
+        try {
+            GLib.source_remove(id);
+        } catch (_) {}
     }
+    ACTIVE_HINT_SHOW_IDS.clear();
 }
 
 export class ShellWindow {
@@ -85,6 +87,7 @@ export class ShellWindow {
 
     private _restack_id: number | null = null;
     private _update_id: number | null = null;
+    private _active_hint_show_id: number | null = null;
 
     prev_rect: null | Rectangle = null;
 
@@ -484,7 +487,10 @@ export class ShellWindow {
                     actor !== null &&
                     actor.mapped &&
                     this.same_workspace() &&
-                    (this.ext.focus_window() == this || overlay_all) &&
+                    (this.meta.appears_focused ||
+                     this.ext.focus_window() == this ||
+                     (this.ext.prev_focused[1] !== null && this.ext.prev_focused[1] === this.entity) ||
+                     overlay_all) &&
                     !this.meta.is_fullscreen() &&
                     (!this.is_single_max_screen() || this.is_snap_edge()) &&
                     !this.meta.minimized &&
@@ -493,9 +499,12 @@ export class ShellWindow {
             };
 
             // Cancel previous retry timeout before starting a new one
-            if (ACTIVE_HINT_SHOW_ID !== null) {
-                GLib.source_remove(ACTIVE_HINT_SHOW_ID);
-                ACTIVE_HINT_SHOW_ID = null;
+            if (this._active_hint_show_id !== null) {
+                try {
+                    GLib.source_remove(this._active_hint_show_id);
+                    ACTIVE_HINT_SHOW_IDS.delete(this._active_hint_show_id);
+                } catch (_) {}
+                this._active_hint_show_id = null;
             }
 
             if (permitted()) {
@@ -512,9 +521,10 @@ export class ShellWindow {
 
                 // Ensure that the border is shown (workaround for certain windows)
                 let applications = 0;
-                ACTIVE_HINT_SHOW_ID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
+                const id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
                     if (!permitted() || applications >= 5) {
-                        ACTIVE_HINT_SHOW_ID = null;
+                        this._active_hint_show_id = null;
+                        ACTIVE_HINT_SHOW_IDS.delete(id);
                         if (!permitted()) border.hide();
                         return GLib.SOURCE_REMOVE;
                     }
@@ -523,6 +533,8 @@ export class ShellWindow {
                     if (!border.visible) border.show();
                     return GLib.SOURCE_CONTINUE;
                 });
+                this._active_hint_show_id = id;
+                ACTIVE_HINT_SHOW_IDS.add(id);
             } else {
                 border.remove_all_transitions();
                 if (this.destroying || !this.same_workspace()) {
@@ -844,6 +856,13 @@ export class ShellWindow {
         if (this._update_id !== null) {
             utils.later_remove(this._update_id);
             this._update_id = null;
+        }
+        if (this._active_hint_show_id !== null) {
+            try {
+                GLib.source_remove(this._active_hint_show_id);
+                ACTIVE_HINT_SHOW_IDS.delete(this._active_hint_show_id);
+            } catch (_) {}
+            this._active_hint_show_id = null;
         }
         if (this.border) {
             this.border.destroy();
