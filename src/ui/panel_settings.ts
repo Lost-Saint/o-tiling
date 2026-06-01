@@ -21,6 +21,7 @@ import GLib from 'gi://GLib';
 
 import { get_current_path } from '../utils/paths.js';
 import { isGnome50 } from './workspace_switcher_style.js';
+import { apply_preset, PresetType } from '../engine/presets.js';
 
 
 export class Indicator {
@@ -29,6 +30,8 @@ export class Indicator {
 
     toggle_tiled: any;
     toggle_workspace_tiled: any;
+    toggle_pinned_split: any;
+    presets_item: any;
 
     toggle_active: any;
     border_radius: any;
@@ -83,6 +86,14 @@ export class Indicator {
         // ── Tiling ──────────────────────────────────────────────
         this.toggle_workspace_tiled = workspace_tiled(ext);
         bm.addMenuItem(this.toggle_workspace_tiled);
+
+        // ── Split Pinning ───────────────────────────────────────
+        this.toggle_pinned_split = toggle_pinned(ext);
+        bm.addMenuItem(this.toggle_pinned_split);
+
+        // ── Layout Presets ──────────────────────────────────────
+        this.presets_item = presets_row(ext);
+        bm.addMenuItem(this.presets_item);
 
 
 
@@ -153,6 +164,33 @@ export class Indicator {
             this.toggle_workspace_tiled.setToggleState(tiled);
             if (this.toggle_workspace_tiled.updateIcon) {
                 this.toggle_workspace_tiled.updateIcon(tiled);
+            }
+
+            if (this.toggle_pinned_split) {
+                const win = ext.focus_window();
+                let is_pinned = false;
+                if (win && ext.auto_tiler) {
+                    const fork = ext.auto_tiler.get_parent_fork(win.entity);
+                    if (fork) {
+                        is_pinned = fork.pinned;
+                    }
+                }
+                this.toggle_pinned_split.setToggleState(is_pinned);
+                if (this.toggle_pinned_split.updateIcon) {
+                    this.toggle_pinned_split.updateIcon(is_pinned);
+                }
+            }
+
+            if (this.presets_item) {
+                if (ext.auto_tiler) {
+                    const ws_windows = Array.from(ext.windows.values()).filter(
+                        w => w.known_workspace === workspace && ext.auto_tiler!.attached.contains(w.entity)
+                    );
+                    const enabled = ws_windows.length >= 2 && ws_windows.length <= 6;
+                    this.presets_item.setSensitive(enabled);
+                } else {
+                    this.presets_item.setSensitive(false);
+                }
             }
 
             // Update panel icon to reflect current workspace tiling state
@@ -375,6 +413,64 @@ function workspace_tiled(ext: Ext): any {
             ext.workspace_tiling_set(ext.active_workspace(), shouldTile);
         }
     );
+}
+
+function toggle_pinned(ext: Ext): any {
+    return toggle(
+        _('Pin Active Window Split'),
+        false,
+        { on: 'changes-prevent-symbolic', off: 'changes-allow-symbolic' },
+        (shouldPin) => {
+            const win = ext.focus_window();
+            if (win && ext.auto_tiler) {
+                const fork = ext.auto_tiler.get_parent_fork(win.entity);
+                if (fork) {
+                    fork.pinned = shouldPin;
+                    ext.auto_tiler.tile(ext, fork, fork.area);
+                }
+            }
+        }
+    );
+}
+
+function presets_row(ext: Ext): any {
+    const item = new PopupBaseMenuItem({ reactive: false });
+
+    const label = new St.Label({
+        text: _('Layout Presets'),
+        y_align: Clutter.ActorAlign.CENTER,
+        x_expand: true,
+    });
+    item.add_child(label);
+
+    const row = new St.BoxLayout({
+        y_align: Clutter.ActorAlign.CENTER,
+    });
+    (row as any).set_orientation(Clutter.Orientation.HORIZONTAL);
+
+    const presets = [
+        { name: _('Columns'), type: PresetType.COLUMNS, icon: 'view-column-symbolic' },
+        { name: _('Stacked'), type: PresetType.STACKED, icon: 'view-row-symbolic' },
+        { name: _('Grid'), type: PresetType.GRID, icon: 'view-grid-symbolic' },
+        { name: _('Spiral'), type: PresetType.SPIRAL, icon: 'media-playlist-consecutive-symbolic' },
+    ];
+
+    for (const p of presets) {
+        const btn = new St.Button({
+            child: new St.Icon({ icon_name: p.icon, icon_size: 14 }),
+            style_class: 'o-tiling-spin-btn',
+        });
+
+        btn.connect('clicked', () => {
+            const ws = ext.active_workspace();
+            const monitor = ext.active_monitor();
+            apply_preset(ext, p.type, ws, monitor);
+        });
+        row.add_child(btn);
+    }
+
+    item.add_child(row);
+    return item;
 }
 
 

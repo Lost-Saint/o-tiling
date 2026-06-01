@@ -25,6 +25,7 @@ const { DOWN, UP, LEFT, RIGHT } = Movement;
 export interface MoveByCursor {
     orientation: Lib.Orientation;
     swap: boolean;
+    replace?: boolean;
 }
 
 export interface MoveByKeyboard {
@@ -556,12 +557,14 @@ export class Forest extends Ecs.World {
         const forks = new Array(2);
 
         while (fork) {
-            if (fork.left.inner.kind === 1) {
-                forks.push(this.forks.get(fork.left.inner.entity));
-            }
+            if (!fork.pinned) {
+                if (fork.left.inner.kind === 1) {
+                    forks.push(this.forks.get(fork.left.inner.entity));
+                }
 
-            if (kind === null || fork.left.inner.kind === kind) {
-                yield fork.left;
+                if (kind === null || fork.left.inner.kind === kind) {
+                    yield fork.left;
+                }
             }
 
             if (fork.right) {
