@@ -2487,6 +2487,11 @@ export class Ext extends Ecs.System<ExtEvent> {
                         _hide_skip_taskbar_windows();
                     }
                     break;
+                case 'log-level':
+                    if (indicator && indicator.toggle_debug) {
+                        indicator.toggle_debug.setToggleState(this.settings.log_level() === 4);
+                    }
+                    break;
 
             }
         });

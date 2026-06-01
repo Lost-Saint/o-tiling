@@ -22,6 +22,8 @@ import GLib from 'gi://GLib';
 import { get_current_path } from '../utils/paths.js';
 import { isGnome50 } from './workspace_switcher_style.js';
 import { apply_preset, PresetType } from '../engine/presets.js';
+import * as Node from '../engine/node.js';
+import * as Lib from '../utils/lib.js';
 
 
 export class Indicator {
@@ -31,9 +33,11 @@ export class Indicator {
     toggle_tiled: any;
     toggle_workspace_tiled: any;
     toggle_pinned_split: any;
+    toggle_pinned_top_left: any;
     presets_item: any;
 
     toggle_active: any;
+    toggle_debug: any;
     border_radius: any;
 
     entry_gaps: any;
@@ -91,6 +95,10 @@ export class Indicator {
         this.toggle_pinned_split = toggle_pinned(ext);
         bm.addMenuItem(this.toggle_pinned_split);
 
+        // ── Pin Window (Top-Left) ────────────────────────────────
+        this.toggle_pinned_top_left = toggle_pinned_top_left(ext);
+        bm.addMenuItem(this.toggle_pinned_top_left);
+
         // ── Layout Presets ──────────────────────────────────────
         this.presets_item = presets_row(ext);
         bm.addMenuItem(this.presets_item);
@@ -137,7 +145,7 @@ export class Indicator {
         bm.addMenuItem(number_entry(
             _('Border Width'),
             { value: ext.settings.active_hint_border_width(), min: 1, max: 10, reset_value: 3 },
-            'border-all-symbolic',
+            'edit-select-all-symbolic',
             (value) => ext.settings.set_active_hint_border_width(value),
         ));
 
@@ -149,6 +157,15 @@ export class Indicator {
         bm.addMenuItem(settings_button(bm));
         bm.addMenuItem(floating_window_exceptions(ext, bm));
 
+        // ── Debug Mode ──────────────────────────────────────────
+        this.toggle_debug = toggle(
+            _('Debug Mode'),
+            ext.settings.log_level() === 4,
+            'utilities-terminal-symbolic',
+            (state) => ext.settings.set_log_level(state ? 4 : 0),
+        );
+        bm.addMenuItem(this.toggle_debug);
+
         bm.addMenuItem(new PopupSeparatorMenuItem());
 
         this.toggle_tiled = tiled(ext);
@@ -158,8 +175,12 @@ export class Indicator {
 
     update_workspace_tiling_state() {
         const ext = this.ext;
+        if (!this.button || !this.button.visible || !this.button.get_stage?.()) {
+            return;
+        }
         if (ext && this.toggle_workspace_tiled) {
             const workspace = ext.active_workspace();
+            const monitor = ext.active_monitor();
             const tiled = ext.is_workspace_tiled(workspace);
             this.toggle_workspace_tiled.setToggleState(tiled);
             if (this.toggle_workspace_tiled.updateIcon) {
@@ -181,6 +202,23 @@ export class Indicator {
                 }
             }
 
+            if (this.toggle_pinned_top_left) {
+                let is_pinned = false;
+                if (ext.auto_tiler) {
+                    const toplevel_entity = ext.auto_tiler.forest.find_toplevel([monitor, workspace]);
+                    if (toplevel_entity) {
+                        const toplevel_fork = ext.auto_tiler.forest.forks.get(toplevel_entity);
+                        if (toplevel_fork && toplevel_fork.pinned && toplevel_fork.left.inner.kind === 2) {
+                            is_pinned = true;
+                        }
+                    }
+                }
+                this.toggle_pinned_top_left.setToggleState(is_pinned);
+                if (this.toggle_pinned_top_left.updateIcon) {
+                    this.toggle_pinned_top_left.updateIcon(is_pinned);
+                }
+            }
+
             if (this.presets_item) {
                 if (ext.auto_tiler) {
                     const ws_windows = Array.from(ext.windows.values()).filter(
@@ -191,6 +229,10 @@ export class Indicator {
                 } else {
                     this.presets_item.setSensitive(false);
                 }
+            }
+
+            if (this.toggle_debug) {
+                this.toggle_debug.setToggleState(ext.settings.log_level() === 4);
             }
 
             // Update panel icon to reflect current workspace tiling state
@@ -393,7 +435,7 @@ function tiled(ext: Ext): any {
     return toggle(
         _('Enable O-Tiling Extension'),
         isOn,
-        { on: 'view-grid-symbolic', off: 'view-module-symbolic' },
+        'view-grid-symbolic',
         (shouldEnable) => {
             if (shouldEnable) {
                 ext.ext_soft_enable();
@@ -408,7 +450,7 @@ function workspace_tiled(ext: Ext): any {
     return toggle(
         _('Tile This Workspace'),
         ext.is_workspace_tiled(ext.active_workspace()),
-        { on: 'view-quilt-symbolic', off: 'view-compact-symbolic' },
+        { on: 'view-grid-symbolic', off: 'view-list-symbolic' },
         (shouldTile) => {
             ext.workspace_tiling_set(ext.active_workspace(), shouldTile);
         }
@@ -433,6 +475,93 @@ function toggle_pinned(ext: Ext): any {
     );
 }
 
+function toggle_pinned_top_left(ext: Ext): any {
+    return toggle(
+        _('Pin Window (Top-Left) No Split'),
+        false,
+        'view-pin-symbolic',
+        (shouldPin) => {
+            const win = ext.focus_window();
+            if (!win || !ext.auto_tiler) return;
+
+            const ws = ext.active_workspace();
+            const monitor = ext.active_monitor();
+            const forest = ext.auto_tiler.forest;
+            const toplevel_entity = forest.find_toplevel([monitor, ws]);
+            if (!toplevel_entity) return;
+            const toplevel_fork = forest.forks.get(toplevel_entity);
+            if (!toplevel_fork) return;
+
+            if (shouldPin) {
+                const ws_windows = Array.from(ext.windows.values()).filter(
+                    w => w.known_workspace === ws && ext.auto_tiler!.attached.contains(w.entity)
+                );
+                if (ws_windows.length < 2) return;
+
+                win.ignore_detach = true;
+                ext.auto_tiler.detach_window(ext, win.entity);
+                win.ignore_detach = false;
+
+                const remaining_toplevel_entity = forest.find_toplevel([monitor, ws]);
+                if (!remaining_toplevel_entity) return;
+
+                const is_fork = forest.forks.contains(remaining_toplevel_entity);
+                const left_node = Node.Node.window(win.entity);
+                const right_node = is_fork 
+                    ? Node.Node.fork(remaining_toplevel_entity)
+                    : Node.Node.window(remaining_toplevel_entity);
+
+                if (is_fork) {
+                    const rf = forest.forks.get(remaining_toplevel_entity);
+                    if (rf && rf.is_toplevel) {
+                        rf.is_toplevel = false;
+                        const id = forest.string_reps.get(remaining_toplevel_entity);
+                        if (id) forest.toplevel.delete(id);
+                    }
+                }
+
+                const area = ext.monitor_work_area(monitor);
+                area.x += ext.gap_outer;
+                area.y += ext.gap_outer;
+                area.width -= ext.gap_outer * 2;
+                area.height -= ext.gap_outer * 2;
+
+                const [new_toplevel_entity, new_toplevel_fork] = forest.create_fork(
+                    left_node,
+                    right_node,
+                    area.clone(),
+                    ws,
+                    monitor
+                );
+                new_toplevel_fork.set_orientation(Lib.Orientation.HORIZONTAL);
+                new_toplevel_fork.pinned = true;
+
+                const sid = `${new_toplevel_entity}`;
+                forest.string_reps.insert(new_toplevel_entity, sid);
+                new_toplevel_fork.set_toplevel(forest, new_toplevel_entity, sid, [monitor, ws]);
+
+                ext.auto_tiler.attached.insert(win.entity, new_toplevel_entity);
+                forest.on_attach(new_toplevel_entity, win.entity);
+
+                if (is_fork) {
+                    forest.parents.insert(remaining_toplevel_entity, new_toplevel_entity);
+                } else {
+                    ext.auto_tiler.attached.insert(remaining_toplevel_entity, new_toplevel_entity);
+                    forest.on_attach(new_toplevel_entity, remaining_toplevel_entity);
+                }
+
+                forest.tile(ext, new_toplevel_fork, area);
+                forest.arrange(ext, ws, true);
+            } else {
+                toplevel_fork.pinned = false;
+                forest.tile(ext, toplevel_fork, toplevel_fork.area);
+                forest.arrange(ext, ws, true);
+            }
+        }
+    );
+}
+
+
 function presets_row(ext: Ext): any {
     const item = new PopupBaseMenuItem({ reactive: false });
 
@@ -450,7 +579,7 @@ function presets_row(ext: Ext): any {
 
     const presets = [
         { name: _('Columns'), type: PresetType.COLUMNS, icon: 'view-column-symbolic' },
-        { name: _('Stacked'), type: PresetType.STACKED, icon: 'view-row-symbolic' },
+        { name: _('Stacked'), type: PresetType.STACKED, icon: 'view-list-symbolic' },
         { name: _('Grid'), type: PresetType.GRID, icon: 'view-grid-symbolic' },
         { name: _('Spiral'), type: PresetType.SPIRAL, icon: 'media-playlist-consecutive-symbolic' },
     ];
