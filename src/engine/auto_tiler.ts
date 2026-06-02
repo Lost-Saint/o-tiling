@@ -204,6 +204,21 @@ export class AutoTiler {
                 onto = this.forest.largest_window_on(ext, toplevel);
             }
 
+            // If the toplevel fork is left-pinned, don't split the left window
+            if (onto) {
+                const toplevel_fork = this.forest.forks.get(toplevel);
+                if (toplevel_fork && toplevel_fork.left_pinned && toplevel_fork.right) {
+                    if (toplevel_fork.left.is_window(onto.entity)) {
+                        const right = toplevel_fork.right;
+                        if (right.inner.kind === 2) {
+                            onto = ext.windows.get(right.inner.entity) ?? onto;
+                        } else if (right.inner.kind === 1) {
+                            onto = this.forest.largest_window_on(ext, right.inner.entity) ?? onto;
+                        }
+                    }
+                }
+            }
+
             if (onto) {
                 if (this.attach_to_window(ext, onto, win, { auto: 0 })) {
                     return;

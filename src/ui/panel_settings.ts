@@ -22,8 +22,7 @@ import GLib from 'gi://GLib';
 import { get_current_path } from '../utils/paths.js';
 import { isGnome50 } from './workspace_switcher_style.js';
 import { apply_preset, PresetType } from '../engine/presets.js';
-import * as Node from '../engine/node.js';
-import * as Lib from '../utils/lib.js';
+
 
 
 export class Indicator {
@@ -32,9 +31,9 @@ export class Indicator {
 
     toggle_tiled: any;
     toggle_workspace_tiled: any;
-    toggle_pinned_split: any;
-    toggle_pinned_top_left: any;
+    toggle_left_pin: any;
     presets_item: any;
+
 
     toggle_active: any;
     toggle_debug: any;
@@ -91,19 +90,13 @@ export class Indicator {
         this.toggle_workspace_tiled = workspace_tiled(ext);
         bm.addMenuItem(this.toggle_workspace_tiled);
 
-        // ── Split Pinning ───────────────────────────────────────
-        this.toggle_pinned_split = toggle_pinned(ext);
-        bm.addMenuItem(this.toggle_pinned_split);
-
-        // ── Pin Window (Top-Left) ────────────────────────────────
-        this.toggle_pinned_top_left = toggle_pinned_top_left(ext);
-        bm.addMenuItem(this.toggle_pinned_top_left);
+        // ── Lock Master Window ──────────────────────────────────
+        this.toggle_left_pin = lock_master_window(ext);
+        bm.addMenuItem(this.toggle_left_pin);
 
         // ── Layout Presets ──────────────────────────────────────
         this.presets_item = presets_row(ext);
         bm.addMenuItem(this.presets_item);
-
-
 
         bm.addMenuItem(new PopupSeparatorMenuItem());
 
@@ -187,44 +180,27 @@ export class Indicator {
                 this.toggle_workspace_tiled.updateIcon(tiled);
             }
 
-            if (this.toggle_pinned_split) {
-                const win = ext.focus_window();
-                let is_pinned = false;
-                if (win && ext.auto_tiler) {
-                    const fork = ext.auto_tiler.get_parent_fork(win.entity);
-                    if (fork) {
-                        is_pinned = fork.pinned;
-                    }
-                }
-                this.toggle_pinned_split.setToggleState(is_pinned);
-                if (this.toggle_pinned_split.updateIcon) {
-                    this.toggle_pinned_split.updateIcon(is_pinned);
-                }
-            }
 
-            if (this.toggle_pinned_top_left) {
+
+            if (this.toggle_left_pin) {
                 let is_pinned = false;
                 if (ext.auto_tiler) {
                     const toplevel_entity = ext.auto_tiler.forest.find_toplevel([monitor, workspace]);
                     if (toplevel_entity) {
-                        const toplevel_fork = ext.auto_tiler.forest.forks.get(toplevel_entity);
-                        if (toplevel_fork && toplevel_fork.pinned && toplevel_fork.left.inner.kind === 2) {
-                            is_pinned = true;
-                        }
+                        const f = ext.auto_tiler.forest.forks.get(toplevel_entity);
+                        if (f) is_pinned = f.left_pinned;
                     }
                 }
-                this.toggle_pinned_top_left.setToggleState(is_pinned);
-                if (this.toggle_pinned_top_left.updateIcon) {
-                    this.toggle_pinned_top_left.updateIcon(is_pinned);
-                }
+                this.toggle_left_pin.setToggleState(is_pinned);
+                if (this.toggle_left_pin.updateIcon) this.toggle_left_pin.updateIcon(is_pinned);
             }
 
             if (this.presets_item) {
                 if (ext.auto_tiler) {
-                    const ws_windows = Array.from(ext.windows.values()).filter(
+                    const workspace_windows = Array.from(ext.windows.values()).filter(
                         w => w.known_workspace === workspace && ext.auto_tiler!.attached.contains(w.entity)
                     );
-                    const enabled = ws_windows.length >= 2 && ws_windows.length <= 6;
+                    const enabled = workspace_windows.length >= 2 && workspace_windows.length <= 6;
                     this.presets_item.setSensitive(enabled);
                 } else {
                     this.presets_item.setSensitive(false);
@@ -457,110 +433,37 @@ function workspace_tiled(ext: Ext): any {
     );
 }
 
-function toggle_pinned(ext: Ext): any {
-    return toggle(
-        _('Pin Active Window Split'),
-        false,
-        { on: 'changes-prevent-symbolic', off: 'changes-allow-symbolic' },
-        (shouldPin) => {
-            const win = ext.focus_window();
-            if (win && ext.auto_tiler) {
-                const fork = ext.auto_tiler.get_parent_fork(win.entity);
-                if (fork) {
-                    fork.pinned = shouldPin;
-                    ext.auto_tiler.tile(ext, fork, fork.area);
-                }
-            }
+function lock_master_window(ext: Ext): any {
+    const workspace = ext.active_workspace();
+    const monitor = ext.active_monitor();
+    let is_pinned = false;
+    if (ext.auto_tiler) {
+        const toplevel_entity = ext.auto_tiler.forest.find_toplevel([monitor, workspace]);
+        if (toplevel_entity) {
+            const f = ext.auto_tiler.forest.forks.get(toplevel_entity);
+            if (f) is_pinned = f.left_pinned;
         }
-    );
-}
-
-function toggle_pinned_top_left(ext: Ext): any {
+    }
     return toggle(
-        _('Pin Window (Top-Left) No Split'),
-        false,
-        'view-pin-symbolic',
-        (shouldPin) => {
-            const win = ext.focus_window();
-            if (!win || !ext.auto_tiler) return;
-
+        _('Lock Master Window'),
+        is_pinned,
+        { on: 'changes-prevent-symbolic', off: 'changes-allow-symbolic' },
+        (state) => {
             const ws = ext.active_workspace();
-            const monitor = ext.active_monitor();
-            const forest = ext.auto_tiler.forest;
-            const toplevel_entity = forest.find_toplevel([monitor, ws]);
-            if (!toplevel_entity) return;
-            const toplevel_fork = forest.forks.get(toplevel_entity);
-            if (!toplevel_fork) return;
-
-            if (shouldPin) {
-                const ws_windows = Array.from(ext.windows.values()).filter(
-                    w => w.known_workspace === ws && ext.auto_tiler!.attached.contains(w.entity)
-                );
-                if (ws_windows.length < 2) return;
-
-                win.ignore_detach = true;
-                ext.auto_tiler.detach_window(ext, win.entity);
-                win.ignore_detach = false;
-
-                const remaining_toplevel_entity = forest.find_toplevel([monitor, ws]);
-                if (!remaining_toplevel_entity) return;
-
-                const is_fork = forest.forks.contains(remaining_toplevel_entity);
-                const left_node = Node.Node.window(win.entity);
-                const right_node = is_fork 
-                    ? Node.Node.fork(remaining_toplevel_entity)
-                    : Node.Node.window(remaining_toplevel_entity);
-
-                if (is_fork) {
-                    const rf = forest.forks.get(remaining_toplevel_entity);
-                    if (rf && rf.is_toplevel) {
-                        rf.is_toplevel = false;
-                        const id = forest.string_reps.get(remaining_toplevel_entity);
-                        if (id) forest.toplevel.delete(id);
+            const mon = ext.active_monitor();
+            if (ext.auto_tiler) {
+                const entity = ext.auto_tiler.forest.find_toplevel([mon, ws]);
+                if (entity) {
+                    const f = ext.auto_tiler.forest.forks.get(entity);
+                    if (f) {
+                        f.left_pinned = state;
+                        ext.auto_tiler.tile(ext, f, f.area);
                     }
                 }
-
-                const area = ext.monitor_work_area(monitor);
-                area.x += ext.gap_outer;
-                area.y += ext.gap_outer;
-                area.width -= ext.gap_outer * 2;
-                area.height -= ext.gap_outer * 2;
-
-                const [new_toplevel_entity, new_toplevel_fork] = forest.create_fork(
-                    left_node,
-                    right_node,
-                    area.clone(),
-                    ws,
-                    monitor
-                );
-                new_toplevel_fork.set_orientation(Lib.Orientation.HORIZONTAL);
-                new_toplevel_fork.pinned = true;
-
-                const sid = `${new_toplevel_entity}`;
-                forest.string_reps.insert(new_toplevel_entity, sid);
-                new_toplevel_fork.set_toplevel(forest, new_toplevel_entity, sid, [monitor, ws]);
-
-                ext.auto_tiler.attached.insert(win.entity, new_toplevel_entity);
-                forest.on_attach(new_toplevel_entity, win.entity);
-
-                if (is_fork) {
-                    forest.parents.insert(remaining_toplevel_entity, new_toplevel_entity);
-                } else {
-                    ext.auto_tiler.attached.insert(remaining_toplevel_entity, new_toplevel_entity);
-                    forest.on_attach(new_toplevel_entity, remaining_toplevel_entity);
-                }
-
-                forest.tile(ext, new_toplevel_fork, area);
-                forest.arrange(ext, ws, true);
-            } else {
-                toplevel_fork.pinned = false;
-                forest.tile(ext, toplevel_fork, toplevel_fork.area);
-                forest.arrange(ext, ws, true);
             }
         }
     );
 }
-
 
 function presets_row(ext: Ext): any {
     const item = new PopupBaseMenuItem({ reactive: false });
@@ -601,8 +504,4 @@ function presets_row(ext: Ext): any {
     item.add_child(row);
     return item;
 }
-
-
-
-
 
