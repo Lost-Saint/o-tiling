@@ -47,18 +47,75 @@ Then **log out and log back in** to activate the extension (required on Wayland)
 
 ---
 
-## ✨ Features Unique to O-Tiling
+## ✨ What's New on Top of Pop Shell
 
-These features are **not** in the original Pop Shell:
+These features do **not** exist in the original Pop Shell:
 
-| Feature | What It Does |
-|---|---|
-| **Aura Focus Border** | A smooth animated border around your focused window. It automatically picks up your GNOME accent color (Blue, Teal, Green, etc.) |
-| **Skip Overview on Startup** | Go straight to your desktop after login - no Activities screen |
-| **Transparent Panel** | Make the top panel transparent, with adjustable opacity and a blur-style backdrop |
-| **Theme Consistency** | Apply uniform rounded or sharp corners to GTK apps and Shell elements - no extra extensions needed |
-| **Workspace Switcher Styling** | Customize the workspace thumbnail bar size, corner radius, and background in the overview |
-| **Soft Enable / Disable** | Turn the extension on or off from the panel icon without losing your settings |
+### 🔵 Aura Focus Border
+
+A smooth animated border highlights your currently focused window. It picks up your GNOME system accent color automatically (Blue, Teal, Green, Red, Purple, etc.) or you can set a custom color. You can also control:
+
+- **Border width** - how thick the border line is (1-10 px)
+- **Border radius** - how round the corners are (0-30 px)
+- **Outer glow** - a soft glow effect around the border, with its own opacity and custom color
+- **Window tint overlay** - a color tint applied over the focused window background, with adjustable opacity
+- **Custom overlay color** - override the tint color separately from the border color
+- **Apply tint to all windows** - instead of only the focused window, apply the tint overlay to every tiled window on the workspace at once
+
+### 🖼️ Workspace Switcher Styling (GNOME 48+)
+
+Replaces the default workspace thumbnail bar in the overview with a fully customized version:
+
+- **Auto-scaling thumbnails** - the thumbnail size is calculated automatically based on your screen width and how many workspaces you have open, so they always fit without overflowing
+- **Auto-scroll to active workspace** - the strip scrolls to keep the current workspace in view when you switch
+- **Rescales live** - when you add or remove a workspace, the thumbnails resize instantly
+- **Transparent background** - the thumbnail strip background is fully transparent so it blends with your wallpaper
+- **Accent color border** - the active workspace thumbnail gets a colored border using your GNOME accent color
+- **Rounded corners** - configurable corner radius on each workspace card
+
+### 🚫 Skip Overview on Startup
+
+Go straight to your desktop after logging in. No Activities screen in the way.
+
+### 🪟 Transparent Panel
+
+Make the GNOME top panel transparent. Options include:
+
+- **Opacity control** - set any level from fully transparent (0%) to fully opaque (100%)
+- **Blur-style backdrop** - adds a subtle dark gradient behind the panel so text stays readable even on bright wallpapers
+
+### 🎨 Theme Consistency
+
+Applies uniform corner styles to GTK apps and Shell elements without needing the User Themes extension. Choose between:
+
+- **Rounded** - consistent rounded corners everywhere
+- **Sharp** - flat squared corners everywhere
+- Works on GTK 3, GTK 4, and GNOME Shell components at the same time
+
+### 🔀 Layout Presets
+
+One click to rearrange all your windows into a preset layout. Available presets:
+
+- **Columns** - all windows in equal vertical columns side by side
+- **Stacked** - all windows stacked in horizontal rows
+- **Grid** - balanced 2x2, 2x3, or 3x2 grid depending on how many windows you have (works with 2 to 6 windows)
+- **Spiral** - alternating horizontal and vertical splits that spiral inward
+
+### 📌 Lock Master Window
+
+Pin the left (main) window so it never gets split or pushed aside when new windows open. The master window holds at least 35% of the screen width. New windows always tile into the right side.
+
+### 🗂️ Per-Workspace Tiling Toggle
+
+Turn tiling on or off for just the current workspace without affecting other workspaces. Useful when you want one workspace free for floating windows.
+
+### 🪄 Soft Enable / Disable
+
+Turn the entire extension on or off from the panel icon without losing any of your settings. When re-enabled, everything restores exactly as you left it.
+
+### 🪟 Window Button Control
+
+Show or hide the minimize, maximize, and close buttons on title bars independently. The original button layout is restored automatically when the extension is disabled.
 
 ---
 
@@ -116,7 +173,7 @@ Some apps (like GNOME System Monitor, Steam, and some games) have a built-in min
 
 **How to fix it:**
 
-- **Add to Floating Exceptions** - Open the panel menu → Floating Window Exceptions → add the app name (e.g. `gnome-system-monitor`). The tiling engine will leave it alone.
+- **Add to Floating Exceptions** - Open the panel menu -> Floating Window Exceptions -> add the app name (e.g. `gnome-system-monitor`). The tiling engine will leave it alone.
 - **Use Adjustment Mode** - Press `Super + Enter` and manually drag the window borders to give the app more room.
 
 > O-Tiling does not force windows to shrink below their minimum size. Doing so causes crashes and infinite resize loops with GNOME's window manager (Mutter). This is a known design boundary shared with the original Pop Shell.
