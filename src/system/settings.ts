@@ -79,10 +79,8 @@ const MOUSE_CURSOR_FOLLOWS_ACTIVE_WINDOW = 'mouse-cursor-follows-active-window';
 const MOUSE_CURSOR_FOCUS_LOCATION = 'mouse-cursor-focus-location';
 const MAX_WINDOW_WIDTH = 'max-window-width';
 const ACTIVE_HINT_OVERLAY_OPACITY = 'active-hint-overlay-opacity';
-const ACTIVE_HINT_GLOW_OPACITY = 'active-hint-glow-opacity';
-const ACTIVE_HINT_GLOW = 'active-hint-glow';
 const ACTIVE_HINT_OVERLAY_COLOR_RGBA = 'active-hint-overlay-color-rgba';
-const ACTIVE_HINT_GLOW_COLOR_RGBA = 'active-hint-glow-color-rgba';
+
 const ACTIVE_HINT_OVERLAY_ALL_WINDOWS = 'active-hint-overlay-all-windows';
 const WORKSPACE_SWITCHER_STYLE = 'workspace-switcher-style';
 
@@ -233,14 +231,6 @@ export class ExtensionSettings {
         return this.ext.get_uint(ACTIVE_HINT_OVERLAY_OPACITY);
     }
 
-    active_hint_glow_opacity(): number {
-        return this.ext.get_uint(ACTIVE_HINT_GLOW_OPACITY);
-    }
-
-    active_hint_glow(): boolean {
-        return this.ext.get_boolean(ACTIVE_HINT_GLOW);
-    }
-
     active_hint_overlay_color_rgba(): string {
         const rgba = this.ext.get_string(ACTIVE_HINT_OVERLAY_COLOR_RGBA);
 
@@ -257,21 +247,7 @@ export class ExtensionSettings {
         return rgba;
     }
 
-    active_hint_glow_color_rgba(): string {
-        const rgba = this.ext.get_string(ACTIVE_HINT_GLOW_COLOR_RGBA);
 
-        if (rgba === 'auto') {
-            return 'auto';
-        }
-
-        const valid_color = utils.isValidColor(rgba);
-
-        if (!valid_color) {
-            return 'auto';
-        }
-
-        return rgba;
-    }
 
     active_hint_overlay_all_windows(): boolean {
         return this.ext.get_boolean(ACTIVE_HINT_OVERLAY_ALL_WINDOWS);
@@ -409,16 +385,8 @@ export class ExtensionSettings {
         this.ext.set_uint(MAX_WINDOW_WIDTH, set);
     }
 
-    set_active_hint_overlay_opacity(set: number) {
+     set_active_hint_overlay_opacity(set: number) {
         this.ext.set_uint(ACTIVE_HINT_OVERLAY_OPACITY, set);
-    }
-
-    set_active_hint_glow_opacity(set: number) {
-        this.ext.set_uint(ACTIVE_HINT_GLOW_OPACITY, set);
-    }
-
-    set_active_hint_glow(set: boolean) {
-        this.ext.set_boolean(ACTIVE_HINT_GLOW, set);
     }
 
     set_active_hint_overlay_color_rgba(rgba: string) {
@@ -431,15 +399,7 @@ export class ExtensionSettings {
         }
     }
 
-    set_active_hint_glow_color_rgba(rgba: string) {
-        const valid_color = utils.isValidColor(rgba);
 
-        if (valid_color) {
-            this.ext.set_string(ACTIVE_HINT_GLOW_COLOR_RGBA, rgba);
-        } else {
-            this.ext.set_string(ACTIVE_HINT_GLOW_COLOR_RGBA, 'auto');
-        }
-    }
 
     set_active_hint_overlay_all_windows(set: boolean) {
         this.ext.set_boolean(ACTIVE_HINT_OVERLAY_ALL_WINDOWS, set);

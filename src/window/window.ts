@@ -230,12 +230,9 @@ export class ShellWindow {
             if (this.border) {
                 if (key === 'hint-color-rgba' ||
                     key === 'active-hint-overlay-color-rgba' ||
-                    key === 'active-hint-glow-color-rgba' ||
                     key === 'active-hint-border-radius' ||
                     key === 'active-hint-border-width' ||
                     key === 'active-hint-overlay-opacity' ||
-                    key === 'active-hint-glow-opacity' ||
-                    key === 'active-hint-glow' ||
                     key === 'active-hint-overlay-all-windows'
                 ) {
                     this.update_hint_colors();
@@ -784,17 +781,11 @@ export class ShellWindow {
         const radius_value = settings.active_hint_border_radius();
         const width_value = settings.active_hint_border_width();
         const overlay_opacity = settings.active_hint_overlay_opacity() / 100;
-        const glow_opacity = settings.active_hint_glow_opacity() / 100;
 
         if (this.border) {
             const is_focused = this.meta.appears_focused;
             const overlay_color_val = settings.active_hint_overlay_color_rgba();
             const overlay_base = overlay_color_val === 'auto' ? color_value : overlay_color_val;
-
-            const glow_color_val = settings.active_hint_glow_color_rgba();
-            const glow_base = glow_color_val === 'auto' ? color_value : glow_color_val;
-
-            const glow_color = utils.set_alpha(glow_base, glow_opacity);
 
             const is_maximized_os = this.is_maximized() || this.is_snap_edge();
             let current_radius = is_maximized_os ? 0 : radius_value;
@@ -806,16 +797,7 @@ export class ShellWindow {
             if (is_focused) {
                 const total_radius = current_radius + width_value;
 
-                const blur_radius = width_value + 2;
-                const show_glow = settings.active_hint_glow();
-
-                let style = `border-color: ${color_value}; border-radius: ${total_radius}px; border-width: ${width_value}px; outline: none; background-clip: padding-box;`;
-
-                if (show_glow) {
-                    style += ` box-shadow: 0 0 ${blur_radius}px ${glow_color};`;
-                } else {
-                    style += ' box-shadow: none;';
-                }
+                let style = `border-color: ${color_value}; border-radius: ${total_radius}px; border-width: ${width_value}px; outline: none; background-clip: padding-box; box-shadow: none;`;
 
                 if (overlay_opacity > 0 && !is_maximized_os) {
                     const overlay_color = utils.set_alpha(overlay_base, overlay_opacity);

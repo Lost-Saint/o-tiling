@@ -290,77 +290,11 @@ export default class OTilingPreferences extends ExtensionPreferences {
         auraOverlayGroup.add(overlayAll);
         settings.bind('active-hint-overlay-all-windows', overlayAll as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
-        // Outer Glow Group
-        const auraGlowGroup = new Adw.PreferencesGroup({
-            title: _('Active Window Outer Glow'),
-        });
-        appearancePage.add(auraGlowGroup);
-
-        const glowOpacity = new Adw.SpinRow({
-            title: _('Active Hint Glow Opacity (%)'),
-            subtitle: _('Opacity of the outer glow on the active window'),
-            adjustment: new Gtk.Adjustment({ lower: 0, upper: 100, step_increment: 1 }),
-        });
-        auraGlowGroup.add(glowOpacity);
-        settings.bind('active-hint-glow-opacity', glowOpacity as any, 'value', Gio.SettingsBindFlags.DEFAULT);
-
-        // Glow Color Customization
-        const useGlowColor = new Adw.SwitchRow({
-            title: _('Use Custom Glow Color'),
-            subtitle: _('Override default active border color for the outer glow effect'),
-        });
-        auraGlowGroup.add(useGlowColor);
-
-        const glowColorRow = new Adw.ActionRow({
-            title: _('Active Glow (Aura) Color'),
-            subtitle: _('Custom glow/aura color for the active window'),
-        });
-        auraGlowGroup.add(glowColorRow);
-
-        const glowColorDialog = new Gtk.ColorDialog({ with_alpha: true });
-        const glowColorButton = new Gtk.ColorDialogButton({
-            dialog: glowColorDialog,
-            valign: Gtk.Align.CENTER,
-        });
-        glowColorRow.add_suffix(glowColorButton);
-
-        const currentGlowVal = settings.get_string('active-hint-glow-color-rgba');
-        const glowIsCustom = currentGlowVal !== 'auto';
-        useGlowColor.active = glowIsCustom;
-        glowColorRow.sensitive = glowIsCustom;
-
-        try {
-            const initialGlowColor = new Gdk.RGBA();
-            const colorStringToParse = glowIsCustom ? currentGlowVal : settings.get_string('hint-color-rgba');
-            if (initialGlowColor.parse(colorStringToParse)) {
-                glowColorButton.rgba = initialGlowColor;
-            }
-        } catch (e) {
-            log.warn('Could not set initial glow color: ' + e);
-        }
-
-        useGlowColor.connect('notify::active', () => {
-            const active = useGlowColor.active;
-            glowColorRow.sensitive = active;
-            if (active) {
-                settings.set_string('active-hint-glow-color-rgba', glowColorButton.rgba.to_string());
-            } else {
-                settings.set_string('active-hint-glow-color-rgba', 'auto');
-            }
-        });
-
-        glowColorButton.connect('notify::rgba', () => {
-            if (useGlowColor.active) {
-                settings.set_string('active-hint-glow-color-rgba', glowColorButton.rgba.to_string());
-            }
-        });
-
         // Set up sensitivity based on active-hint master switch
         const updateAuraGroupsSensitivity = () => {
             const isEnabled = activeHint.active;
             auraBorderGroup.sensitive = isEnabled;
             auraOverlayGroup.sensitive = isEnabled;
-            auraGlowGroup.sensitive = isEnabled;
         };
         activeHint.connect('notify::active', updateAuraGroupsSensitivity);
         // Set initial sensitivity state

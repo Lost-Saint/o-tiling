@@ -2456,10 +2456,8 @@ export class Ext extends Ecs.System<ExtEvent> {
                     this.show_border_on_focused();
                     break;
                 case 'active-hint-overlay-opacity':
-                case 'active-hint-glow-opacity':
                 case 'hint-color-rgba':
                 case 'active-hint-overlay-color-rgba':
-                case 'active-hint-glow-color-rgba':
                 case 'active-hint-border-radius':
                 case 'active-hint-border-width':
                 case 'active-hint-overlay-all-windows':

@@ -31,16 +31,6 @@
             <summary>Opacity of the active window overlay, in percent</summary>
         </key>
 
-        <key type="u" name="active-hint-glow-opacity">
-            <default>0</default>
-            <range min="0" max="50"/>
-            <summary>Opacity of the active window glow (aura), in percent (max 50%)</summary>
-        </key>
-
-        <key type="b" name="active-hint-glow">
-            <default>false</default>
-            <summary>Whether to show the glow/aura effect around the active window</summary>
-        </key>
 
         <key type="b" name="workspace-switcher-style">
             <default>false</default>
@@ -342,10 +332,6 @@
             <summary>RGBA color for active window overlay background tint</summary>
         </key>
 
-        <key type="s" name="active-hint-glow-color-rgba">
-            <default>'auto'</default>
-            <summary>RGBA color for active window outer glow aura</summary>
-        </key>
 
         <key type="b" name="active-hint-overlay-all-windows">
             <default>false</default>
