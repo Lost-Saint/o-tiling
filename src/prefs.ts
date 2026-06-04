@@ -12,6 +12,14 @@ export default class OTilingPreferences extends ExtensionPreferences {
     async fillPreferencesWindow(window: Adw.PreferencesWindow) {
         const settings = this.getSettings();
 
+        // Open as a compact window, not full-screen (similar to other ext settings)
+        window.set_default_size(720, 650);
+        window.connect('notify::maximized', () => {
+            if ((window as any).maximized) {
+                window.unmaximize();
+            }
+        });
+
         const behaviorPage = new Adw.PreferencesPage({
             title: _('Behavior'),
             icon_name: 'dialog-information-symbolic',
@@ -251,10 +259,17 @@ export default class OTilingPreferences extends ExtensionPreferences {
         });
         overlayColorRow.add_suffix(overlayColorButton);
 
+        // Apply Tint to All Windows Switch
+        const overlayAll = new Adw.SwitchRow({
+            title: _('Apply Tint to All Windows'),
+            subtitle: _('Render the background overlay tint on all tiled windows on the workspace, instead of only the active window'),
+        });
+        auraOverlayGroup.add(overlayAll);
+        settings.bind('active-hint-overlay-all-windows', overlayAll as any, 'active', Gio.SettingsBindFlags.DEFAULT);
+
         const currentOverlayVal = settings.get_string('active-hint-overlay-color-rgba');
         const overlayIsCustom = currentOverlayVal !== 'auto';
         useOverlayColor.active = overlayIsCustom;
-        overlayColorRow.sensitive = overlayIsCustom;
 
         try {
             const initialOverlayColor = new Gdk.RGBA();
@@ -266,9 +281,18 @@ export default class OTilingPreferences extends ExtensionPreferences {
             log.warn('Could not set initial overlay color: ' + e);
         }
 
+        const updateOverlaySensitivity = () => {
+            const hasOpacity = overlayOpacity.value > 0;
+            useOverlayColor.sensitive = hasOpacity;
+            overlayAll.sensitive = hasOpacity;
+            overlayColorRow.sensitive = hasOpacity && useOverlayColor.active;
+        };
+
+        overlayOpacity.connect('notify::value', updateOverlaySensitivity);
+
         useOverlayColor.connect('notify::active', () => {
             const active = useOverlayColor.active;
-            overlayColorRow.sensitive = active;
+            updateOverlaySensitivity();
             if (active) {
                 settings.set_string('active-hint-overlay-color-rgba', overlayColorButton.rgba.to_string());
             } else {
@@ -282,13 +306,8 @@ export default class OTilingPreferences extends ExtensionPreferences {
             }
         });
 
-        // Apply Tint to All Windows Switch
-        const overlayAll = new Adw.SwitchRow({
-            title: _('Apply Tint to All Windows'),
-            subtitle: _('Render the background overlay tint on all tiled windows on the workspace, instead of only the active window'),
-        });
-        auraOverlayGroup.add(overlayAll);
-        settings.bind('active-hint-overlay-all-windows', overlayAll as any, 'active', Gio.SettingsBindFlags.DEFAULT);
+        // Set initial sensitivity state
+        updateOverlaySensitivity();
 
         // Set up sensitivity based on active-hint master switch
         const updateAuraGroupsSensitivity = () => {
