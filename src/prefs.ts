@@ -15,13 +15,8 @@ export default class OTilingPreferences extends ExtensionPreferences {
         // Compact fixed-size window, close button only (no minimize/maximize)
         window.set_default_size(720, 650);
         window.resizable = false;
-        // Show only the close button in the titlebar
-        try {
-            const gtkSettings = (await import('gi://Gtk')).default.Settings.get_default();
-            if (gtkSettings) {
-                gtkSettings.gtkDecorationLayout = 'close:';
-            }
-        } catch (_e) { /* ignore */ }
+        // Show only the close button in the titlebar (Gtk already imported above)
+        Gtk.Settings.get_default()?.set_property('gtk-decoration-layout', 'close:');
 
         const behaviorPage = new Adw.PreferencesPage({
             title: _('Behavior'),
