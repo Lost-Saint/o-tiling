@@ -35,7 +35,7 @@ Then **log out and log back in** to activate the extension (required on Wayland)
 
 2. **Install** it:
    ```bash
-   gnome-extensions install --force ~/Downloads/o-tiling@oliwebd.github.com-v2.8.8.zip
+   gnome-extensions install --force ~/Downloads/o-tiling@oliwebd.github.com-v2.8.11.zip
    ```
 
 3. **Log out and log back in** (Wayland needs a session restart)
