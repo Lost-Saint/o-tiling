@@ -157,6 +157,24 @@ export default class OTilingPreferences extends ExtensionPreferences {
         panelGroup.add(panelOpacityRow);
         settings.bind('panel-transparency-opacity', panelOpacityRow as any, 'value', Gio.SettingsBindFlags.DEFAULT);
 
+        const panelTopGapRow = new Adw.SpinRow({
+            title: _('Top Smart Gap'),
+            subtitle: _('Gap between the transparent panel and window top edge (replaces top outer gap when panel is fully transparent)'),
+            adjustment: new Gtk.Adjustment({ lower: 0, upper: 100, step_increment: 1 }),
+        });
+        panelGroup.add(panelTopGapRow);
+        settings.bind('panel-top-gap', panelTopGapRow as any, 'value', Gio.SettingsBindFlags.DEFAULT);
+
+        /** Show/hide the Top Smart Gap row based on panel transparency state */
+        const updatePanelTopGapVisibility = () => {
+            const fullyTransparent = panelTransRow.active && panelOpacityRow.value === 0;
+            panelTopGapRow.visible = fullyTransparent;
+        };
+        panelTransRow.connect('notify::active', updatePanelTopGapVisibility);
+        panelOpacityRow.connect('notify::value', updatePanelTopGapVisibility);
+        // Set initial state
+        updatePanelTopGapVisibility();
+
 
 
         // Aura Master Group

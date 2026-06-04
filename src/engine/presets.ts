@@ -35,9 +35,9 @@ export function apply_preset(ext: Ext, preset: PresetType, workspace: number, mo
 
     const area = ext.monitor_work_area(monitor);
     area.x += ext.gap_outer;
-    area.y += ext.gap_outer;
+    area.y += ext.gap_top;
     area.width -= ext.gap_outer * 2;
-    area.height -= ext.gap_outer * 2;
+    area.height -= ext.gap_outer + ext.gap_top;
 
     const entities = ws_windows.map(w => w.entity);
 

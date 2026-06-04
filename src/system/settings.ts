@@ -90,6 +90,7 @@ const SHOW_MINIMIZE_MAXIMIZE_BUTTONS = 'show-minimize-maximize-buttons';
 const SHOW_CLOSE_BUTTON = 'show-close-button';
 const PANEL_TRANSPARENCY = 'panel-transparency';
 const PANEL_TRANSPARENCY_OPACITY = 'panel-transparency-opacity';
+const PANEL_TOP_GAP = 'panel-top-gap';
 
 
 
@@ -290,6 +291,10 @@ export class ExtensionSettings {
         return this.ext.get_uint(PANEL_TRANSPARENCY_OPACITY);
     }
 
+    panel_top_gap(): number {
+        return this.ext.get_uint(PANEL_TOP_GAP);
+    }
+
 
 
 
@@ -431,6 +436,10 @@ export class ExtensionSettings {
 
     set_panel_transparency_opacity(v: number) {
         this.ext.set_uint(PANEL_TRANSPARENCY_OPACITY, v);
+    }
+
+    set_panel_top_gap(v: number) {
+        this.ext.set_uint(PANEL_TOP_GAP, v);
     }
 
 

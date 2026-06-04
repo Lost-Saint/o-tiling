@@ -101,9 +101,9 @@ export class AutoTiler {
 
         if (!fork.smart_gapped) {
             rect.x += ext.gap_outer;
-            rect.y += ext.gap_outer;
+            rect.y += ext.gap_top;
             rect.width -= ext.gap_outer * 2;
-            rect.height -= ext.gap_outer * 2;
+            rect.height -= ext.gap_outer + ext.gap_top;
         }
 
         if (fork.left.inner.kind === 2) {
@@ -124,9 +124,9 @@ export class AutoTiler {
 
         if (!smart_gaps || ext.settings.active_hint()) {
             rect.x += ext.gap_outer;
-            rect.y += ext.gap_outer;
+            rect.y += ext.gap_top;
             rect.width -= ext.gap_outer * 2;
-            rect.height -= ext.gap_outer * 2;
+            rect.height -= ext.gap_outer + ext.gap_top;
         }
 
         const [entity, fork] = this.forest.create_toplevel(win.entity, rect.clone(), workspace_id);
@@ -156,9 +156,9 @@ export class AutoTiler {
                     const rect = ext.monitor_work_area(fork.monitor);
 
                     rect.x += ext.gap_outer;
-                    rect.y += ext.gap_outer;
+                    rect.y += ext.gap_top;
                     rect.width -= ext.gap_outer * 2;
-                    rect.height -= ext.gap_outer * 2;
+                    rect.height -= ext.gap_outer + ext.gap_top;
 
                     fork.set_area(rect);
                 }

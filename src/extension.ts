@@ -194,6 +194,13 @@ export class Ext extends Ecs.System<ExtEvent> {
     /** Previously-set value of the outer gap */
     gap_outer_prev: number = 0;
 
+    /**
+     * Effective top-side outer gap. When the panel is fully transparent
+     * (panel-transparency enabled AND opacity == 0) this equals the
+     * panel-top-gap setting; otherwise it equals gap_outer.
+     */
+    gap_top: number = 0;
+
     /** Information about a current possible grab operation */
     grab_op: GrabOp.GrabOp | null = null;
 
@@ -390,6 +397,8 @@ export class Ext extends Ecs.System<ExtEvent> {
         // Panel transparency settings signals
         const id_panel_trans = this.settings.ext.connect('changed::panel-transparency', () => {
             this.toggle_panel_transparency(this.settings.panel_transparency());
+            // Recompute top gap when transparency is toggled on/off
+            this.on_gap_top();
         });
         this._settings_signal_ids.push([this.settings.ext, id_panel_trans]);
 
@@ -397,8 +406,15 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.panel_transparency_handler?.updateOpacity(
                 this.settings.panel_transparency_opacity()
             );
+            // Recompute top gap — opacity=0 enables the smart top gap
+            this.on_gap_top();
         });
         this._settings_signal_ids.push([this.settings.ext, id_panel_opacity]);
+
+        const id_panel_top_gap = this.settings.ext.connect('changed::panel-top-gap', () => {
+            this.on_gap_top();
+        });
+        this._settings_signal_ids.push([this.settings.ext, id_panel_top_gap]);
 
 
 
@@ -1108,6 +1124,9 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         this.column_size = this.settings.column_size() * this.dpi;
         this.row_size = this.settings.row_size() * this.dpi;
+
+        // Recompute the effective top gap after loading all gap settings
+        this.compute_gap_top();
     }
 
     monitor_work_area(monitor: number): Rectangle {
@@ -1510,7 +1529,43 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         if (diff != 0) {
             this.set_gap_outer(current);
+            this.compute_gap_top();
             this.update_outer_gap(diff);
+        }
+    }
+
+    /** Recompute gap_top based on panel transparency state */
+    compute_gap_top() {
+        const is_fully_transparent = this.settings.panel_transparency()
+            && this.settings.panel_transparency_opacity() === 0;
+        if (is_fully_transparent) {
+            this.gap_top = this.settings.panel_top_gap() * 4 * this.dpi;
+        } else {
+            this.gap_top = this.gap_outer;
+        }
+    }
+
+    /** Called when panel-top-gap setting changes */
+    on_gap_top() {
+        const was = this.gap_top;
+        this.compute_gap_top();
+        const diff_top = (this.gap_top - was) / 4 / this.dpi;
+        if (diff_top !== 0) {
+            this.update_top_gap(diff_top);
+        }
+    }
+
+    /** Re-tile all toplevel forks to apply a changed top-side gap */
+    update_top_gap(_diff: number) {
+        if (this.auto_tiler) {
+            for (const [entity] of this.auto_tiler.forest.toplevel.values()) {
+                const fork = this.auto_tiler.forest.forks.get(entity);
+                if (fork) {
+                    this.auto_tiler.update_toplevel(
+                        this, fork, fork.monitor, this.settings.smart_gaps()
+                    );
+                }
+            }
         }
     }
 
@@ -1961,9 +2016,9 @@ export class Ext extends Ecs.System<ExtEvent> {
                     if (windowless) {
                         [area, monitor_attachment] = [this.monitor_work_area(monitor), true];
                         area.x += this.gap_outer;
-                        area.y += this.gap_outer;
+                        area.y += this.gap_top;
                         area.width -= this.gap_outer * 2;
-                        area.height -= this.gap_outer * 2;
+                        area.height -= this.gap_outer + this.gap_top;
                     } else if (attach_to) {
                         const is_sibling = this.auto_tiler.windows_are_siblings(entity, attach_to.entity);
 
@@ -2414,6 +2469,8 @@ export class Ext extends Ecs.System<ExtEvent> {
     set_gap_outer(gap: number) {
         this.gap_outer_prev = this.gap_outer;
         this.gap_outer = gap * 4 * this.dpi;
+        // Keep gap_top in sync whenever gap_outer changes
+        this.compute_gap_top();
     }
 
     set_overlay(rect: Rectangle) {

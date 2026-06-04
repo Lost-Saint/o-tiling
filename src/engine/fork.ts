@@ -348,9 +348,9 @@ export class Fork {
             }
 
             area.x += ext.gap_outer;
-            area.y += ext.gap_outer;
+            area.y += ext.gap_top;
             area.width -= ext.gap_outer * 2;
-            area.height -= ext.gap_outer * 2;
+            area.height -= ext.gap_outer + ext.gap_top;
 
             this.set_area(area.clone());
             this.measure(forest, ext, area, forest.on_record());

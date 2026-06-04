@@ -255,9 +255,9 @@ export class Tiler {
             const rect = ext.monitor_work_area(fork.monitor);
 
             rect.x += ext.gap_outer;
-            rect.y += ext.gap_outer;
+            rect.y += ext.gap_top;
             rect.width -= ext.gap_outer * 2;
-            rect.height -= ext.gap_outer * 2;
+            rect.height -= ext.gap_outer + ext.gap_top;
 
             fork.set_area(rect);
         }
@@ -343,9 +343,9 @@ export class Tiler {
             const rect = ext.monitor_work_area(fork.monitor);
 
             rect.x += ext.gap_outer;
-            rect.y += ext.gap_outer;
+            rect.y += ext.gap_top;
             rect.width -= ext.gap_outer * 2;
-            rect.height -= ext.gap_outer * 2;
+            rect.height -= ext.gap_outer + ext.gap_top;
 
             fork.set_area(rect);
         }
