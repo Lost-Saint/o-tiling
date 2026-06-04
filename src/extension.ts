@@ -2575,10 +2575,9 @@ export class Ext extends Ecs.System<ExtEvent> {
                             
                             // Check panel references with safe navigation
                             if (actor === Main.panel) return;
-                            if (Main.panel?._centerBox === actor) return;
-                            if (Main.panel?._leftBox === actor) return;
-                            if (Main.panel?._rightBox === actor) return;
-                            
+                            if ((Main.panel as any)?._centerBox === actor) return;
+                            if ((Main.panel as any)?._leftBox === actor) return;
+                            if ((Main.panel as any)?._rightBox === actor) return;
                             actor = actor.get_parent?.() || null;
                             depth++;
                         }
