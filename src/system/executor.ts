@@ -48,8 +48,7 @@ export class GLibExecutor<T> implements Executor<T> {
 
     stop(): void {
         if (this.#event_loop !== null) {
-            // BUG-01 fix: only call the removal function matching how the loop was created.
-            // Calling later_remove on a GLib idle source ID (or vice versa) causes SIGABRT.
+            // Use the matching removal fn: later_remove for laters, source_remove for idle.
             if (this.#used_laters) {
                 try { utils.later_remove(this.#event_loop); } catch (_) {}
             } else {

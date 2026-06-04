@@ -1,4 +1,3 @@
-// FIXED: BUG 3 — synchronous DBus call blocks compositor main thread on every first focus event
 import * as log from '../utils/log.js';
 
 import Gio from 'gi://Gio';

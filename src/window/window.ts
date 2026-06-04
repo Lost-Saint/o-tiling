@@ -1,5 +1,3 @@
-// FIXED: BUG 4 — SCHEDULED_RESTACK module singleton corrupts border stacking for all but the last window per frame
-// FIXED: BUG PANEL-HOVER — border flashes on/off when hovering top panel buttons
 import * as lib from '../utils/lib.js';
 import * as log from '../utils/log.js';
 import * as once_cell from '../utils/once_cell.js';
@@ -63,20 +61,7 @@ export function cleanup_main_loop_sources() {
     ACTIVE_HINT_SHOW_IDS.clear();
 }
 
-/**
- * Returns true when the Clutter key-focus is currently on a Shell UI actor
- * (panel button, popup menu, etc.) rather than on a real window.
- *
- * This is the root cause of the panel-hover border flash: when the pointer
- * enters a panel button, GNOME briefly hands Clutter key-focus to that actor,
- * which fires notify::focus-window with get_focus_window() == null.  The
- * border hide → show cycle that follows produces a visible flicker.
- *
- * We detect this by checking whether the Clutter key-focus actor has a parent
- * that belongs to the top panel or is itself a panel-related actor, and whether
- * it does NOT expose a Meta.Window (i.e. it is a Shell UI element, not a window
- * compositor actor).
- */
+/** True when Clutter key-focus is on a Shell panel actor rather than a real window. */
 function clutter_focus_is_shell_panel(): boolean {
     try {
         const stage = (global as any).stage;
@@ -85,11 +70,8 @@ function clutter_focus_is_shell_panel(): boolean {
         const focused_actor: Clutter.Actor | null = stage.get_key_focus?.() ?? null;
         if (!focused_actor) return false;
 
-        // If the actor can give us a Meta.Window it is a window compositor actor —
-        // NOT a shell panel element.
         if (typeof (focused_actor as any).get_meta_window === 'function') return false;
 
-        // Walk up at most 6 levels to find a panel ancestor or style-class hint.
         let actor: Clutter.Actor | null = focused_actor;
         for (let depth = 0; depth < 6 && actor !== null; depth++) {
             const style_class: string = (actor as any).style_class ?? '';
@@ -106,9 +88,7 @@ function clutter_focus_is_shell_panel(): boolean {
             }
             actor = actor.get_parent?.() ?? null;
         }
-    } catch (_) {
-        // Never crash the compositor for a cosmetic check.
-    }
+    } catch (_) {}
     return false;
 }
 
@@ -518,10 +498,7 @@ export class ShellWindow {
                 const actor = this.meta.get_compositor_private() as any;
                 const overlay_all = this.ext.settings.active_hint_overlay_all_windows();
 
-                // If Clutter key-focus is currently on a panel/Shell UI actor (e.g. the user
-                // is hovering a panel button), do not hide or re-show the border — treat the
-                // current border state as correct and bail out.  This prevents the on/off
-                // flash that occurs when GNOME briefly reassigns Clutter focus to the panel.
+                // Bail if focus is transiently on a panel actor — avoid border flash.
                 if (clutter_focus_is_shell_panel()) return false;
 
                 return (

@@ -2541,6 +2541,12 @@ export class Ext extends Ecs.System<ExtEvent> {
                         window = this.windows.get(x);
                     }
 
+                    // Transient null-focus (mouse in gap) — window still owns focus, just refresh border.
+                    if (window && window.meta.appears_focused) {
+                        this.show_border_on_focused();
+                        return;
+                    }
+
                     if (window && window.same_monitor() && window.same_workspace() && !window.meta.minimized) {
                         window.activate(false);
                     } else {
@@ -2551,7 +2557,7 @@ export class Ext extends Ecs.System<ExtEvent> {
                 // Delay in case the focused window was not focused yet.
                 // Note: Fixes Intellij IDE windows.
                 this.register_fn(() => {
-                    // PANEL-HOVER FIX: Check if focus is on a Shell UI actor
+                    // Skip if Clutter key-focus is on a Shell panel actor (panel hover).
                     const stage = (global as any).stage;
                     const clutter_focus = stage?.get_key_focus?.();
                     
@@ -2567,7 +2573,6 @@ export class Ext extends Ecs.System<ExtEvent> {
                                 return; // Skip focus handling - panel hover
                             }
                             
-                            // Check panel references with safe navigation
                             if (actor === Main.panel) return;
                             if ((Main.panel as any)?._centerBox === actor) return;
                             if ((Main.panel as any)?._leftBox === actor) return;
@@ -2597,6 +2602,11 @@ export class Ext extends Ecs.System<ExtEvent> {
                             }
                         }
                     } else if (this.auto_tiler) {
+                        // Skip refocus if the bordered window still appears focused (transient null-focus, e.g. gap hover).
+                        if (this._bordered_entity !== null) {
+                            const _bw = this.windows.get(this._bordered_entity);
+                            if (_bw?.meta.appears_focused) return;
+                        }
                         refocus_tiled_window();
                     }
                 });
@@ -2738,7 +2748,7 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.suspend_timeout = null;
         }
 
-        // Cancel any previously scheduled resume to prevent double-execution
+        // Debounce: clear any previous resume schedule.
         if (this._resume_timeout) {
             GLib.source_remove(this._resume_timeout);
             this._resume_timeout = null;
@@ -2748,13 +2758,10 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         this.suspended = false;
 
-        // Use a longer delay to ensure GNOME Shell has fully restored window
-        // state after unlock/suspend (GNOME v49 fires sessionMode.updated
-        // multiple times during the unlock transition)
+        // 600ms delay: GNOME 49 fires sessionMode.updated multiple times during unlock.
         this._resuming = true;
         this._resume_timeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 600, () => {
             this._resume_timeout = null;
-            // GUARD: ext may have been destroyed during the 600ms window
             if (this._destroyed || this.suspended) return GLib.SOURCE_REMOVE;
 
             this._resuming = false;

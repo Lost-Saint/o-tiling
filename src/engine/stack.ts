@@ -1,4 +1,3 @@
-// FIXED: BUG 5 — active window tracking signals drop mid-drag when recreate_widgets() fires
 import type { Entity } from '../core/ecs.js';
 import type { Ext } from '../extension.js';
 import type { ShellWindow } from '../window/window.js';
