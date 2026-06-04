@@ -151,12 +151,7 @@ export default class OTilingPreferences extends ExtensionPreferences {
         panelGroup.add(panelOpacityRow);
         settings.bind('panel-transparency-opacity', panelOpacityRow as any, 'value', Gio.SettingsBindFlags.DEFAULT);
 
-        const panelBlurRow = new Adw.SwitchRow({
-            title: _('Panel Blur Style'),
-            subtitle: _('Adds a subtle dark gradient behind the transparent panel for readability'),
-        });
-        panelGroup.add(panelBlurRow);
-        settings.bind('panel-transparency-blur-style', panelBlurRow as any, 'active', Gio.SettingsBindFlags.DEFAULT);
+
 
         // Aura Master Group
         const auraMasterGroup = new Adw.PreferencesGroup({

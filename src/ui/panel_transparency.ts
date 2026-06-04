@@ -20,11 +20,9 @@ import * as log from '../utils/log.js';
 export class PanelTransparencyManager {
     private _file: Gio.File | null = null;
     private _opacity: number;            // 0 = fully transparent, 100 = opaque
-    private _blurStyle: boolean;         // true = add blur-like semi-dark backdrop
 
-    constructor(opacity: number = 0, blurStyle: boolean = false) {
+    constructor(opacity: number = 0) {
         this._opacity = Math.max(0, Math.min(100, opacity));
-        this._blurStyle = blurStyle;
     }
 
     enable(): void {
@@ -82,11 +80,6 @@ export class PanelTransparencyManager {
         this._refresh();
     }
 
-    updateBlurStyle(blur: boolean): void {
-        this._blurStyle = blur;
-        this._refresh();
-    }
-
     // ── Private ────────────────────────────────────────────────────────────
 
     private _refresh(): void {
@@ -98,11 +91,6 @@ export class PanelTransparencyManager {
 
     private _buildCss(): string {
         const alpha = (this._opacity / 100).toFixed(2);
-
-        // blurStyle adds a very subtle dark gradient so text stays readable
-        const bg = this._blurStyle
-            ? `linear-gradient(to bottom, rgba(0,0,0,0.45), rgba(0,0,0,0.25))`
-            : `rgba(0, 0, 0, 0)`;
 
         return `
 /* === O-Tiling: Panel Transparency === */
@@ -147,17 +135,6 @@ export class PanelTransparencyManager {
 #panel .system-status-icon {
     color: rgba(255, 255, 255, 0.92) !important;
 }
-
-/* Blur-style backdrop (only applied when blurStyle = true) */
-${this._blurStyle ? `
-#panel,
-#panel.solid,
-#panel:overview,
-#panel.login-screen,
-#panel.unlock-screen {
-    background-image: ${bg} !important;
-}
-` : ''}
 `;
     }
 }

@@ -92,7 +92,7 @@ const SHOW_MINIMIZE_MAXIMIZE_BUTTONS = 'show-minimize-maximize-buttons';
 const SHOW_CLOSE_BUTTON = 'show-close-button';
 const PANEL_TRANSPARENCY = 'panel-transparency';
 const PANEL_TRANSPARENCY_OPACITY = 'panel-transparency-opacity';
-const PANEL_TRANSPARENCY_BLUR_STYLE = 'panel-transparency-blur-style';
+
 
 
 
@@ -314,9 +314,7 @@ export class ExtensionSettings {
         return this.ext.get_uint(PANEL_TRANSPARENCY_OPACITY);
     }
 
-    panel_transparency_blur_style(): boolean {
-        return this.ext.get_boolean(PANEL_TRANSPARENCY_BLUR_STYLE);
-    }
+
 
 
     // Setters
@@ -475,9 +473,7 @@ export class ExtensionSettings {
         this.ext.set_uint(PANEL_TRANSPARENCY_OPACITY, v);
     }
 
-    set_panel_transparency_blur_style(v: boolean) {
-        this.ext.set_boolean(PANEL_TRANSPARENCY_BLUR_STYLE, v);
-    }
+
 
 
 

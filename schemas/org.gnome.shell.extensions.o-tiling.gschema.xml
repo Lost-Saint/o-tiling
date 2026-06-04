@@ -64,10 +64,6 @@
             <summary>Panel background opacity (0 = fully transparent, 100 = opaque)</summary>
         </key>
 
-        <key type="b" name="panel-transparency-blur-style">
-            <default>false</default>
-            <summary>Use a subtle dark gradient behind the transparent panel for readability</summary>
-        </key>
 
 
         <key name="theme-consistency-style" enum="org.gnome.shell.extensions.o-tiling.ThemeConsistencyStyle">

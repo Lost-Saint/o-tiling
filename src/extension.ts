@@ -400,12 +400,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         });
         this._settings_signal_ids.push([this.settings.ext, id_panel_opacity]);
 
-        const id_panel_blur = this.settings.ext.connect('changed::panel-transparency-blur-style', () => {
-            this.panel_transparency_handler?.updateBlurStyle(
-                this.settings.panel_transparency_blur_style()
-            );
-        });
-        this._settings_signal_ids.push([this.settings.ext, id_panel_blur]);
+
 
         // Initial application
         this.toggle_workspace_switcher_style(this.settings.workspace_switcher_style(), false);
@@ -3145,7 +3140,6 @@ export class Ext extends Ecs.System<ExtEvent> {
             if (!this.panel_transparency_handler) {
                 this.panel_transparency_handler = new PanelTransparencyManager(
                     this.settings.panel_transparency_opacity(),
-                    this.settings.panel_transparency_blur_style(),
                 );
             }
             this.panel_transparency_handler.enable();
