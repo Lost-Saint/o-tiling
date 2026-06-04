@@ -1,31 +1,44 @@
-# O-tiling: Auto-tiling engine for GNOME Shell
+# O-Tiling — Auto-Tiling Extension for GNOME Shell
 
-A lightweight, keyboard-driven auto-tiling extension for GNOME Shell. It started as a fork of **System76's pop-shell** but has been heavily refactored so it runs lightly on Fedora, Arch, Ubuntu, or any GNOME distro. On top of the original pop-shell core, a bunch of new features have been added that aren't in upstream.
+**O-Tiling** is a free, open-source auto-tiling extension for GNOME Shell. It automatically organizes your open windows into a clean, tiled layout — no manual dragging needed. Works on Fedora, Arch, Ubuntu, and any GNOME-based Linux distro.
 
-> **Compatibility:** GNOME Shell **48, 49, and 50** (Fedora 42 / 43 / 44). Earlier versions are not supported.
+> **Supported GNOME versions:** 48, 49, and 50 (Fedora 42 / 43 / 44)
 
 ---
 
-## ⚡ One-liner Install
+## What Is Auto-Tiling?
+
+Auto-tiling means your windows are arranged automatically side by side when you open them. Instead of overlapping windows, each app gets its own space on screen. You can resize, move, and swap windows using only your keyboard.
+
+O-Tiling is a heavily improved fork of [System76 Pop Shell](https://github.com/pop-os/shell), with many new features added on top.
+
+---
+
+## ⚡ Quick Install (One Command)
+
+Open a terminal and run:
 
 ```bash
-curl -L https://github.com/oliwebd/o-tiling/releases/download/v2.8.8/o-tiling@oliwebd.github.com-v2.8.8.zip -o /tmp/o-tiling.zip && gnome-extensions install --force /tmp/o-tiling.zip && gnome-extensions enable o-tiling@oliwebd.github.com
+curl -L https://github.com/oliwebd/o-tiling/releases/download/v2.8.8/o-tiling@oliwebd.github.com-v2.8.8.zip \
+  -o /tmp/o-tiling.zip \
+  && gnome-extensions install --force /tmp/o-tiling.zip \
+  && gnome-extensions enable o-tiling@oliwebd.github.com
 ```
 
-Then **log out and back in** (Wayland requires a session restart to activate).
+Then **log out and log back in** to activate the extension (required on Wayland).
 
 ---
 
-## 🔧 Manual Installation
+## 📦 Manual Install
 
-1. **Download** `o-tiling@oliwebd.github.com.zip` from the [GitHub Releases page](https://github.com/oliwebd/o-tiling/releases/tag/v2.8.8).
+1. **Download** the latest zip from the [Releases page](https://github.com/oliwebd/o-tiling/releases/tag/v2.8.8)
 
-2. **Install** via terminal:
+2. **Install** it:
    ```bash
    gnome-extensions install --force ~/Downloads/o-tiling@oliwebd.github.com-v2.8.8.zip
    ```
 
-3. **Restart GNOME Shell** — Log out and log back in (Wayland).
+3. **Log out and log back in** (Wayland needs a session restart)
 
 4. **Enable** the extension:
    ```bash
@@ -34,67 +47,114 @@ Then **log out and back in** (Wayland requires a session restart to activate).
 
 ---
 
-## ✨ What's new on top of pop-shell
+## ✨ Features Unique to O-Tiling
 
-These features don't exist in the original pop-shell:
+These features are **not** in the original Pop Shell:
 
-- **Aura focus border** — A smooth animated border that follows your focused window and automatically picks up your GNOME system accent color (Blue, Teal, Green, etc.).
-- **Skip Overview on startup** — Go straight to the desktop after login, no Activities screen in the way.
-- **Transparent panel** — Optional panel transparency with configurable opacity (0–100%) and a subtle blur-style backdrop mode for readability.
-- **Theme Consistency** — Applies uniform rounded or sharp corner styles to GTK apps and Shell elements without needing the User Themes extension.
-- **Workspace Switcher Styling (GNOME 48+)** — Customizable thumbnail scale, corner radii, and transparent background in the overview.
-- **Soft enable/disable from the panel** — Toggle the entire extension on/off from the panel indicator without losing your settings.
-
----
-
-## ⚙️ Core features (inherited and improved from pop-shell)
-
-- **Auto-tiling engine** — Binary tree layout per monitor per workspace, fully recalculated on every window event.
-- **Stacking / tabbed mode** — Stack multiple windows into one tile slot with a tab bar.
-- **Smart gaps** — Outer gaps collapse to zero when only one window is tiled.
-- **Multi-monitor support** — Full hotplug support, workspaces-only-on-primary, dynamic workspaces.
-- **Keyboard-first** — Move, resize, swap, and reorient tiles with `Super+h/j/k/l` or arrow keys.
+| Feature | What It Does |
+|---|---|
+| **Aura Focus Border** | A smooth animated border around your focused window. It automatically picks up your GNOME accent color (Blue, Teal, Green, etc.) |
+| **Skip Overview on Startup** | Go straight to your desktop after login — no Activities screen |
+| **Transparent Panel** | Make the top panel transparent, with adjustable opacity and a blur-style backdrop |
+| **Theme Consistency** | Apply uniform rounded or sharp corners to GTK apps and Shell elements — no extra extensions needed |
+| **Workspace Switcher Styling** | Customize the workspace thumbnail bar size, corner radius, and background in the overview |
+| **Soft Enable / Disable** | Turn the extension on or off from the panel icon without losing your settings |
 
 ---
 
-## ⌨️ Default Keybindings
+## ⚙️ Core Tiling Features
+
+Everything below is inherited from Pop Shell and improved:
+
+- **Auto-tiling engine** — Windows are arranged in a binary tree layout, per monitor and per workspace. The layout recalculates every time a window opens, closes, or moves.
+- **Stacking / Tabbed mode** — Stack multiple windows into one tile slot, with a tab bar to switch between them.
+- **Smart gaps** — Outer gaps disappear automatically when only one window is open.
+- **Multi-monitor support** — Fully supports multiple displays, hot-plugging, and workspaces-only-on-primary mode.
+- **Keyboard-first** — Move, resize, swap, and rotate tiles without touching your mouse.
+
+---
+
+## ⌨️ Default Keyboard Shortcuts
 
 | Action | Shortcut |
 |---|---|
-| Focus left/right/up/down | `Super+Alt+Arrows` or `Super+h/j/k/l` |
-| Toggle auto-tiling | `Super+t` |
-| Toggle floating | `Super+f` |
-| Enter management mode | `Super+Return` |
-| Toggle stacking | `Super+s` |
-| Move to upper/lower workspace | `Super+Shift+Up/Down` |
-| Move to left/right monitor | `Super+Shift+Ctrl+Left/Right` |
+| Focus window left / right / up / down | `Super + Alt + Arrows` or `Super + H / J / K / L` |
+| Toggle auto-tiling on or off | `Super + T` |
+| Toggle floating (free) window | `Super + F` |
+| Enter adjustment mode | `Super + Enter` |
+| Toggle stacking mode | `Super + S` |
+| Move window to upper workspace | `Super + Shift + Up` |
+| Move window to lower workspace | `Super + Shift + Down` |
+| Move window to left monitor | `Super + Shift + Ctrl + Left` |
+| Move window to right monitor | `Super + Shift + Ctrl + Right` |
 
-All keybindings are editable in the **Shortcuts** tab of the preferences window.
-
-## ⚠️ Known Issues & Limitations
-
-### Large Windows Overlapping the Grid
-Some applications (such as **GNOME System Monitor**, Steam, or certain games) have a "minimum window size" built into their code. If you try to tile these applications into a space that is smaller than their minimum size, the tiling engine will not force them to shrink further.
-
-As a result, the application may **overlap** other windows or break the visual grid layout.
-
-**How to fix this:**
-- **Add to Exceptions:** The easiest solution is to open the O-Tiling settings from the top panel menu, go to **Floating Window Exceptions**, and add the application (e.g., `gnome-system-monitor`). This will tell the tiling engine to ignore the app and let it float normally.
-- **Resize Manually:** Alternatively, you can use Adjustment Mode (`Super + Enter`) to manually drag the window borders to give the large application the space it needs.
-
-> [!NOTE]
-> O-tiling does not attempt to automatically "swap" or "force" these windows to fit, as doing so conflicts with GNOME's window manager (Mutter) and can cause crashes or infinite resize loops. This limitation is a known architectural boundary shared with upstream pop-shell.
+All shortcuts can be changed in the **Shortcuts** tab inside the extension preferences.
 
 ---
 
-## 🔗 Credits & Links
+## 🖼️ Panel Menu
 
-- **Forked from:** [System76 pop-shell](https://github.com/pop-os/shell).
-- **Special Thanks:** This project incorporates ideas from the following extensions:
-  - [Forge](https://github.com/forge-ext/forge)
-  - [Just Perfection](https://gitlab.gnome.org/jesserivera/just-perfection)
-- **License:** GPLv3 — Extended with Aura border, skip overview, panel transparency, theme consistency, and more.
+Click the O-Tiling icon in the top panel to access quick settings:
+
+- **Tile This Workspace** — Enable or disable tiling for just the current workspace
+- **Lock Master Window** — Pin the left (main) window so it never gets split
+- **Layout Presets** — Instantly switch between Columns, Stacked, Grid, or Spiral layouts
+- **Active Hint (Aura)** — Toggle the focus border on or off
+- **Gaps** — Adjust the space between windows
+- **Border Radius / Width** — Customize the focus border appearance
+- **Floating Window Exceptions** — Choose which apps should always float
+- **Settings** — Open the full preferences window
+- **Enable O-Tiling Extension** — Master on/off switch without losing settings
 
 ---
 
-Happy tiling! Feedback, bug reports, and PRs are welcome on GitHub. 🙏
+## ⚠️ Known Issues
+
+### Some Windows Are Too Big for the Tile Grid
+
+Some apps (like GNOME System Monitor, Steam, and some games) have a built-in minimum window size. If O-Tiling tries to put them in a space smaller than their minimum, they will **overlap** other windows instead of shrinking.
+
+**How to fix it:**
+
+- **Add to Floating Exceptions** — Open the panel menu → Floating Window Exceptions → add the app name (e.g. `gnome-system-monitor`). The tiling engine will leave it alone.
+- **Use Adjustment Mode** — Press `Super + Enter` and manually drag the window borders to give the app more room.
+
+> O-Tiling does not force windows to shrink below their minimum size. Doing so causes crashes and infinite resize loops with GNOME's window manager (Mutter). This is a known design boundary shared with the original Pop Shell.
+
+---
+
+## 🔧 Build from Source
+
+Requirements: Node.js 24, pnpm, `glib-compile-schemas`, `gettext`
+
+```bash
+# Install dependencies
+pnpm install
+
+# Build
+make build
+
+# Package as zip
+make pack
+
+# Install locally
+make install
+```
+
+---
+
+## 🔗 Credits
+
+- **Forked from:** [System76 Pop Shell](https://github.com/pop-os/shell)
+- **Inspired by:** [Forge](https://github.com/forge-ext/forge)
+- **License:** GPLv3
+
+---
+
+## 🐛 Bug Reports & Contributions
+
+Found a bug or have an idea? Open an issue or pull request on [GitHub](https://github.com/oliwebd/o-tiling). Feedback is always welcome.
+
+---
+
+*Happy tiling! 🙏*
