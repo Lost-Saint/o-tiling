@@ -12,13 +12,16 @@ export default class OTilingPreferences extends ExtensionPreferences {
     async fillPreferencesWindow(window: Adw.PreferencesWindow) {
         const settings = this.getSettings();
 
-        // Open as a compact window, not full-screen (similar to other ext settings)
+        // Compact fixed-size window, close button only (no minimize/maximize)
         window.set_default_size(720, 650);
-        window.connect('notify::maximized', () => {
-            if ((window as any).maximized) {
-                window.unmaximize();
+        window.resizable = false;
+        // Show only the close button in the titlebar
+        try {
+            const gtkSettings = (await import('gi://Gtk')).default.Settings.get_default();
+            if (gtkSettings) {
+                gtkSettings.gtkDecorationLayout = 'close:';
             }
-        });
+        } catch (_e) { /* ignore */ }
 
         const behaviorPage = new Adw.PreferencesPage({
             title: _('Behavior'),
