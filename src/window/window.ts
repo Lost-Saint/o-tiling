@@ -1,4 +1,5 @@
 // FIXED: BUG 4 — SCHEDULED_RESTACK module singleton corrupts border stacking for all but the last window per frame
+// FIXED: BUG PANEL-HOVER — border flashes on/off when hovering top panel buttons
 import * as lib from '../utils/lib.js';
 import * as log from '../utils/log.js';
 import * as once_cell from '../utils/once_cell.js';
@@ -60,6 +61,55 @@ export function cleanup_main_loop_sources() {
         } catch (_) {}
     }
     ACTIVE_HINT_SHOW_IDS.clear();
+}
+
+/**
+ * Returns true when the Clutter key-focus is currently on a Shell UI actor
+ * (panel button, popup menu, etc.) rather than on a real window.
+ *
+ * This is the root cause of the panel-hover border flash: when the pointer
+ * enters a panel button, GNOME briefly hands Clutter key-focus to that actor,
+ * which fires notify::focus-window with get_focus_window() == null.  The
+ * border hide → show cycle that follows produces a visible flicker.
+ *
+ * We detect this by checking whether the Clutter key-focus actor has a parent
+ * that belongs to the top panel or is itself a panel-related actor, and whether
+ * it does NOT expose a Meta.Window (i.e. it is a Shell UI element, not a window
+ * compositor actor).
+ */
+function clutter_focus_is_shell_panel(): boolean {
+    try {
+        const stage = (global as any).stage;
+        if (!stage) return false;
+
+        const focused_actor: Clutter.Actor | null = stage.get_key_focus?.() ?? null;
+        if (!focused_actor) return false;
+
+        // If the actor can give us a Meta.Window it is a window compositor actor —
+        // NOT a shell panel element.
+        if (typeof (focused_actor as any).get_meta_window === 'function') return false;
+
+        // Walk up at most 6 levels to find a panel ancestor or style-class hint.
+        let actor: Clutter.Actor | null = focused_actor;
+        for (let depth = 0; depth < 6 && actor !== null; depth++) {
+            const style_class: string = (actor as any).style_class ?? '';
+            if (
+                style_class.includes('panel-button') ||
+                style_class.includes('panel-corner') ||
+                actor === (Main as any).panel ||
+                actor === (Main as any).panel?.statusArea?.activities ||
+                (actor as any) === (Main as any).panel?._centerBox ||
+                (actor as any) === (Main as any).panel?._leftBox ||
+                (actor as any) === (Main as any).panel?._rightBox
+            ) {
+                return true;
+            }
+            actor = actor.get_parent?.() ?? null;
+        }
+    } catch (_) {
+        // Never crash the compositor for a cosmetic check.
+    }
+    return false;
 }
 
 export class ShellWindow {
@@ -309,8 +359,6 @@ export class ShellWindow {
      * Window is maximized, 0 gapped or smart gapped
      */
     is_max_screen(): boolean {
-        // log.debug(`title: ${this.meta.get_title()}`);
-        // log.debug(`max: ${this.is_maximized()}, 0-gap: ${this.ext.settings.gap_inner() === 0}, smart: ${this.smart_gapped}`);
         return this.is_maximized() || this.ext.settings.gap_inner() === 0 || this.smart_gapped;
     }
 
@@ -329,18 +377,14 @@ export class ShellWindow {
             wm_class = this.name(ext);
         }
 
-        // If name resolution also returns empty/null, defer tiling
-        // (this can happen during first-launch initialization).
         if (wm_class === null || wm_class.trim().length === 0) {
             return false;
         }
 
         const role = this.meta.get_role();
 
-        // Quake-style terminals such as Tilix's quake mode.
         if (role === 'quake') return false;
 
-        // Steam loading window is less than 400px wide and 200px tall
         if (this.meta.get_title() === 'Steam') {
             const rect = this.rect();
 
@@ -350,18 +394,13 @@ export class ShellWindow {
             if (is_dialog || is_first_login) return false;
         }
 
-        // Blacklist any windows that happen to leak through our filter
-        // Windows that are tagged ForceTile are considered tilable despite exemption
         if (wm_class !== null && ext.conf.window_shall_float(wm_class, this.title())) {
             return ext.contains_tag(this.entity, Tags.ForceTile);
         }
 
-        // Only normal windows will be considered for tiling
         return (
             this.meta.window_type == Meta.WindowType.NORMAL &&
-            // Transient windows are most likely dialogs
             !this.is_transient() &&
-            // If a window lacks a class, it's probably a web browser dialog
             wm_class !== null
         );
     }
@@ -383,8 +422,6 @@ export class ShellWindow {
             return;
         }
 
-        // Keep the border visible for the focused window so it can
-        // smoothly animate to the new position via ease().
         if (!this.meta.appears_focused) {
             this.hide_border();
         }
@@ -483,6 +520,13 @@ export class ShellWindow {
             const permitted = () => {
                 const actor = this.meta.get_compositor_private() as any;
                 const overlay_all = this.ext.settings.active_hint_overlay_all_windows();
+
+                // If Clutter key-focus is currently on a panel/Shell UI actor (e.g. the user
+                // is hovering a panel button), do not hide or re-show the border — treat the
+                // current border state as correct and bail out.  This prevents the on/off
+                // flash that occurs when GNOME briefly reassigns Clutter focus to the panel.
+                if (clutter_focus_is_shell_panel()) return false;
+
                 return (
                     actor !== null &&
                     actor.mapped &&
@@ -536,6 +580,11 @@ export class ShellWindow {
                 this._active_hint_show_id = id;
                 ACTIVE_HINT_SHOW_IDS.add(id);
             } else {
+                // Only hide if focus genuinely moved away — not if it is just on
+                // a transient Shell actor (panel hover).  In that case keep the
+                // border where it is.
+                if (clutter_focus_is_shell_panel()) return;
+
                 border.remove_all_transitions();
                 if (this.destroying || !this.same_workspace()) {
                     border.opacity = 0;
@@ -596,7 +645,7 @@ export class ShellWindow {
             this.meta.minimized
         ) {
             this.hide_border();
-            return; // ADD THIS EARLY RETURN — no need to restack a hidden border
+            return;
         }
 
         const action = () => {
@@ -613,8 +662,6 @@ export class ShellWindow {
 
             this.update_border_layout();
 
-            // Ensure the border shares the same parent as the window actor
-            // so it pans correctly during workspace switches.
             if (border.get_parent() !== parent) {
                 if (border.get_parent()) {
                     border.get_parent()!.remove_child(border);
@@ -622,22 +669,18 @@ export class ShellWindow {
                 parent.add_child(border);
             }
 
-            // Move the border above the current window actor
             parent.set_child_above_sibling(border, actor);
 
-            // Honor always-top windows: if any always-top window is ABOVE our border, 
-            // we must stay below it.
             for (const above_actor of (global as any).get_window_actors()) {
                 const meta = above_actor?.get_meta_window?.();
                 if (!meta || !meta.is_above()) continue;
                 const above_parent = above_actor.get_parent();
                 if (above_actor !== actor && above_parent === parent) {
                     parent.set_child_below_sibling(border, above_actor);
-                    break; // only need to go below the topmost always-on-top window
+                    break;
                 }
             }
 
-            // Honor transient windows: the border of the parent must stay below its children.
             for (const window of this.ext.windows.values()) {
                 const trans_parent = window.meta.get_transient_for();
                 if (!trans_parent) continue;
@@ -707,7 +750,6 @@ export class ShellWindow {
                     let stack_tab_height = stack.tabs_height;
 
                     if (borderSize === 0 || this.grab) {
-                        // not in max screen state
                         stack_tab_height = 0;
                     }
 
@@ -752,18 +794,11 @@ export class ShellWindow {
             const glow_color_val = settings.active_hint_glow_color_rgba();
             const glow_base = glow_color_val === 'auto' ? color_value : glow_color_val;
 
-            // Using a semi-transparent version of the color for the glow (Aura)
             const glow_color = utils.set_alpha(glow_base, glow_opacity);
 
-            // The radius of the border actor should be the window radius plus the border width
-            // to ensure the curves are concentric and match perfectly.
-            // Only force square corners if truly maximized by the OS or snapped to an edge.
-            // Smart-gapped windows (single window) usually keep their rounded corners in GNOME.
             const is_maximized_os = this.is_maximized() || this.is_snap_edge();
             let current_radius = is_maximized_os ? 0 : radius_value;
 
-            // If it's a browser, we might want to cap the radius to match common browser themes
-            // which often have smaller corners than standard GNOME apps.
             if (!is_maximized_os && this.is_browser()) {
                 current_radius = Math.min(current_radius, 12);
             }
@@ -771,7 +806,6 @@ export class ShellWindow {
             if (is_focused) {
                 const total_radius = current_radius + width_value;
 
-                // Subtler glow (Aura) to prevent it from overlaying window content
                 const blur_radius = width_value + 2;
                 const show_glow = settings.active_hint_glow();
 
@@ -787,14 +821,11 @@ export class ShellWindow {
                     const overlay_color = utils.set_alpha(overlay_base, overlay_opacity);
                     style += ` background-color: ${overlay_color};`;
                 } else {
-                    // Using nearly invisible background instead of 'transparent' 
-                    // to force the renderer to respect the border radius for shadows.
                     style += ' background-color: rgba(0, 0, 0, 0.01);';
                 }
 
                 this.border.set_style(style);
             } else {
-                // Inactive window: render the same background overlay tint (without border and shadow)
                 const total_radius = current_radius;
 
                 let style = `border-color: transparent; border-radius: ${total_radius}px; border-width: 0px; outline: none; background-clip: padding-box;`;
@@ -809,10 +840,6 @@ export class ShellWindow {
 
                 this.border.set_style(style);
             }
-
-            // Note: force-rounded-corners is a user preference stored in GSettings.
-            // The GLSL shader approach has been updated to use the robust technique 
-            // from Rounded Window Corners Reborn to prevent crashes in mutter 49.
         }
     }
 
@@ -874,13 +901,10 @@ export class ShellWindow {
 /// Activates a window, and moves the mouse point.
 export function activate(ext: Ext, move_mouse: boolean, win: Meta.Window) {
     try {
-        // Return if window was destroyed.
         if (!(win.get_compositor_private() as any)) return;
 
-        // Return if window is being destroyed.
         if (ext.get_window(win)?.destroying) return;
 
-        // Return if window has override-redirect set.
         if (win.is_override_redirect()) return;
 
         const workspace = win.get_workspace();
