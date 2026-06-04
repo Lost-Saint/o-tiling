@@ -655,8 +655,10 @@ export class Ext extends Ecs.System<ExtEvent> {
                     (actor as any).remove_all_transitions();
                     const { x, y, width, height } = movement;
 
+                    // On GNOME 50/Mutter 18, move_resize_frame handles both position and size atomically
+                    // The additional move_frame call would cause redundant compositor commits
                     window.meta.move_resize_frame(true, x, y, width, height);
-                    window.meta.move_frame(true, x, y);
+                    // REMOVED: window.meta.move_frame(true, x, y);
 
                     this.monitors.insert(window.entity, [win.meta.get_monitor(), win.workspace_id()]);
 
@@ -2555,6 +2557,33 @@ export class Ext extends Ecs.System<ExtEvent> {
                 // Delay in case the focused window was not focused yet.
                 // Note: Fixes Intellij IDE windows.
                 this.register_fn(() => {
+                    // PANEL-HOVER FIX: Check if focus is on a Shell UI actor
+                    const stage = (global as any).stage;
+                    const clutter_focus = stage?.get_key_focus?.();
+                    
+                    if (clutter_focus && typeof clutter_focus.get_meta_window !== 'function') {
+                        let actor = clutter_focus;
+                        let depth = 0;
+                        
+                        while (actor && depth < 6) {
+                            const styleClass = actor.style_class || '';
+                            
+                            if (styleClass.includes('panel-button') || 
+                                styleClass.includes('panel-corner')) {
+                                return; // Skip focus handling - panel hover
+                            }
+                            
+                            // Check panel references with safe navigation
+                            if (actor === Main.panel) return;
+                            if (Main.panel?._centerBox === actor) return;
+                            if (Main.panel?._leftBox === actor) return;
+                            if (Main.panel?._rightBox === actor) return;
+                            
+                            actor = actor.get_parent?.() || null;
+                            depth++;
+                        }
+                    }
+
                     const meta_window = (global as any).display.get_focus_window();
 
                     if (meta_window) {
@@ -3978,4 +4007,3 @@ function is_valid_minimize_to_tray(meta_win: Meta.Window, ext: Ext) {
 
     return valid_min_to_tray;
 }
-
