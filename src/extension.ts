@@ -829,7 +829,9 @@ export class Ext extends Ecs.System<ExtEvent> {
 
             const new_s = GLib.timeout_add(GLib.PRIORITY_LOW, 500, () => {
                 this.register(Events.window_event(win, WindowEvent.Size));
-                this.size_requests.delete(win.meta);
+                if (this.size_requests.get(win.meta) === new_s) {
+                    this.size_requests.delete(win.meta);
+                }
                 return false;
             });
 
@@ -928,12 +930,15 @@ export class Ext extends Ecs.System<ExtEvent> {
         if (this._exception_select_timeout !== null) {
             GLib.source_remove(this._exception_select_timeout);
         }
-        this._exception_select_timeout = GLib.timeout_add(GLib.PRIORITY_LOW, 500, () => {
+        const id = GLib.timeout_add(GLib.PRIORITY_LOW, 500, () => {
             this.exception_selecting = true;
             (Main as any).overview.show();
-            this._exception_select_timeout = null;
+            if (this._exception_select_timeout === id) {
+                this._exception_select_timeout = null;
+            }
             return false;
         });
+        this._exception_select_timeout = id;
     }
 
     exit_modes() {
@@ -2381,7 +2386,7 @@ export class Ext extends Ecs.System<ExtEvent> {
             GLib.source_remove(this._restack_source);
         }
         let attempts = 0;
-        this._restack_source = GLib.timeout_add(GLib.PRIORITY_LOW, 100, () => {
+        const id = GLib.timeout_add(GLib.PRIORITY_LOW, 100, () => {
             if (this.auto_tiler) {
                 for (const container of this.auto_tiler.forest.stacks.values()) {
                     container.restack();
@@ -2390,9 +2395,14 @@ export class Ext extends Ecs.System<ExtEvent> {
 
             const x = attempts;
             attempts += 1;
-            if (x >= 3) this._restack_source = null;
+            if (x >= 3) {
+                if (this._restack_source === id) {
+                    this._restack_source = null;
+                }
+            }
             return x < 3;
         });
+        this._restack_source = id;
     }
 
     set_gap_inner(gap: number) {
@@ -2528,6 +2538,8 @@ export class Ext extends Ecs.System<ExtEvent> {
                     return;
                 }
 
+                log.debug(`notify::focus-window fired, get_focus_window=${(global as any).display.get_focus_window()?.get_wm_class() ?? 'null'}`);
+
                 const refocus_tiled_window = () => {
                     // Re-focus a window that was unfocused.
                     let window: Window.ShellWindow | null = null;
@@ -2543,13 +2555,16 @@ export class Ext extends Ecs.System<ExtEvent> {
 
                     // Transient null-focus (mouse in gap) — window still owns focus, just refresh border.
                     if (window && window.meta.appears_focused) {
+                        log.debug(`refocus_tiled_window: gap-hover guard — ${window.meta.get_wm_class()} still appears_focused, skipping activate()`);
                         this.show_border_on_focused();
                         return;
                     }
 
                     if (window && window.same_monitor() && window.same_workspace() && !window.meta.minimized) {
+                        log.debug(`refocus_tiled_window: calling activate() on ${window.meta.get_wm_class()}`);
                         window.activate(false);
                     } else {
+                        log.debug(`refocus_tiled_window: hide_all_borders (no valid window)`);
                         this.hide_all_borders();
                     }
                 };
@@ -2570,6 +2585,7 @@ export class Ext extends Ecs.System<ExtEvent> {
                             
                             if (styleClass.includes('panel-button') || 
                                 styleClass.includes('panel-corner')) {
+                                log.debug(`focus-window handler: panel-actor early return (style_class=${styleClass})`);
                                 return; // Skip focus handling - panel hover
                             }
                             
@@ -2605,8 +2621,12 @@ export class Ext extends Ecs.System<ExtEvent> {
                         // Skip refocus if the bordered window still appears focused (transient null-focus, e.g. gap hover).
                         if (this._bordered_entity !== null) {
                             const _bw = this.windows.get(this._bordered_entity);
-                            if (_bw?.meta.appears_focused) return;
+                            if (_bw?.meta.appears_focused) {
+                                log.debug(`focus-window null: bordered entity ${_bw.meta.get_wm_class()} still appears_focused — skipping refocus`);
+                                return;
+                            }
                         }
+                        log.debug(`focus-window null: calling refocus_tiled_window`);
                         refocus_tiled_window();
                     }
                 });
@@ -2760,8 +2780,10 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         // 600ms delay: GNOME 49 fires sessionMode.updated multiple times during unlock.
         this._resuming = true;
-        this._resume_timeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 600, () => {
-            this._resume_timeout = null;
+        const id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 600, () => {
+            if (this._resume_timeout === id) {
+                this._resume_timeout = null;
+            }
             if (this._destroyed || this.suspended) return GLib.SOURCE_REMOVE;
 
             this._resuming = false;
@@ -2785,8 +2807,10 @@ export class Ext extends Ecs.System<ExtEvent> {
 
                 // Secondary retile: catch windows whose compositor actors
                 // were not ready during the first pass after suspend
-                this._resume_timeout_source = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 800, () => {
-                    this._resume_timeout_source = null;
+                const sub_id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 800, () => {
+                    if (this._resume_timeout_source === sub_id) {
+                        this._resume_timeout_source = null;
+                    }
                     if (this.suspended || !this.auto_tiler) return GLib.SOURCE_REMOVE;
 
                     for (const window of this.windows.values()) {
@@ -2800,18 +2824,24 @@ export class Ext extends Ecs.System<ExtEvent> {
 
                     return GLib.SOURCE_REMOVE;
                 });
+                this._resume_timeout_source = sub_id;
             }
 
             return GLib.SOURCE_REMOVE;
         });
+        this._resume_timeout = id;
     }
 
     suspend_for(minutes: number) {
         this.suspend();
-        this.suspend_timeout = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, minutes * 60, () => {
+        const id = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, minutes * 60, () => {
+            if (this.suspend_timeout === id) {
+                this.suspend_timeout = null;
+            }
             this.resume();
             return GLib.SOURCE_REMOVE;
         });
+        this.suspend_timeout = id;
     }
 
     size_changed_block() {
@@ -3290,15 +3320,18 @@ export class Ext extends Ecs.System<ExtEvent> {
             if (this.displays_updating !== null) return;
             if (this.workareas_update !== null) GLib.source_remove(this.workareas_update);
 
-            this.workareas_update = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
+            const id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
                 this.register_fn(() => {
                     this.update_display_configuration(workareas_only);
                 });
 
-                this.workareas_update = null;
+                if (this.workareas_update === id) {
+                    this.workareas_update = null;
+                }
 
                 return false;
             });
+            this.workareas_update = id;
 
             return;
         }
@@ -3414,7 +3447,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         }
 
         // Delay actions in case of temporary connection loss
-        this.displays_updating = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
+        const id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
             (() => {
                 if (!this.auto_tiler) return;
 
@@ -3464,9 +3497,12 @@ export class Ext extends Ecs.System<ExtEvent> {
                 return;
             })();
 
-            this.displays_updating = null;
+            if (this.displays_updating === id) {
+                this.displays_updating = null;
+            }
             return false;
         });
+        this.displays_updating = id;
     }
 
     update_scale() {
