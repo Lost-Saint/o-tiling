@@ -1,6 +1,6 @@
-# O-Tiling Auto-Tiling Extension for GNOME Shell
+# O-Tiling - Auto-Tiling Extension for GNOME Shell
 
-**O-Tiling** is a free, open-source auto-tiling extension for GNOME Shell. It automatically organizes your open windows into a clean, tiled layout — no manual dragging needed. Works on Fedora, Arch, Ubuntu, and any GNOME-based Linux distro.
+**O-Tiling** is a free, open-source auto-tiling extension for GNOME Shell. It automatically organizes your open windows into a clean, tiled layout - no manual dragging needed. Works on Fedora, Arch, Ubuntu, and any GNOME-based Linux distro.
 
 > **Supported GNOME versions:** 48, 49, and 50 (Fedora 42 / 43 / 44)
 
@@ -54,9 +54,9 @@ These features are **not** in the original Pop Shell:
 | Feature | What It Does |
 |---|---|
 | **Aura Focus Border** | A smooth animated border around your focused window. It automatically picks up your GNOME accent color (Blue, Teal, Green, etc.) |
-| **Skip Overview on Startup** | Go straight to your desktop after login — no Activities screen |
+| **Skip Overview on Startup** | Go straight to your desktop after login - no Activities screen |
 | **Transparent Panel** | Make the top panel transparent, with adjustable opacity and a blur-style backdrop |
-| **Theme Consistency** | Apply uniform rounded or sharp corners to GTK apps and Shell elements — no extra extensions needed |
+| **Theme Consistency** | Apply uniform rounded or sharp corners to GTK apps and Shell elements - no extra extensions needed |
 | **Workspace Switcher Styling** | Customize the workspace thumbnail bar size, corner radius, and background in the overview |
 | **Soft Enable / Disable** | Turn the extension on or off from the panel icon without losing your settings |
 
@@ -66,11 +66,11 @@ These features are **not** in the original Pop Shell:
 
 Everything below is inherited from Pop Shell and improved:
 
-- **Auto-tiling engine** — Windows are arranged in a binary tree layout, per monitor and per workspace. The layout recalculates every time a window opens, closes, or moves.
-- **Stacking / Tabbed mode** — Stack multiple windows into one tile slot, with a tab bar to switch between them.
-- **Smart gaps** — Outer gaps disappear automatically when only one window is open.
-- **Multi-monitor support** — Fully supports multiple displays, hot-plugging, and workspaces-only-on-primary mode.
-- **Keyboard-first** — Move, resize, swap, and rotate tiles without touching your mouse.
+- **Auto-tiling engine** - Windows are arranged in a binary tree layout, per monitor and per workspace. The layout recalculates every time a window opens, closes, or moves.
+- **Stacking / Tabbed mode** - Stack multiple windows into one tile slot, with a tab bar to switch between them.
+- **Smart gaps** - Outer gaps disappear automatically when only one window is open.
+- **Multi-monitor support** - Fully supports multiple displays, hot-plugging, and workspaces-only-on-primary mode.
+- **Keyboard-first** - Move, resize, swap, and rotate tiles without touching your mouse.
 
 ---
 
@@ -96,15 +96,15 @@ All shortcuts can be changed in the **Shortcuts** tab inside the extension prefe
 
 Click the O-Tiling icon in the top panel to access quick settings:
 
-- **Tile This Workspace** — Enable or disable tiling for just the current workspace
-- **Lock Master Window** — Pin the left (main) window so it never gets split
-- **Layout Presets** — Instantly switch between Columns, Stacked, Grid, or Spiral layouts
-- **Active Hint (Aura)** — Toggle the focus border on or off
-- **Gaps** — Adjust the space between windows
-- **Border Radius / Width** — Customize the focus border appearance
-- **Floating Window Exceptions** — Choose which apps should always float
-- **Settings** — Open the full preferences window
-- **Enable O-Tiling Extension** — Master on/off switch without losing settings
+- **Tile This Workspace** - Enable or disable tiling for just the current workspace
+- **Lock Master Window** - Pin the left (main) window so it never gets split
+- **Layout Presets** - Instantly switch between Columns, Stacked, Grid, or Spiral layouts
+- **Active Hint (Aura)** - Toggle the focus border on or off
+- **Gaps** - Adjust the space between windows
+- **Border Radius / Width** - Customize the focus border appearance
+- **Floating Window Exceptions** - Choose which apps should always float
+- **Settings** - Open the full preferences window
+- **Enable O-Tiling Extension** - Master on/off switch without losing settings
 
 ---
 
@@ -116,8 +116,8 @@ Some apps (like GNOME System Monitor, Steam, and some games) have a built-in min
 
 **How to fix it:**
 
-- **Add to Floating Exceptions** — Open the panel menu → Floating Window Exceptions → add the app name (e.g. `gnome-system-monitor`). The tiling engine will leave it alone.
-- **Use Adjustment Mode** — Press `Super + Enter` and manually drag the window borders to give the app more room.
+- **Add to Floating Exceptions** - Open the panel menu → Floating Window Exceptions → add the app name (e.g. `gnome-system-monitor`). The tiling engine will leave it alone.
+- **Use Adjustment Mode** - Press `Super + Enter` and manually drag the window borders to give the app more room.
 
 > O-Tiling does not force windows to shrink below their minimum size. Doing so causes crashes and infinite resize loops with GNOME's window manager (Mutter). This is a known design boundary shared with the original Pop Shell.
 
@@ -146,7 +146,7 @@ make install
 ## 🔗 Credits
 
 - **Forked from:** [System76 Pop Shell](https://github.com/pop-os/shell)
-- **Inspired by:** [Forge](https://github.com/forge-ext/forge)
+- **Inspired by:** [Forge](https://github.com/forge-ext/forge) and [Just Perfection](https://gitlab.gnome.org/jesserivera/just-perfection)
 - **License:** GPLv3
 
 ---
