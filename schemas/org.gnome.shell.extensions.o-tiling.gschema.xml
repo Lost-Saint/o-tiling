@@ -31,16 +31,6 @@
             <summary>Opacity of the active window overlay, in percent</summary>
         </key>
 
-        <key type="u" name="active-hint-glow-opacity">
-            <default>0</default>
-            <range min="0" max="50"/>
-            <summary>Opacity of the active window glow (aura), in percent (max 50%)</summary>
-        </key>
-
-        <key type="b" name="active-hint-glow">
-            <default>false</default>
-            <summary>Whether to show the glow/aura effect around the active window</summary>
-        </key>
 
         <key type="b" name="workspace-switcher-style">
             <default>false</default>
@@ -64,10 +54,12 @@
             <summary>Panel background opacity (0 = fully transparent, 100 = opaque)</summary>
         </key>
 
-        <key type="b" name="panel-transparency-blur-style">
-            <default>false</default>
-            <summary>Use a subtle dark gradient behind the transparent panel for readability</summary>
+        <key type="u" name="panel-top-gap">
+            <default>0</default>
+            <range min="0" max="100"/>
+            <summary>Gap between the transparent panel and the top of tiled windows (replaces the top portion of the outer gap when panel is fully transparent)</summary>
         </key>
+
 
 
         <key name="theme-consistency-style" enum="org.gnome.shell.extensions.o-tiling.ThemeConsistencyStyle">
@@ -346,10 +338,6 @@
             <summary>RGBA color for active window overlay background tint</summary>
         </key>
 
-        <key type="s" name="active-hint-glow-color-rgba">
-            <default>'auto'</default>
-            <summary>RGBA color for active window outer glow aura</summary>
-        </key>
 
         <key type="b" name="active-hint-overlay-all-windows">
             <default>false</default>

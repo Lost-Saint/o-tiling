@@ -25,6 +25,7 @@ const { DOWN, UP, LEFT, RIGHT } = Movement;
 export interface MoveByCursor {
     orientation: Lib.Orientation;
     swap: boolean;
+    replace?: boolean;
 }
 
 export interface MoveByKeyboard {

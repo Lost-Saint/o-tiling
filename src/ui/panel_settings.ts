@@ -21,6 +21,8 @@ import GLib from 'gi://GLib';
 
 import { get_current_path } from '../utils/paths.js';
 import { isGnome50 } from './workspace_switcher_style.js';
+import { apply_preset, PresetType } from '../engine/presets.js';
+
 
 
 export class Indicator {
@@ -29,8 +31,12 @@ export class Indicator {
 
     toggle_tiled: any;
     toggle_workspace_tiled: any;
+    toggle_left_pin: any;
+    presets_item: any;
+
 
     toggle_active: any;
+    toggle_debug: any;
     border_radius: any;
 
     entry_gaps: any;
@@ -84,7 +90,13 @@ export class Indicator {
         this.toggle_workspace_tiled = workspace_tiled(ext);
         bm.addMenuItem(this.toggle_workspace_tiled);
 
+        // ── Lock Master Window ──────────────────────────────────
+        this.toggle_left_pin = lock_master_window(ext);
+        bm.addMenuItem(this.toggle_left_pin);
 
+        // ── Layout Presets ──────────────────────────────────────
+        this.presets_item = presets_row(ext);
+        bm.addMenuItem(this.presets_item);
 
         bm.addMenuItem(new PopupSeparatorMenuItem());
 
@@ -126,7 +138,7 @@ export class Indicator {
         bm.addMenuItem(number_entry(
             _('Border Width'),
             { value: ext.settings.active_hint_border_width(), min: 1, max: 10, reset_value: 3 },
-            'border-all-symbolic',
+            'edit-select-all-symbolic',
             (value) => ext.settings.set_active_hint_border_width(value),
         ));
 
@@ -138,6 +150,15 @@ export class Indicator {
         bm.addMenuItem(settings_button(bm));
         bm.addMenuItem(floating_window_exceptions(ext, bm));
 
+        // ── Debug Mode ──────────────────────────────────────────
+        this.toggle_debug = toggle(
+            _('Debug Mode'),
+            ext.settings.log_level() === 4,
+            'utilities-terminal-symbolic',
+            (state) => ext.settings.set_log_level(state ? 4 : 0),
+        );
+        bm.addMenuItem(this.toggle_debug);
+
         bm.addMenuItem(new PopupSeparatorMenuItem());
 
         this.toggle_tiled = tiled(ext);
@@ -147,12 +168,47 @@ export class Indicator {
 
     update_workspace_tiling_state() {
         const ext = this.ext;
+        if (!this.button || !this.button.visible || !this.button.get_stage?.()) {
+            return;
+        }
         if (ext && this.toggle_workspace_tiled) {
             const workspace = ext.active_workspace();
+            const monitor = ext.active_monitor();
             const tiled = ext.is_workspace_tiled(workspace);
             this.toggle_workspace_tiled.setToggleState(tiled);
             if (this.toggle_workspace_tiled.updateIcon) {
                 this.toggle_workspace_tiled.updateIcon(tiled);
+            }
+
+
+
+            if (this.toggle_left_pin) {
+                let is_pinned = false;
+                if (ext.auto_tiler) {
+                    const toplevel_entity = ext.auto_tiler.forest.find_toplevel([monitor, workspace]);
+                    if (toplevel_entity) {
+                        const f = ext.auto_tiler.forest.forks.get(toplevel_entity);
+                        if (f) is_pinned = f.left_pinned;
+                    }
+                }
+                this.toggle_left_pin.setToggleState(is_pinned);
+                if (this.toggle_left_pin.updateIcon) this.toggle_left_pin.updateIcon(is_pinned);
+            }
+
+            if (this.presets_item) {
+                if (ext.auto_tiler) {
+                    const workspace_windows = Array.from(ext.windows.values()).filter(
+                        w => w.known_workspace === workspace && ext.auto_tiler!.attached.contains(w.entity)
+                    );
+                    const enabled = workspace_windows.length >= 2 && workspace_windows.length <= 6;
+                    this.presets_item.setSensitive(enabled);
+                } else {
+                    this.presets_item.setSensitive(false);
+                }
+            }
+
+            if (this.toggle_debug) {
+                this.toggle_debug.setToggleState(ext.settings.log_level() === 4);
             }
 
             // Update panel icon to reflect current workspace tiling state
@@ -355,8 +411,10 @@ function tiled(ext: Ext): any {
     return toggle(
         _('Enable O-Tiling Extension'),
         isOn,
-        { on: 'view-grid-symbolic', off: 'view-module-symbolic' },
+        'view-grid-symbolic',
         (shouldEnable) => {
+            if (ext._indicator_updating)
+                return;
             if (shouldEnable) {
                 ext.ext_soft_enable();
             } else {
@@ -370,14 +428,82 @@ function workspace_tiled(ext: Ext): any {
     return toggle(
         _('Tile This Workspace'),
         ext.is_workspace_tiled(ext.active_workspace()),
-        { on: 'view-quilt-symbolic', off: 'view-compact-symbolic' },
+        { on: 'view-grid-symbolic', off: 'view-list-symbolic' },
         (shouldTile) => {
             ext.workspace_tiling_set(ext.active_workspace(), shouldTile);
         }
     );
 }
 
+function lock_master_window(ext: Ext): any {
+    const workspace = ext.active_workspace();
+    const monitor = ext.active_monitor();
+    let is_pinned = false;
+    if (ext.auto_tiler) {
+        const toplevel_entity = ext.auto_tiler.forest.find_toplevel([monitor, workspace]);
+        if (toplevel_entity) {
+            const f = ext.auto_tiler.forest.forks.get(toplevel_entity);
+            if (f) is_pinned = f.left_pinned;
+        }
+    }
+    return toggle(
+        _('Lock Master Window'),
+        is_pinned,
+        { on: 'changes-prevent-symbolic', off: 'changes-allow-symbolic' },
+        (state) => {
+            const ws = ext.active_workspace();
+            const mon = ext.active_monitor();
+            if (ext.auto_tiler) {
+                const entity = ext.auto_tiler.forest.find_toplevel([mon, ws]);
+                if (entity) {
+                    const f = ext.auto_tiler.forest.forks.get(entity);
+                    if (f) {
+                        f.left_pinned = state;
+                        ext.auto_tiler.tile(ext, f, f.area);
+                    }
+                }
+            }
+        }
+    );
+}
 
+function presets_row(ext: Ext): any {
+    const item = new PopupBaseMenuItem({ reactive: false });
 
+    const label = new St.Label({
+        text: _('Layout Presets'),
+        y_align: Clutter.ActorAlign.CENTER,
+        x_expand: true,
+    });
+    item.add_child(label);
 
+    const row = new St.BoxLayout({
+        y_align: Clutter.ActorAlign.CENTER,
+    });
+    (row as any).set_orientation(Clutter.Orientation.HORIZONTAL);
+
+    const presets = [
+        { name: _('Columns'), type: PresetType.COLUMNS, icon: 'view-column-symbolic' },
+        { name: _('Stacked'), type: PresetType.STACKED, icon: 'view-list-symbolic' },
+        { name: _('Grid'), type: PresetType.GRID, icon: 'view-grid-symbolic' },
+        { name: _('Spiral'), type: PresetType.SPIRAL, icon: 'media-playlist-consecutive-symbolic' },
+    ];
+
+    for (const p of presets) {
+        const btn = new St.Button({
+            child: new St.Icon({ icon_name: p.icon, icon_size: 14 }),
+            style_class: 'o-tiling-spin-btn',
+        });
+
+        btn.connect('clicked', () => {
+            const ws = ext.active_workspace();
+            const monitor = ext.active_monitor();
+            apply_preset(ext, p.type, ws, monitor);
+        });
+        row.add_child(btn);
+    }
+
+    item.add_child(row);
+    return item;
+}
 

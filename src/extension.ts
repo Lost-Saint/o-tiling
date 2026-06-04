@@ -194,6 +194,13 @@ export class Ext extends Ecs.System<ExtEvent> {
     /** Previously-set value of the outer gap */
     gap_outer_prev: number = 0;
 
+    /**
+     * Effective top-side outer gap. When the panel is fully transparent
+     * (panel-transparency enabled AND opacity == 0) this equals the
+     * panel-top-gap setting; otherwise it equals gap_outer.
+     */
+    gap_top: number = 0;
+
     /** Information about a current possible grab operation */
     grab_op: GrabOp.GrabOp | null = null;
 
@@ -204,7 +211,7 @@ export class Ext extends Ecs.System<ExtEvent> {
     injections: Array<Injection> = [];
 
     /** The window that was focused before the last window */
-    private prev_focused: [null | Entity, null | Entity] = [null, null];
+    prev_focused: [null | Entity, null | Entity] = [null, null];
 
     /** Initially set to true when the extension is initializing */
     init: boolean = true;
@@ -284,6 +291,7 @@ export class Ext extends Ecs.System<ExtEvent> {
     window_buttons_manager: WindowButtonsManager | null = null;
 
 
+    _indicator_updating: boolean = false;
     _resume_timeout_source: number | null = null;
     private _bordered_entity: Entity | null = null;
     private _border_cleanup_pending: boolean = false;
@@ -389,6 +397,8 @@ export class Ext extends Ecs.System<ExtEvent> {
         // Panel transparency settings signals
         const id_panel_trans = this.settings.ext.connect('changed::panel-transparency', () => {
             this.toggle_panel_transparency(this.settings.panel_transparency());
+            // Recompute top gap when transparency is toggled on/off
+            this.on_gap_top();
         });
         this._settings_signal_ids.push([this.settings.ext, id_panel_trans]);
 
@@ -396,15 +406,17 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.panel_transparency_handler?.updateOpacity(
                 this.settings.panel_transparency_opacity()
             );
+            // Recompute top gap — opacity=0 enables the smart top gap
+            this.on_gap_top();
         });
         this._settings_signal_ids.push([this.settings.ext, id_panel_opacity]);
 
-        const id_panel_blur = this.settings.ext.connect('changed::panel-transparency-blur-style', () => {
-            this.panel_transparency_handler?.updateBlurStyle(
-                this.settings.panel_transparency_blur_style()
-            );
+        const id_panel_top_gap = this.settings.ext.connect('changed::panel-top-gap', () => {
+            this.on_gap_top();
         });
-        this._settings_signal_ids.push([this.settings.ext, id_panel_blur]);
+        this._settings_signal_ids.push([this.settings.ext, id_panel_top_gap]);
+
+
 
         // Initial application
         this.toggle_workspace_switcher_style(this.settings.workspace_switcher_style(), false);
@@ -655,8 +667,10 @@ export class Ext extends Ecs.System<ExtEvent> {
                     (actor as any).remove_all_transitions();
                     const { x, y, width, height } = movement;
 
+                    // On GNOME 50/Mutter 18, move_resize_frame handles both position and size atomically
+                    // The additional move_frame call would cause redundant compositor commits
                     window.meta.move_resize_frame(true, x, y, width, height);
-                    window.meta.move_frame(true, x, y);
+                    // REMOVED: window.meta.move_frame(true, x, y);
 
                     this.monitors.insert(window.entity, [win.meta.get_monitor(), win.workspace_id()]);
 
@@ -831,7 +845,9 @@ export class Ext extends Ecs.System<ExtEvent> {
 
             const new_s = GLib.timeout_add(GLib.PRIORITY_LOW, 500, () => {
                 this.register(Events.window_event(win, WindowEvent.Size));
-                this.size_requests.delete(win.meta);
+                if (this.size_requests.get(win.meta) === new_s) {
+                    this.size_requests.delete(win.meta);
+                }
                 return false;
             });
 
@@ -930,12 +946,15 @@ export class Ext extends Ecs.System<ExtEvent> {
         if (this._exception_select_timeout !== null) {
             GLib.source_remove(this._exception_select_timeout);
         }
-        this._exception_select_timeout = GLib.timeout_add(GLib.PRIORITY_LOW, 500, () => {
+        const id = GLib.timeout_add(GLib.PRIORITY_LOW, 500, () => {
             this.exception_selecting = true;
             (Main as any).overview.show();
-            this._exception_select_timeout = null;
+            if (this._exception_select_timeout === id) {
+                this._exception_select_timeout = null;
+            }
             return false;
         });
+        this._exception_select_timeout = id;
     }
 
     exit_modes() {
@@ -1105,6 +1124,9 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         this.column_size = this.settings.column_size() * this.dpi;
         this.row_size = this.settings.row_size() * this.dpi;
+
+        // Recompute the effective top gap after loading all gap settings
+        this.compute_gap_top();
     }
 
     monitor_work_area(monitor: number): Rectangle {
@@ -1380,6 +1402,15 @@ export class Ext extends Ecs.System<ExtEvent> {
             }
             this._bordered_entity = this.focus_window()?.entity ?? null;
         } else {
+            // Clean up old bordered entity if it moved to another workspace or is no longer on the active workspace
+            if (this._bordered_entity !== null) {
+                const prev = this.windows.get(this._bordered_entity);
+                if (prev && !prev.same_workspace()) {
+                    prev.hide_border();
+                    this._bordered_entity = null;
+                }
+            }
+
             const focus = this.focus_window();
 
             // When the mouse enters a panel icon or menu, GNOME temporarily sets
@@ -1498,7 +1529,43 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         if (diff != 0) {
             this.set_gap_outer(current);
+            this.compute_gap_top();
             this.update_outer_gap(diff);
+        }
+    }
+
+    /** Recompute gap_top based on panel transparency state */
+    compute_gap_top() {
+        const is_fully_transparent = this.settings.panel_transparency()
+            && this.settings.panel_transparency_opacity() === 0;
+        if (is_fully_transparent) {
+            this.gap_top = this.settings.panel_top_gap() * 4 * this.dpi;
+        } else {
+            this.gap_top = this.gap_outer;
+        }
+    }
+
+    /** Called when panel-top-gap setting changes */
+    on_gap_top() {
+        const was = this.gap_top;
+        this.compute_gap_top();
+        const diff_top = (this.gap_top - was) / 4 / this.dpi;
+        if (diff_top !== 0) {
+            this.update_top_gap(diff_top);
+        }
+    }
+
+    /** Re-tile all toplevel forks to apply a changed top-side gap */
+    update_top_gap(_diff: number) {
+        if (this.auto_tiler) {
+            for (const [entity] of this.auto_tiler.forest.toplevel.values()) {
+                const fork = this.auto_tiler.forest.forks.get(entity);
+                if (fork) {
+                    this.auto_tiler.update_toplevel(
+                        this, fork, fork.monitor, this.settings.smart_gaps()
+                    );
+                }
+            }
         }
     }
 
@@ -1949,9 +2016,9 @@ export class Ext extends Ecs.System<ExtEvent> {
                     if (windowless) {
                         [area, monitor_attachment] = [this.monitor_work_area(monitor), true];
                         area.x += this.gap_outer;
-                        area.y += this.gap_outer;
+                        area.y += this.gap_top;
                         area.width -= this.gap_outer * 2;
-                        area.height -= this.gap_outer * 2;
+                        area.height -= this.gap_outer + this.gap_top;
                     } else if (attach_to) {
                         const is_sibling = this.auto_tiler.windows_are_siblings(entity, attach_to.entity);
 
@@ -2374,7 +2441,7 @@ export class Ext extends Ecs.System<ExtEvent> {
             GLib.source_remove(this._restack_source);
         }
         let attempts = 0;
-        this._restack_source = GLib.timeout_add(GLib.PRIORITY_LOW, 100, () => {
+        const id = GLib.timeout_add(GLib.PRIORITY_LOW, 100, () => {
             if (this.auto_tiler) {
                 for (const container of this.auto_tiler.forest.stacks.values()) {
                     container.restack();
@@ -2383,9 +2450,14 @@ export class Ext extends Ecs.System<ExtEvent> {
 
             const x = attempts;
             attempts += 1;
-            if (x >= 3) this._restack_source = null;
+            if (x >= 3) {
+                if (this._restack_source === id) {
+                    this._restack_source = null;
+                }
+            }
             return x < 3;
         });
+        this._restack_source = id;
     }
 
     set_gap_inner(gap: number) {
@@ -2397,6 +2469,8 @@ export class Ext extends Ecs.System<ExtEvent> {
     set_gap_outer(gap: number) {
         this.gap_outer_prev = this.gap_outer;
         this.gap_outer = gap * 4 * this.dpi;
+        // Keep gap_top in sync whenever gap_outer changes
+        this.compute_gap_top();
     }
 
     set_overlay(rect: Rectangle) {
@@ -2449,10 +2523,8 @@ export class Ext extends Ecs.System<ExtEvent> {
                     this.show_border_on_focused();
                     break;
                 case 'active-hint-overlay-opacity':
-                case 'active-hint-glow-opacity':
                 case 'hint-color-rgba':
                 case 'active-hint-overlay-color-rgba':
-                case 'active-hint-glow-color-rgba':
                 case 'active-hint-border-radius':
                 case 'active-hint-border-width':
                 case 'active-hint-overlay-all-windows':
@@ -2476,6 +2548,11 @@ export class Ext extends Ecs.System<ExtEvent> {
                         _show_skip_taskbar_windows(this);
                     } else {
                         _hide_skip_taskbar_windows();
+                    }
+                    break;
+                case 'log-level':
+                    if (indicator && indicator.toggle_debug) {
+                        indicator.toggle_debug.setToggleState(this.settings.log_level() === 4);
                     }
                     break;
 
@@ -2518,6 +2595,8 @@ export class Ext extends Ecs.System<ExtEvent> {
                     return;
                 }
 
+                log.debug(`notify::focus-window fired, get_focus_window=${(global as any).display.get_focus_window()?.get_wm_class() ?? 'null'}`);
+
                 const refocus_tiled_window = () => {
                     // Re-focus a window that was unfocused.
                     let window: Window.ShellWindow | null = null;
@@ -2531,9 +2610,18 @@ export class Ext extends Ecs.System<ExtEvent> {
                         window = this.windows.get(x);
                     }
 
+                    // Transient null-focus (mouse in gap) — window still owns focus, just refresh border.
+                    if (window && window.meta.appears_focused) {
+                        log.debug(`refocus_tiled_window: gap-hover guard — ${window.meta.get_wm_class()} still appears_focused, skipping activate()`);
+                        this.show_border_on_focused();
+                        return;
+                    }
+
                     if (window && window.same_monitor() && window.same_workspace() && !window.meta.minimized) {
+                        log.debug(`refocus_tiled_window: calling activate() on ${window.meta.get_wm_class()}`);
                         window.activate(false);
                     } else {
+                        log.debug(`refocus_tiled_window: hide_all_borders (no valid window)`);
                         this.hide_all_borders();
                     }
                 };
@@ -2541,6 +2629,32 @@ export class Ext extends Ecs.System<ExtEvent> {
                 // Delay in case the focused window was not focused yet.
                 // Note: Fixes Intellij IDE windows.
                 this.register_fn(() => {
+                    // Skip if Clutter key-focus is on a Shell panel actor (panel hover).
+                    const stage = (global as any).stage;
+                    const clutter_focus = stage?.get_key_focus?.();
+                    
+                    if (clutter_focus && typeof clutter_focus.get_meta_window !== 'function') {
+                        let actor = clutter_focus;
+                        let depth = 0;
+                        
+                        while (actor && depth < 6) {
+                            const styleClass = actor.style_class || '';
+                            
+                            if (styleClass.includes('panel-button') || 
+                                styleClass.includes('panel-corner')) {
+                                log.debug(`focus-window handler: panel-actor early return (style_class=${styleClass})`);
+                                return; // Skip focus handling - panel hover
+                            }
+                            
+                            if (actor === Main.panel) return;
+                            if ((Main.panel as any)?._centerBox === actor) return;
+                            if ((Main.panel as any)?._leftBox === actor) return;
+                            if ((Main.panel as any)?._rightBox === actor) return;
+                            actor = actor.get_parent?.() || null;
+                            depth++;
+                        }
+                    }
+
                     const meta_window = (global as any).display.get_focus_window();
 
                     if (meta_window) {
@@ -2561,6 +2675,15 @@ export class Ext extends Ecs.System<ExtEvent> {
                             }
                         }
                     } else if (this.auto_tiler) {
+                        // Skip refocus if the bordered window still appears focused (transient null-focus, e.g. gap hover).
+                        if (this._bordered_entity !== null) {
+                            const _bw = this.windows.get(this._bordered_entity);
+                            if (_bw?.meta.appears_focused) {
+                                log.debug(`focus-window null: bordered entity ${_bw.meta.get_wm_class()} still appears_focused — skipping refocus`);
+                                return;
+                            }
+                        }
+                        log.debug(`focus-window null: calling refocus_tiled_window`);
                         refocus_tiled_window();
                     }
                 });
@@ -2702,7 +2825,7 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.suspend_timeout = null;
         }
 
-        // Cancel any previously scheduled resume to prevent double-execution
+        // Debounce: clear any previous resume schedule.
         if (this._resume_timeout) {
             GLib.source_remove(this._resume_timeout);
             this._resume_timeout = null;
@@ -2712,13 +2835,12 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         this.suspended = false;
 
-        // Use a longer delay to ensure GNOME Shell has fully restored window
-        // state after unlock/suspend (GNOME v49 fires sessionMode.updated
-        // multiple times during the unlock transition)
+        // 600ms delay: GNOME 49 fires sessionMode.updated multiple times during unlock.
         this._resuming = true;
-        this._resume_timeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 600, () => {
-            this._resume_timeout = null;
-            // GUARD: ext may have been destroyed during the 600ms window
+        const id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 600, () => {
+            if (this._resume_timeout === id) {
+                this._resume_timeout = null;
+            }
             if (this._destroyed || this.suspended) return GLib.SOURCE_REMOVE;
 
             this._resuming = false;
@@ -2742,8 +2864,10 @@ export class Ext extends Ecs.System<ExtEvent> {
 
                 // Secondary retile: catch windows whose compositor actors
                 // were not ready during the first pass after suspend
-                this._resume_timeout_source = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 800, () => {
-                    this._resume_timeout_source = null;
+                const sub_id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 800, () => {
+                    if (this._resume_timeout_source === sub_id) {
+                        this._resume_timeout_source = null;
+                    }
                     if (this.suspended || !this.auto_tiler) return GLib.SOURCE_REMOVE;
 
                     for (const window of this.windows.values()) {
@@ -2757,18 +2881,24 @@ export class Ext extends Ecs.System<ExtEvent> {
 
                     return GLib.SOURCE_REMOVE;
                 });
+                this._resume_timeout_source = sub_id;
             }
 
             return GLib.SOURCE_REMOVE;
         });
+        this._resume_timeout = id;
     }
 
     suspend_for(minutes: number) {
         this.suspend();
-        this.suspend_timeout = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, minutes * 60, () => {
+        const id = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, minutes * 60, () => {
+            if (this.suspend_timeout === id) {
+                this.suspend_timeout = null;
+            }
             this.resume();
             return GLib.SOURCE_REMOVE;
         });
+        this.suspend_timeout = id;
     }
 
     size_changed_block() {
@@ -2946,7 +3076,9 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         // 10. Update the toggle_tiled switch state in the menu
         if (indicator) {
+            this._indicator_updating = true;
             indicator.toggle_tiled.setToggleState(false);
+            this._indicator_updating = false;
             if (indicator.toggle_tiled.updateIcon) indicator.toggle_tiled.updateIcon(false);
             indicator.toggle_workspace_tiled?.setToggleState(false);
         }
@@ -3016,7 +3148,9 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         if (indicator) {
             // The toggle_tiled switch reflects overall "extension enabled" state
+            this._indicator_updating = true;
             indicator.toggle_tiled.setToggleState(true); // extension is ON now
+            this._indicator_updating = false;
             if (indicator.toggle_tiled.updateIcon) indicator.toggle_tiled.updateIcon(true);
             indicator.update_workspace_tiling_state();
         }
@@ -3035,7 +3169,9 @@ export class Ext extends Ecs.System<ExtEvent> {
             }
 
             if (indicator) {
+                this._indicator_updating = true;
                 indicator.toggle_tiled.setToggleState(false);
+                this._indicator_updating = false;
                 if (indicator.toggle_tiled.updateIcon) indicator.toggle_tiled.updateIcon(false);
             }
 
@@ -3096,7 +3232,6 @@ export class Ext extends Ecs.System<ExtEvent> {
             if (!this.panel_transparency_handler) {
                 this.panel_transparency_handler = new PanelTransparencyManager(
                     this.settings.panel_transparency_opacity(),
-                    this.settings.panel_transparency_blur_style(),
                 );
             }
             this.panel_transparency_handler.enable();
@@ -3118,7 +3253,9 @@ export class Ext extends Ecs.System<ExtEvent> {
         this.hide_all_borders();
 
         if (indicator) {
+            this._indicator_updating = true;
             indicator.toggle_tiled.setToggleState(true);
+            this._indicator_updating = false;
             if (indicator.toggle_tiled.updateIcon) indicator.toggle_tiled.updateIcon(true);
         }
 
@@ -3240,15 +3377,18 @@ export class Ext extends Ecs.System<ExtEvent> {
             if (this.displays_updating !== null) return;
             if (this.workareas_update !== null) GLib.source_remove(this.workareas_update);
 
-            this.workareas_update = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
+            const id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
                 this.register_fn(() => {
                     this.update_display_configuration(workareas_only);
                 });
 
-                this.workareas_update = null;
+                if (this.workareas_update === id) {
+                    this.workareas_update = null;
+                }
 
                 return false;
             });
+            this.workareas_update = id;
 
             return;
         }
@@ -3364,7 +3504,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         }
 
         // Delay actions in case of temporary connection loss
-        this.displays_updating = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
+        const id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
             (() => {
                 if (!this.auto_tiler) return;
 
@@ -3414,9 +3554,12 @@ export class Ext extends Ecs.System<ExtEvent> {
                 return;
             })();
 
-            this.displays_updating = null;
+            if (this.displays_updating === id) {
+                this.displays_updating = null;
+            }
             return false;
         });
+        this.displays_updating = id;
     }
 
     update_scale() {
@@ -3964,4 +4107,3 @@ function is_valid_minimize_to_tray(meta_win: Meta.Window, ext: Ext) {
 
     return valid_min_to_tray;
 }
-

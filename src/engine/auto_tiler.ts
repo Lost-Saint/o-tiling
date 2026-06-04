@@ -101,9 +101,9 @@ export class AutoTiler {
 
         if (!fork.smart_gapped) {
             rect.x += ext.gap_outer;
-            rect.y += ext.gap_outer;
+            rect.y += ext.gap_top;
             rect.width -= ext.gap_outer * 2;
-            rect.height -= ext.gap_outer * 2;
+            rect.height -= ext.gap_outer + ext.gap_top;
         }
 
         if (fork.left.inner.kind === 2) {
@@ -124,9 +124,9 @@ export class AutoTiler {
 
         if (!smart_gaps || ext.settings.active_hint()) {
             rect.x += ext.gap_outer;
-            rect.y += ext.gap_outer;
+            rect.y += ext.gap_top;
             rect.width -= ext.gap_outer * 2;
-            rect.height -= ext.gap_outer * 2;
+            rect.height -= ext.gap_outer + ext.gap_top;
         }
 
         const [entity, fork] = this.forest.create_toplevel(win.entity, rect.clone(), workspace_id);
@@ -156,9 +156,9 @@ export class AutoTiler {
                     const rect = ext.monitor_work_area(fork.monitor);
 
                     rect.x += ext.gap_outer;
-                    rect.y += ext.gap_outer;
+                    rect.y += ext.gap_top;
                     rect.width -= ext.gap_outer * 2;
-                    rect.height -= ext.gap_outer * 2;
+                    rect.height -= ext.gap_outer + ext.gap_top;
 
                     fork.set_area(rect);
                 }
@@ -182,7 +182,43 @@ export class AutoTiler {
         const toplevel = this.forest.find_toplevel(id);
 
         if (toplevel) {
-            const onto = this.forest.largest_window_on(ext, toplevel);
+            let onto = null;
+
+            // Collect all tiled windows on this workspace
+            const ws_windows = Array.from(ext.windows.values()).filter(
+                w => w.known_workspace === id[1] && this.attached.contains(w.entity)
+            );
+
+            if (ws_windows.length > 0) {
+                // Check if all windows are of identical size
+                const first_size = ws_windows[0].rect().width * ws_windows[0].rect().height;
+                const uniform_sizes = ws_windows.every(w => (w.rect().width * w.rect().height) === first_size);
+
+                const focus = ext.focus_window();
+                if (uniform_sizes && focus && focus.known_workspace === id[1] && focus.is_tilable(ext) && this.attached.contains(focus.entity)) {
+                    onto = focus;
+                } else {
+                    onto = this.forest.largest_window_on(ext, toplevel);
+                }
+            } else {
+                onto = this.forest.largest_window_on(ext, toplevel);
+            }
+
+            // If the toplevel fork is left-pinned, don't split the left window
+            if (onto) {
+                const toplevel_fork = this.forest.forks.get(toplevel);
+                if (toplevel_fork && toplevel_fork.left_pinned && toplevel_fork.right) {
+                    if (toplevel_fork.left.is_window(onto.entity)) {
+                        const right = toplevel_fork.right;
+                        if (right.inner.kind === 2) {
+                            onto = ext.windows.get(right.inner.entity) ?? onto;
+                        } else if (right.inner.kind === 1) {
+                            onto = this.forest.largest_window_on(ext, right.inner.entity) ?? onto;
+                        }
+                    }
+                }
+            }
+
             if (onto) {
                 if (this.attach_to_window(ext, onto, win, { auto: 0 })) {
                     return;
@@ -425,6 +461,11 @@ export class AutoTiler {
         };
 
         if (placement) {
+            if (placement.replace) {
+                this.attach_swap(ext, win.entity, attach_to.entity);
+                return true;
+            }
+
             const direction =
                 placement.orientation === lib.Orientation.HORIZONTAL
                     ? placement.swap
@@ -737,6 +778,17 @@ export class AutoTiler {
 export function cursor_placement(ext: Ext, area: Rectangular, cursor: Rectangular): null | MoveByCursor {
     const { LEFT, RIGHT, TOP, BOTTOM } = geom.Side;
     const { HORIZONTAL, VERTICAL } = lib.Orientation;
+
+    // Detect if cursor is in the center replace/swap zone (middle 40% area)
+    const center_pct = 0.40;
+    const cw = area.width * center_pct;
+    const ch = area.height * center_pct;
+    const cx = area.x + (area.width - cw) / 2;
+    const cy = area.y + (area.height - ch) / 2;
+
+    if (cursor.x >= cx && cursor.x <= cx + cw && cursor.y >= cy && cursor.y <= cy + ch) {
+        return { orientation: HORIZONTAL, swap: false, replace: true };
+    }
 
     const [, side] = geom.nearest_side(ext, [cursor.x, cursor.y], area);
 

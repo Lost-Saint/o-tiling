@@ -14,12 +14,8 @@ import type { Ext } from '../extension.js';
 
 /** Returns true when running on GNOME Shell 48 or newer (horizontal overview). */
 export function isGnome50(): boolean {
-    try {
-        const major = parseInt(PACKAGE_VERSION.split('.')[0], 10);
-        return major >= 50;
-    } catch (_) {
-        return false;
-    }
+    const major = parseInt(PACKAGE_VERSION.split('.')[0], 10);
+    return major >= 50;
 }
 
 // ── CSS builder ──────────────────────────────────────────────────────────────

@@ -48,8 +48,7 @@ export class GLibExecutor<T> implements Executor<T> {
 
     stop(): void {
         if (this.#event_loop !== null) {
-            // BUG-01 fix: only call the removal function matching how the loop was created.
-            // Calling later_remove on a GLib idle source ID (or vice versa) causes SIGABRT.
+            // Use the matching removal fn: later_remove for laters, source_remove for idle.
             if (this.#used_laters) {
                 try { utils.later_remove(this.#event_loop); } catch (_) {}
             } else {
@@ -74,27 +73,43 @@ export class OnceExecutor<X, T extends Iterable<X>> {
 
         const iterator = this.#iterable[Symbol.iterator]();
 
-        this.#signal = GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
+        const id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
             const next: X = iterator.next().value;
 
             if (typeof next === 'undefined') {
                 if (then) {
-                    this.#signal = GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
-                        this.#signal = null;
+                    const id2 = GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
+                        if (this.#signal === id2) {
+                            this.#signal = null;
+                        }
                         then();
                         return GLib.SOURCE_REMOVE;
                     });
+                    this.#signal = id2;
+                } else {
+                    if (this.#signal === id) {
+                        this.#signal = null;
+                    }
                 }
                 return GLib.SOURCE_REMOVE;
             }
 
-            return apply(next);
+            const res = apply(next);
+            if (res === GLib.SOURCE_REMOVE) {
+                if (this.#signal === id) {
+                    this.#signal = null;
+                }
+            }
+            return res;
         });
+        this.#signal = id;
     }
 
     stop() {
         if (this.#signal !== null) {
-            GLib.source_remove(this.#signal);
+            try {
+                GLib.source_remove(this.#signal);
+            } catch (_) {}
             this.#signal = null;
         }
     }
@@ -120,16 +135,25 @@ export class ChannelExecutor<X> {
     start(delay: number, apply: (v: X) => boolean) {
         this.stop();
 
-        this.#signal = GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
+        const id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
             const e = this.#channel.shift();
 
-            return typeof e === 'undefined' ? true : apply(e);
+            const res = typeof e === 'undefined' ? true : apply(e);
+            if (res === GLib.SOURCE_REMOVE) {
+                if (this.#signal === id) {
+                    this.#signal = null;
+                }
+            }
+            return res;
         });
+        this.#signal = id;
     }
 
     stop() {
         if (this.#signal !== null) {
-            GLib.source_remove(this.#signal);
+            try {
+                GLib.source_remove(this.#signal);
+            } catch (_) {}
             this.#signal = null;
         }
         this.#channel.splice(0);
