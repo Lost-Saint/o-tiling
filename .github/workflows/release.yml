@@ -271,7 +271,15 @@ jobs:
       - name: Build release notes
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          cat > release_notes.md <<EOF
+          
+          RC_NOTICE=""
+          if [[ "${VERSION}" =~ -rc ]]; then
+            RC_NOTICE="> [!WARNING]\n> This is a **Release Candidate** pre-release version. It is intended for testing and feedback. Please report any bugs or issues on GitHub.\n\n"
+          fi
+          
+          printf "%b" "${RC_NOTICE}" > release_notes.md
+          
+          cat >> release_notes.md <<EOF
           ## O-tiling v${VERSION}
 
           A distro-agnostic, EGO-compliant auto-tiling engine for GNOME Shell with the **Aura** focus border.
@@ -298,7 +306,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
-          name: "O-tiling v${{ steps.version.outputs.version }}"
+          name: "v${{ steps.version.outputs.version }}"
           body_path: release_notes.md
           draft: false
           prerelease: ${{ contains(steps.version.outputs.tag, '-') }}
