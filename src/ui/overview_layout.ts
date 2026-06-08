@@ -10,6 +10,8 @@ import type { Ext } from '../extension.js';
 export class OverviewLayoutManager {
     private _ext: Ext;
     private _origUpdateWindowPositions: any = null;
+    private _patchedUpdateWindowPositions: any = null;
+    private _patchedProto: any = null;
     private _enabled: boolean = false;
 
     constructor(ext: Ext) {
@@ -27,11 +29,16 @@ export class OverviewLayoutManager {
 
             const proto = WorkspaceLayout.prototype as any;
             if (this._origUpdateWindowPositions) return;
+            if (typeof proto._updateWindowPositions !== 'function') {
+                log.warn('OverviewLayoutManager: WorkspaceLayout._updateWindowPositions not found');
+                return;
+            }
 
             this._origUpdateWindowPositions = proto._updateWindowPositions;
 
             const self = this;
-            proto._updateWindowPositions = function (this: any, ...args: any[]) {
+            this._patchedProto = proto;
+            this._patchedUpdateWindowPositions = function (this: any, ...args: any[]) {
                 // Always call original logic first to handle non-tiled windows
                 // and maintain internal Shell state.
                 self._origUpdateWindowPositions.apply(this, args);
@@ -102,6 +109,7 @@ export class OverviewLayoutManager {
                     }
                 }
             };
+            proto._updateWindowPositions = this._patchedUpdateWindowPositions;
         } catch (e) {
             log.warn(`OverviewLayoutManager: failed to enable: ${e}`);
         }
@@ -110,14 +118,13 @@ export class OverviewLayoutManager {
 
     disable(): void {
         this._enabled = false;
-        if (this._origUpdateWindowPositions) {
-            (import('resource:///org/gnome/shell/ui/workspace.js') as Promise<any>).then(({ WorkspaceLayout }) => {
-
-                if (WorkspaceLayout) {
-                    (WorkspaceLayout.prototype as any)._updateWindowPositions = this._origUpdateWindowPositions;
-                    this._origUpdateWindowPositions = null;
-                }
-            }).catch(() => { /* best-effort cleanup */ });
+        if (this._origUpdateWindowPositions && this._patchedProto) {
+            if (this._patchedProto._updateWindowPositions === this._patchedUpdateWindowPositions) {
+                this._patchedProto._updateWindowPositions = this._origUpdateWindowPositions;
+            }
         }
+        this._origUpdateWindowPositions = null;
+        this._patchedUpdateWindowPositions = null;
+        this._patchedProto = null;
     }
 }

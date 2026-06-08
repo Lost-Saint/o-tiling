@@ -9,10 +9,10 @@ export enum LOG_LEVELS {
 
 let _level = 0;
 
-export function init_log_level(settings: any) {
-    if (!settings) return;
+export function init_log_level(settings: any): number | null {
+    if (!settings) return null;
     _level = settings.get_uint('log-level');
-    settings.connect('changed::log-level', () => {
+    return settings.connect('changed::log-level', () => {
         _level = settings.get_uint('log-level');
     });
 }

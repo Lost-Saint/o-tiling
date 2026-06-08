@@ -16,7 +16,6 @@ import {
 } from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import { Button } from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import GObject from 'gi://GObject';
-import GLib from 'gi://GLib';
 
 
 import { get_current_path } from '../utils/paths.js';
@@ -275,10 +274,7 @@ function floating_window_exceptions(ext: Ext, menu: any): any {
             ext.exception_dialog();
         }
 
-        GLib.timeout_add(GLib.PRIORITY_LOW, 300, () => {
-            menu.close();
-            return false;
-        });
+        menu.close();
     });
 
     return item;
@@ -506,4 +502,3 @@ function presets_row(ext: Ext): any {
     item.add_child(row);
     return item;
 }
-

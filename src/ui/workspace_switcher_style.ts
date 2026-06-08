@@ -100,6 +100,7 @@ export class WorkspaceSwitcherStyle {
     private _workspaceRemovedId: number | null = null;
     private _overviewShowingId: number | null = null;
     private _origUpdateMaxThumbnailScale: any = null;
+    private _scrollIdleId: number | null = null;
 
 
     constructor(
@@ -366,10 +367,14 @@ export class WorkspaceSwitcherStyle {
     private _setupAutoScroll(): void {
         const workspace_manager = (global as any).workspace_manager;
         this._workspaceChangedId = workspace_manager.connect('active-workspace-changed', () => {
-            GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            if (this._scrollIdleId !== null) GLib.source_remove(this._scrollIdleId);
+            const id = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                if (this._scrollIdleId === id) this._scrollIdleId = null;
+                if (!this._file) return GLib.SOURCE_REMOVE;
                 this._scrollToActiveWorkspace();
                 return GLib.SOURCE_REMOVE;
             });
+            this._scrollIdleId = id;
         });
 
         // 1. Rescale when workspaces are added/removed
@@ -436,6 +441,11 @@ export class WorkspaceSwitcherStyle {
 
     private _teardownAutoScroll(): void {
         const workspace_manager = (global as any).workspace_manager;
+
+        if (this._scrollIdleId !== null) {
+            GLib.source_remove(this._scrollIdleId);
+            this._scrollIdleId = null;
+        }
 
         if (this._workspaceChangedId !== null) {
             workspace_manager.disconnect(this._workspaceChangedId);

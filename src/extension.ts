@@ -35,7 +35,7 @@ import { WorkspaceSwitcherStyle, isGnome50 } from './ui/workspace_switcher_style
 import { ThemeConsistencyManager } from './ui/theme_consistency/index.js';
 import { PanelTransparencyManager } from './ui/panel_transparency.js';
 import { OverviewLayoutManager } from './ui/overview_layout.js';
-import { applyThemeConsistency } from './ui/theme_consistency/apply.js';
+import { applyThemeConsistency, removeThemeConsistency } from './ui/theme_consistency/apply.js';
 
 
 
@@ -90,8 +90,6 @@ import {
 } from 'resource:///org/gnome/shell/ui/altTab.js';
 // import { SwitcherList } from 'resource:///org/gnome/shell/ui/switcherPopup.js';
 import { Workspace } from 'resource:///org/gnome/shell/ui/workspace.js';
-// @ts-ignore
-import { WorkspaceThumbnail } from 'resource:///org/gnome/shell/ui/workspaceThumbnail.js';
 import { WindowPreview } from 'resource:///org/gnome/shell/ui/windowPreview.js';
 import { PACKAGE_VERSION } from 'resource:///org/gnome/shell/misc/config.js';
 import * as Tags from './utils/tags.js';
@@ -298,6 +296,10 @@ export class Ext extends Ecs.System<ExtEvent> {
     private _original_focus_change_on_pointer_rest: boolean | null = null;
     private _destroyed: boolean = false;
     private _startup_complete_id: number = 0;
+    private _startup_showing_id: number = 0;
+    private _actor_signals: Map<Clutter.Actor, SignalID[]> = new Map();
+    private _display_migration_executor: Executor.OnceExecutor<any, any> | null = null;
+    private _floating_exception_ipc: utils.AsyncIPC | null = null;
     executor: Executor.GLibExecutor<ExtEvent>;
 
     constructor() {
@@ -335,7 +337,10 @@ export class Ext extends Ecs.System<ExtEvent> {
                 log.error(`Failed to handle focus-change-on-pointer-rest: ${e}`);
             }
         }
-        log.init_log_level(this.settings.ext);
+        const log_signal_id = log.init_log_level(this.settings.ext);
+        if (log_signal_id !== null) {
+            this._settings_signal_ids.push([this.settings.ext, log_signal_id]);
+        }
         this.overlay = new St.BoxLayout({
             style_class: "o-tiling-overlay",
             visible: false,
@@ -443,13 +448,17 @@ export class Ext extends Ecs.System<ExtEvent> {
                         Main.overview.hide();
                     }
                 });
+                this._startup_showing_id = showingId;
 
                 this._startup_complete_id = Main.layoutManager.connect('startup-complete', () => {
                     // Final hide check in case it managed to show up
                     if (Main.overview.visible) Main.overview.hide();
 
                     // Cleanup the showing interceptor
-                    Main.overview.disconnect(showingId);
+                    if (this._startup_showing_id) {
+                        Main.overview.disconnect(this._startup_showing_id);
+                        this._startup_showing_id = 0;
+                    }
 
                     if (this._startup_complete_id) {
                         Main.layoutManager.disconnect(this._startup_complete_id);
@@ -525,6 +534,19 @@ export class Ext extends Ecs.System<ExtEvent> {
             this._resume_timeout_source = null;
         }
 
+        if (this._floating_exception_ipc) {
+            try { this._floating_exception_ipc.cancellable.cancel(); } catch (_) { }
+            try { this._floating_exception_ipc.stdin.close(null); } catch (_) { }
+            try { this._floating_exception_ipc.stdout.close(null); } catch (_) { }
+            try { this._floating_exception_ipc.child.force_exit(); } catch (_) { }
+            this._floating_exception_ipc = null;
+        }
+
+        if (this._display_migration_executor) {
+            this._display_migration_executor.stop();
+            this._display_migration_executor = null;
+        }
+
         this.dbus.destroy();
         this.injections_remove();
         this.signals_remove();
@@ -556,6 +578,7 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.theme_consistency_handler.disable();
             this.theme_consistency_handler = null;
         }
+        removeThemeConsistency();
 
         if (this.panel_transparency_handler) {
             this.panel_transparency_handler.disable();
@@ -623,6 +646,18 @@ export class Ext extends Ecs.System<ExtEvent> {
             try { GLib.source_remove(src); } catch (_) { }
         }
         this.size_requests.clear();
+
+        for (const [actor, signals] of this._actor_signals) {
+            for (const signal of signals) {
+                try { actor.disconnect(signal); } catch (_) { }
+            }
+        }
+        this._actor_signals.clear();
+
+        if (this._startup_showing_id) {
+            Main.overview.disconnect(this._startup_showing_id);
+            this._startup_showing_id = 0;
+        }
 
         if (this._startup_complete_id) {
             Main.layoutManager.disconnect(this._startup_complete_id);
@@ -817,6 +852,27 @@ export class Ext extends Ecs.System<ExtEvent> {
         return signal;
     }
 
+    connect_actor(actor: Clutter.Actor, signal: string, callback: (...args: any[]) => boolean | void): SignalID {
+        const id = actor.connect(signal, callback);
+        const entry = this._actor_signals.get(actor);
+        if (entry) {
+            entry.push(id);
+        } else {
+            this._actor_signals.set(actor, [id]);
+        }
+        return id;
+    }
+
+    disconnect_actor_signal(actor: Clutter.Actor, id: SignalID): void {
+        const entry = this._actor_signals.get(actor);
+        if (entry) {
+            const idx = entry.indexOf(id);
+            if (idx !== -1) entry.splice(idx, 1);
+            if (entry.length === 0) this._actor_signals.delete(actor);
+        }
+        try { actor.disconnect(id); } catch (_) { }
+    }
+
     connect_meta(win: Window.ShellWindow, signal: string, callback: (...args: any[]) => void): number {
         const id = win.meta.connect(signal, () => {
             if (win.actor_exists()) callback();
@@ -834,6 +890,8 @@ export class Ext extends Ecs.System<ExtEvent> {
     }
 
     connect_window(win: Window.ShellWindow) {
+        if (this.size_signals.get(win.entity)) return;
+
         const size_event = () => {
             const old = this.size_requests.get(win.meta);
 
@@ -923,16 +981,29 @@ export class Ext extends Ecs.System<ExtEvent> {
         const ipc = utils.async_process_ipc(['gjs', '--module', path]);
 
         if (ipc) {
+            if (this._floating_exception_ipc) {
+                try { this._floating_exception_ipc.cancellable.cancel(); } catch (_) { }
+                try { this._floating_exception_ipc.stdin.close(null); } catch (_) { }
+                try { this._floating_exception_ipc.stdout.close(null); } catch (_) { }
+                try { this._floating_exception_ipc.child.force_exit(); } catch (_) { }
+            }
+            this._floating_exception_ipc = ipc;
             const generator = (stdout: any, res: any) => {
                 try {
+                    if (this._destroyed || this._floating_exception_ipc !== ipc) return;
                     const [bytes] = stdout.read_line_finish(res);
                     if (bytes) {
                         if (event_handler((new TextDecoder().decode(bytes) as string).trim())) {
                             ipc.stdout.read_line_async(0, ipc.cancellable, generator);
+                        } else if (this._floating_exception_ipc === ipc) {
+                            this._floating_exception_ipc = null;
                         }
+                    } else if (this._floating_exception_ipc === ipc) {
+                        this._floating_exception_ipc = null;
                     }
                 } catch (why) {
-                    log.error(`failed to read response from floating exceptions dialog: ${why}`);
+                    if (!this._destroyed) log.error(`failed to read response from floating exceptions dialog: ${why}`);
+                    if (this._floating_exception_ipc === ipc) this._floating_exception_ipc = null;
                 }
             };
 
@@ -2268,7 +2339,13 @@ export class Ext extends Ecs.System<ExtEvent> {
 
 
 
-            actor.connect('destroy', () => {
+            const destroy_id = this.connect_actor(actor, 'destroy', () => {
+                const actor_signals = this._actor_signals.get(actor);
+                if (actor_signals) {
+                    const idx = actor_signals.indexOf(destroy_id);
+                    if (idx !== -1) actor_signals.splice(idx, 1);
+                    if (actor_signals.length === 0) this._actor_signals.delete(actor);
+                }
                 this.on_destroy(entity);
 
                 return false;
@@ -3051,6 +3128,7 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.theme_consistency_handler.disable();
             this.theme_consistency_handler = null;
         }
+        removeThemeConsistency();
         if (this.workspace_switcher_style_handler) {
             this.workspace_switcher_style_handler.disable();
             this.workspace_switcher_style_handler = null;
@@ -3220,6 +3298,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         } else {
             this.theme_consistency_handler?.disable();
             this.theme_consistency_handler = null;
+            removeThemeConsistency();
         }
 
         if (save) {
@@ -3418,7 +3497,10 @@ export class Ext extends Ecs.System<ExtEvent> {
         const apply_migrations = (assigned_monitors: Set<number>) => {
             if (!migrations) return;
 
-            new exec.OnceExecutor<Migration, Migration[]>(migrations).start(
+            this._display_migration_executor?.stop();
+            const executor = new exec.OnceExecutor<Migration, Migration[]>(migrations);
+            this._display_migration_executor = executor;
+            executor.start(
                 500,
                 ([fork, new_monitor, workspace, find_workspace]) => {
                     let new_workspace;
@@ -3439,7 +3521,12 @@ export class Ext extends Ecs.System<ExtEvent> {
 
                     return true;
                 },
-                () => update_tiling(),
+                () => {
+                    if (this._display_migration_executor === executor) {
+                        this._display_migration_executor = null;
+                    }
+                    update_tiling();
+                },
             );
         };
 
@@ -3638,7 +3725,7 @@ export class Ext extends Ecs.System<ExtEvent> {
             };
 
             if (this.auto_tiler && !win.meta.minimized && win.is_tilable(this) && this.is_workspace_tiled(win.workspace_id())) {
-                const id = actor.connect('first-frame', () => {
+                const id = this.connect_actor(actor as Clutter.Actor, 'first-frame', () => {
                     // If prev_focused is empty (e.g. launched from app grid with no prior focus),
                     // attempt to recover it from workspace_active before tiling.
                     if (this.auto_tiler && !this.previously_focused(win)) {
@@ -3659,7 +3746,7 @@ export class Ext extends Ecs.System<ExtEvent> {
                     }
                     this.auto_tiler?.auto_tile(this, win, this.init);
                     grab_focus();
-                    actor.disconnect(id);
+                    this.disconnect_actor_signal(actor as Clutter.Actor, id);
                 });
             } else {
                 grab_focus();
@@ -3780,6 +3867,7 @@ export default class OTilingExtension extends Extension {
             layoutManager.removeChrome(ext.overlay as any);
             ext.destroy();
             _hide_skip_taskbar_windows();
+            unload_theme();
             ext = null;
         }
 
@@ -3835,6 +3923,16 @@ function load_theme(): string | any {
     }
 }
 
+function unload_theme(): void {
+    try {
+        const theme_context = St.ThemeContext.get_for_stage(((global as any).stage as any));
+        const theme: null | any = theme_context.get_theme();
+        theme?.unload_stylesheet(STYLESHEET);
+    } catch (e) {
+        log.error('failed to unload stylesheet: ' + e);
+    }
+}
+
 function* iter_workspaces(manager: any): IterableIterator<[number, any]> {
     let idx = 0;
     let ws = manager.get_workspace_by_index(idx);
@@ -3855,14 +3953,31 @@ const WS_OVERVIEW_KEY: string | null =
         : 'isOverviewWindow' in (Workspace.prototype as any) ? 'isOverviewWindow'
             : null;
 
-const WST_OVERVIEW_KEY: string | null =
-    '_isOverviewWindow' in (WorkspaceThumbnail.prototype as any) ? '_isOverviewWindow'
-        : 'isOverviewWindow' in (WorkspaceThumbnail.prototype as any) ? 'isOverviewWindow'
+function overview_method_key(proto: any): string | null {
+    return '_isOverviewWindow' in proto ? '_isOverviewWindow'
+        : 'isOverviewWindow' in proto ? 'isOverviewWindow'
             : null;
+}
+
 let default_init_appswitcher: any;
 let default_getwindowlist_windowswitcher: any;
 let default_getcaption_windowpreview: any;
 let default_getcaption_workspace: any;
+let workspaceThumbnailPromise: Promise<any | null> | null = null;
+let patchedWorkspaceThumbnail: any = null;
+let patchedWorkspaceThumbnailKey: string | null = null;
+
+function get_workspace_thumbnail_class(): Promise<any | null> {
+    if (!workspaceThumbnailPromise) {
+        workspaceThumbnailPromise = import('resource:///org/gnome/shell/ui/workspaceThumbnail.js')
+            .then((mod: any) => mod.WorkspaceThumbnail ?? null)
+            .catch((e) => {
+                log.warn(`WorkspaceThumbnail unavailable; skip-taskbar thumbnails not patched: ${e}`);
+                return null;
+            });
+    }
+    return workspaceThumbnailPromise;
+}
 
 /**
  * Decorates the default gnome-shell workspace/overview handling
@@ -3882,7 +3997,7 @@ let default_getcaption_workspace: any;
  * need to added to config.ts as default floating
  *
  */
-function _show_skip_taskbar_windows(ext: Ext) {
+function _show_skip_taskbar_windows(current_ext: Ext) {
     // Handle the overview
     if (WS_OVERVIEW_KEY && default_isoverviewwindow_ws === null) {
         default_isoverviewwindow_ws =
@@ -3893,7 +4008,7 @@ function _show_skip_taskbar_windows(ext: Ext) {
             const base = default_isoverviewwindow_ws
                 ? default_isoverviewwindow_ws.call(this, win)
                 : false;
-            return is_valid_minimize_to_tray(meta_win, ext) || base;
+            return is_valid_minimize_to_tray(meta_win, current_ext) || base;
         };
     } else if (!WS_OVERVIEW_KEY) {
         (global as any).log('O-Tiling: WARNING - Workspace overview method not found. Skip-taskbar feature disabled.');
@@ -3916,23 +4031,38 @@ function _show_skip_taskbar_windows(ext: Ext) {
         (global as any).log('O-Tiling: WARNING - WindowPreview._getCaption not found. Caption override skipped.');
     }
 
-    // Handle the workspace thumbnail
-    if (WST_OVERVIEW_KEY && default_isoverviewwindow_ws_thumbnail === null) {
-        default_isoverviewwindow_ws_thumbnail =
-            (WorkspaceThumbnail.prototype as any)[WST_OVERVIEW_KEY] ?? null;
+    // Handle the workspace thumbnail. This is a private Shell module, so load it
+    // lazily and keep the feature best-effort across GNOME 48-50 builds.
+    if (default_isoverviewwindow_ws_thumbnail === null && !patchedWorkspaceThumbnail) {
+        get_workspace_thumbnail_class().then((WorkspaceThumbnail) => {
+            if (!WorkspaceThumbnail || current_ext !== ext) return;
 
-        if (default_isoverviewwindow_ws_thumbnail) {
-            (WorkspaceThumbnail.prototype as any)[WST_OVERVIEW_KEY] = function (win: any) {
-                const meta_win = win.get_meta_window();
-                const base = default_isoverviewwindow_ws_thumbnail
-                    ? default_isoverviewwindow_ws_thumbnail.call(this, win)
-                    : false;
-                return is_valid_minimize_to_tray(meta_win, ext) || base;
-            };
-        }
+            const key = overview_method_key(WorkspaceThumbnail.prototype as any);
+            if (!key) {
+                log.warn('WorkspaceThumbnail overview method not found. Skip-taskbar thumbnail patch skipped.');
+                return;
+            }
+
+            if (default_isoverviewwindow_ws_thumbnail !== null || patchedWorkspaceThumbnail) return;
+
+            default_isoverviewwindow_ws_thumbnail =
+                (WorkspaceThumbnail.prototype as any)[key] ?? null;
+
+            if (default_isoverviewwindow_ws_thumbnail) {
+                patchedWorkspaceThumbnail = WorkspaceThumbnail;
+                patchedWorkspaceThumbnailKey = key;
+                (WorkspaceThumbnail.prototype as any)[key] = function (win: any) {
+                    const meta_win = win.get_meta_window();
+                    const base = default_isoverviewwindow_ws_thumbnail
+                        ? default_isoverviewwindow_ws_thumbnail.call(this, win)
+                        : false;
+                    return is_valid_minimize_to_tray(meta_win, current_ext) || base;
+                };
+            }
+        }).catch(() => { /* handled in get_workspace_thumbnail_class */ });
     }
 
-    // let cfg = ext.conf;
+    // let cfg = current_ext.conf;
 
     // Handle switch-applications
     // if (!default_init_appswitcher) {
@@ -4006,7 +4136,7 @@ function _show_skip_taskbar_windows(ext: Ext) {
                     .map((w: any) => {
                         const meta_win = w.is_attached_dialog() ? w.get_transient_for() : w;
                         if (meta_win) {
-                            if (!meta_win.skip_taskbar || is_valid_minimize_to_tray(meta_win, ext)) {
+                            if (!meta_win.skip_taskbar || is_valid_minimize_to_tray(meta_win, current_ext)) {
                                 return meta_win;
                             }
                         }
@@ -4049,18 +4179,17 @@ function _hide_skip_taskbar_windows() {
         default_getcaption_windowpreview = null;
     }
 
-    if (WST_OVERVIEW_KEY && default_isoverviewwindow_ws_thumbnail !== null) {
+    if (patchedWorkspaceThumbnail && patchedWorkspaceThumbnailKey && default_isoverviewwindow_ws_thumbnail !== null) {
         if (default_isoverviewwindow_ws_thumbnail) {
-            (WorkspaceThumbnail.prototype as any)[WST_OVERVIEW_KEY] =
+            (patchedWorkspaceThumbnail.prototype as any)[patchedWorkspaceThumbnailKey] =
                 default_isoverviewwindow_ws_thumbnail;
         } else {
-            // Only delete if it's not null/undefined to avoid setting 'null' as a property
-            if (WST_OVERVIEW_KEY) {
-                delete (WorkspaceThumbnail.prototype as any)[WST_OVERVIEW_KEY];
-            }
+            delete (patchedWorkspaceThumbnail.prototype as any)[patchedWorkspaceThumbnailKey];
         }
         default_isoverviewwindow_ws_thumbnail = null;
     }
+    patchedWorkspaceThumbnail = null;
+    patchedWorkspaceThumbnailKey = null;
 
     if (default_init_appswitcher) {
         // AppSwitcher.prototype._init = default_init_appswitcher;
