@@ -1413,10 +1413,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
             const focus = this.focus_window();
 
-            // When the mouse enters a panel icon or menu, GNOME temporarily sets
-            // focus to null. Calling hide_all_borders() then show_border() in that
-            // short cycle produces a visible flash. Bail out here — the border stays
-            // put until a real window focus change occurs.
+            // Null focus is transient (panel hover etc.) — skip to avoid border flash.
             if (!focus) return;
 
             // Hide only the border of the window that is LOSING focus, not all borders.
@@ -2213,10 +2210,7 @@ export class Ext extends Ecs.System<ExtEvent> {
     }
 
     on_overview_hidden() {
-        // When the overview closes (e.g. after launching from app grid),
-        // restore prev_focused to the last known tiled window on the active
-        // workspace so that the incoming window's first-frame handler can
-        // tile it correctly next to an existing window.
+        // Restore prev_focused so first-frame handler tiles the next window correctly.
         if (this.auto_tiler) {
             const ws_id = this.active_workspace();
             const mon = this.active_monitor();
@@ -3932,61 +3926,7 @@ function _show_skip_taskbar_windows(ext: Ext) {
         }
     }
 
-    // let cfg = ext.conf;
 
-    // Handle switch-applications
-    // if (!default_init_appswitcher) {
-    //   default_init_appswitcher = AppSwitcher.prototype._init;
-    //   // Do not use the Shell.AppSystem apps
-    //   AppSwitcher.prototype._init = function (_apps: any, altTabPopup: any) {
-    //     // Simulate super._init(true);
-    //     SwitcherList.prototype._init.call(this, true);
-    //     this.icons = [];
-    //     this._arrows = [];
-
-    //     let windowTracker = Shell.WindowTracker.get_default();
-    //     let settings = new Gio.Settings({ schema_id: 'org.gnome.shell.app-switcher' });
-
-    //     let workspace = null;
-    //     if (settings.get_boolean('current-workspace-only')) {
-    //       let workspaceManager = (global as any).workspace_manager;
-    //       workspace = workspaceManager.get_active_workspace();
-    //     }
-
-    //     let allWindows = (global as any).display.get_tab_list(Meta.TabList.NORMAL_ALL, workspace);
-    //     // Remove duplicate app names after including skip task bar windows too
-    //     // E.g. Extensions instance plus when opening an extensions prefs window
-    //     // Or Android windows when alt-tabbing (depends on where switch apps is bound)
-    //     let allWindowsWithSkipTaskBar = allWindows.filter((w, i, a) => {
-    //       let app: any = windowTracker.get_window_app(w);
-    //       return (
-    //         i ===
-    //         a.findIndex(wi => {
-    //           let w_app: any = windowTracker.get_window_app(wi);
-    //           return app && w_app ? app.get_name() === w_app.get_name() : false;
-    //         })
-    //       );
-    //     });
-
-    //     // This block collects the windows associated to an app icon
-    //     for (let i = 0; i < allWindowsWithSkipTaskBar.length; i++) {
-    //       let meta_win = allWindowsWithSkipTaskBar[i];
-    //       let show_skiptb = !cfg.skiptaskbar_shall_hide(meta_win);
-    //       if (meta_win.is_skip_taskbar() && !show_skiptb) continue;
-    //       let appIcon = new AppIcon(windowTracker.get_window_app(meta_win));
-    //       appIcon.cachedWindows = allWindows.filter(
-    //         w => windowTracker.get_window_app(w) === appIcon.app
-    //       );
-    //       if (appIcon.cachedWindows.length > 0) this._addIcon(appIcon);
-    //     }
-
-    //     this._curApp = -1;
-    //     this._altTabPopup = altTabPopup;
-    //     this._mouseTimeOutId = 0;
-
-    //     this.connect('destroy', this._onDestroy.bind(this));
-    //   };
-    // }
 
     // Handle switch-windows
     if (!default_getwindowlist_windowswitcher) {

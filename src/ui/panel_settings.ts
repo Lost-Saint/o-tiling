@@ -275,10 +275,7 @@ function floating_window_exceptions(ext: Ext, menu: any): any {
             ext.exception_dialog();
         }
 
-        GLib.timeout_add(GLib.PRIORITY_LOW, 300, () => {
-            menu.close();
-            return false;
-        });
+        menu.close();
     });
 
     return item;
