@@ -122,7 +122,7 @@ export function async_process(argv: Array<string>, input = null, cancellable: nu
                 const bytes = proc.communicate_utf8_finish(res)[1];
                 resolve(bytes.toString());
             } catch (e) {
-                reject(e);
+                reject(e instanceof globalThis.Error ? e : new globalThis.Error(String(e)));
             }
         });
     });

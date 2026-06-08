@@ -427,7 +427,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
 
         this.overview_layout_manager = new OverviewLayoutManager(this);
-        this.overview_layout_manager.enable();
+        void this.overview_layout_manager.enable();
 
         this.window_buttons_manager = new WindowButtonsManager(this.settings);
         this.window_buttons_manager.enable();
@@ -1411,7 +1411,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         }
 
         if (this.conf.log_on_focus) {
-            win.cmdline().then((cmd: any) => {
+            void win.cmdline().then((cmd: any) => {
                 let msg =
                     `focused Window(${win.entity}) {\n` +
                     `  class: "${win.meta.get_wm_class()}",\n` +
@@ -1428,6 +1428,8 @@ export class Ext extends Ecs.System<ExtEvent> {
                 }
 
                 log.debug(msg + '}');
+            }).catch((e: unknown) => {
+                log.warn(`failed to read focused window cmdline: ${String(e)}`);
             });
         }
     }
@@ -3182,7 +3184,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         }
         if (!this.overview_layout_manager) {
             this.overview_layout_manager = new OverviewLayoutManager(this);
-            this.overview_layout_manager.enable();
+            void this.overview_layout_manager.enable();
         }
 
         // 4. Restore auto-tiling if user had it enabled
