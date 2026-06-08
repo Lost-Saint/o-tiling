@@ -7,7 +7,6 @@ import { PACKAGE_VERSION } from 'resource:///org/gnome/shell/misc/config.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as Utils from '../utils/utils.js';
 import * as log from '../utils/log.js';
-import type { Ext } from '../extension.js';
 
 
 // ── Version gate ─────────────────────────────────────────────────────────────
