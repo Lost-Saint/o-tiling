@@ -2,15 +2,13 @@ name: Build & Release
 
 on:
   push:
-    branches:
-      - main
-      - master
     tags:
       - "v*.*.*"
+      - "v*.*.*-rc*"
   pull_request:
     branches:
       - main
-      - master
+      - rc
   workflow_dispatch:
 
 permissions:
@@ -29,6 +27,33 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag branch constraint
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          echo "Verifying branch containment for tag: ${TAG_NAME}"
+          
+          # Fetch origin to make sure remote branches are available
+          git fetch origin
+          
+          if [[ "${TAG_NAME}" =~ -rc ]]; then
+            # Release candidate tag must be on the rc branch
+            if ! git branch -r --contains "${TAG_NAME}" | grep -q "origin/rc"; then
+              echo "::error::Release candidate tag ${TAG_NAME} must be pushed on the 'rc' branch."
+              exit 1
+            fi
+            echo "✓ RC tag ${TAG_NAME} is on the 'rc' branch"
+          else
+            # Production tag must be on main or master branch
+            if ! git branch -r --contains "${TAG_NAME}" | grep -E -q "origin/main|origin/master"; then
+              echo "::error::Production release tag ${TAG_NAME} must be pushed on 'main' or 'master' branch."
+              exit 1
+            fi
+            echo "✓ Production tag ${TAG_NAME} is on a release branch (main/master)"
+          fi
 
       - name: Check package.json vs metadata.json version match
         run: |
@@ -246,7 +271,15 @@ jobs:
       - name: Build release notes
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          cat > release_notes.md <<EOF
+          
+          RC_NOTICE=""
+          if [[ "${VERSION}" =~ -rc ]]; then
+            RC_NOTICE="> [!WARNING]\n> This is a **Release Candidate** pre-release version. It is intended for testing and feedback. Please report any bugs or issues on GitHub.\n\n"
+          fi
+          
+          printf "%b" "${RC_NOTICE}" > release_notes.md
+          
+          cat >> release_notes.md <<EOF
           ## O-tiling v${VERSION}
 
           A distro-agnostic, EGO-compliant auto-tiling engine for GNOME Shell with the **Aura** focus border.
@@ -254,12 +287,20 @@ jobs:
           ### Supported GNOME Shell versions
           GNOME Shell 49 (Fedora 43) and 50 (Fedora 44).
 
-          > **Installation:**
+          > **⚡ Quick Install (One Command):**
           > \`\`\`bash
-          > gnome-extensions install --force ${UUID}-v${VERSION}.zip
+          > curl -L https://github.com/oliwebd/o-tiling/releases/download/v${VERSION}/${UUID}-v${VERSION}.zip \\
+          >   -o /tmp/o-tiling.zip \\
+          >   && gnome-extensions install --force /tmp/o-tiling.zip \\
+          >   && gnome-extensions enable ${UUID}
+          > \`\`\`
+          > 
+          > **📦 Manual Install:**
+          > \`\`\`bash
+          > gnome-extensions install --force ~/Downloads/${UUID}-v${VERSION}.zip
           > gnome-extensions enable ${UUID}
           > \`\`\`
-          > Log out and back in on Wayland to activate.
+          > *Note: Log out and back in to activate.*
 
           ### Changes since last release
           ${{ steps.changelog.outputs.CHANGELOG }}
@@ -273,7 +314,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
-          name: "O-tiling v${{ steps.version.outputs.version }}"
+          name: "v${{ steps.version.outputs.version }}"
           body_path: release_notes.md
           draft: false
           prerelease: ${{ contains(steps.version.outputs.tag, '-') }}

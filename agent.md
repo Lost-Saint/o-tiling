@@ -40,7 +40,7 @@ This is the most critical section. The codebase supports GNOME **48, 49 and 50**
 | `Meta.later_add()` | ✅ present | ⚠️ unreliable | ❌ removed | `utils.later_add()` shim: tries `compositor.get_laters().add()` first, then `Meta.later_add()`, then `GLib.idle_add()` as last-resort fallback |
 | `backend.get_monitor_manager()` | ✅ (GNOME 40+) | ✅ | ✅ | Used directly with `?.` optional chaining throughout |
 | `backend.get_current_logical_monitor()` | ❌ absent | ✅ added | ✅ | All call sites use `?.get_number() ?? 0` — falls back to monitor 0 on GNOME 48 |
-| `get_logical_monitors().is_primary` | ✅ (property always existed) | ✅ | ✅ | Accessed via `(m: any).is_primary` — safe on all targets |
+| `get_logical_monitors().is_primary` | ⚠️ method, not property | ⚠️ method | ⚠️ method | Avoid checking properties; use `display.get_primary_monitor()` index instead |
 | `Main.modalCount` | deprecated | removed | removed | `is_modal_blocking_focus()` helper in `extension.ts` checks `modalActorFocusStack` first, then `_modalCount`, then returns false |
 | `get_monitor_neighbor_index()` | ✅ | ✅ | ❌ removed | `src/engine/tiling.ts` wraps it with a full manual adjacency fallback for GNOME 50 |
 | `Meta.is_wayland_compositor()` | ✅ | ✅ | ❌ removed | `utils.is_wayland()` shim: tries `global.context.is_wayland_compositor()`, then `Meta.is_wayland_compositor()`, then env-var detection |

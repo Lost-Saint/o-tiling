@@ -12,10 +12,7 @@ import { ShellWindow } from '../window/window.js';
 import Meta from 'gi://Meta';
 
 export function get_primary_monitor_index(): number {
-    const mm = (global as any).backend.get_monitor_manager();
-    if (!mm) return 0;
-    const primary = mm.get_logical_monitors().find((m: any) => m.is_primary);
-    return primary ? primary.get_number() : 0;
+    return (global as any).display.get_primary_monitor();
 }
 
 const LEFT_PIN_MIN_RATIO = 0.35;

@@ -343,7 +343,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         });
         this.dbus = new dbus_service.Service();
 
-        this.displays[0] = (global as any).backend.get_monitor_manager()?.get_logical_monitors().find((m: any) => m.is_primary)?.get_number() ?? 0;
+        this.displays[0] = display.get_primary_monitor();
 
         this.load_settings();
         load_theme();
@@ -971,7 +971,7 @@ export class Ext extends Ecs.System<ExtEvent> {
             }
         }
 
-        const primary = (global as any).backend.get_monitor_manager()?.get_logical_monitors().find((m: any) => m.is_primary)?.get_number() ?? 0;
+        const primary = display.get_primary_monitor();
         return [primary, this.displays[1].get(primary) as Display];
     }
 
@@ -3312,8 +3312,7 @@ export class Ext extends Ecs.System<ExtEvent> {
     }
 
     should_ignore_workspace(monitor: number): boolean {
-        const primary = (global as any).backend.get_monitor_manager()?.get_logical_monitors().find((m: any) => m.is_primary)?.get_number() ?? 0;
-        return this.settings.workspaces_only_on_primary() && monitor !== primary;
+        return this.settings.workspaces_only_on_primary() && monitor !== display.get_primary_monitor();
     }
 
     unset_grab_op() {
@@ -3345,7 +3344,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         // Ignore the update if there are no monitors to assign to
         if (layoutManager.monitors.length === 0) return;
 
-        const primary_display = (global as any).backend.get_monitor_manager()?.get_logical_monitors().find((m: any) => m.is_primary)?.get_number() ?? 0;
+        const primary_display = display.get_primary_monitor();
 
         const primary_display_ready = (ext: Ext): boolean => {
             const mm = (global as any).backend.get_monitor_manager();
