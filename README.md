@@ -19,7 +19,7 @@ O-Tiling is a heavily improved fork of [System76 Pop Shell](https://github.com/p
 Open a terminal and run:
 
 ```bash
-curl -L https://github.com/oliwebd/o-tiling/releases/download/v2.8.11/o-tiling@oliwebd.github.com-v2.8.11.zip \
+curl -L https://github.com/oliwebd/o-tiling/releases/download/v2.8.13/o-tiling@oliwebd.github.com-v2.8.13.zip \
   -o /tmp/o-tiling.zip \
   && gnome-extensions install --force /tmp/o-tiling.zip \
   && gnome-extensions enable o-tiling@oliwebd.github.com
