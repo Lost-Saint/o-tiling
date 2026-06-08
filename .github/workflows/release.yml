@@ -297,7 +297,7 @@ jobs:
           > 
           > **📦 Manual Install:**
           > \`\`\`bash
-          > gnome-extensions install --force ${UUID}-v${VERSION}.zip
+          > gnome-extensions install --force ~/Downloads/${UUID}-v${VERSION}.zip
           > gnome-extensions enable ${UUID}
           > \`\`\`
           > *Note: Log out and back in to activate.*
