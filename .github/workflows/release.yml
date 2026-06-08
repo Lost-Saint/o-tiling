@@ -9,6 +9,7 @@ on:
     branches:
       - main
       - master
+      - rc
   workflow_dispatch:
 
 permissions:
