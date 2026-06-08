@@ -9,7 +9,7 @@ Technical reference for AI agents and contributors working on the **O-tiling** G
 | Field | Value |
 |---|---|
 | Name | O-tiling |
-| Version | 2.8.5 |
+| Version | 2.8.13 |
 | UUID | `o-tiling@oliwebd.github.com` |
 | GSettings Schema | `org.gnome.shell.extensions.o-tiling` |
 | D-Bus Interface | `org.gnome.shell.extensions.OTiling` |
@@ -47,9 +47,16 @@ This is the most critical section. The codebase supports GNOME **48, 49 and 50**
 | X11 session | ✅ | disabled by default | ❌ removed | `utils.is_wayland()` gate on all X11-specific signal paths |
 | `Shell.BlurMode` | ✅ | ✅ | ✅ | Accessed via `(Shell as any).BlurMode` with graceful fallback if absent |
 
-### 2.2 The Three Mandatory Shims
+### 2.2 EGO-Compliant Feature Detection
 
-Never call the underlying APIs directly. Always use these wrappers.
+To satisfy EGO review requirements, avoid wrapping runtime capability checks in blind `try-catch` blocks. Instead, verify the existence of APIs directly using feature detection (e.g. `typeof` checks).
+
+**`utils.is_wayland()`** check:
+```typescript
+if (typeof (global as any).context?.is_wayland_compositor === 'function') {
+    return (global as any).context.is_wayland_compositor();
+}
+```
 
 **`utils.later_add(type, action)`** — deferred callback scheduling:
 ```typescript
@@ -64,7 +71,7 @@ utils.later_add(Meta.LaterType.BEFORE_REDRAW, () => {
 
 **`utils.is_maximized(win.meta)` / `win.is_maximized()`** — maximize state check.
 
-**`utils.get_current_time()`** — safe Clutter event timestamp; never use `global.display.get_current_time()` (causes synchronous X11 roundtrip → SIGABRT on Wayland).
+**`utils.get_current_time()`** — safe Clutter event timestamp; returns `Clutter.get_current_event_time()`. Never use `global.display.get_current_time()` as it triggers a synchronous X11 roundtrip, which is forbidden on the compositor thread and causes SIGABRT on Wayland. Mutter accepts `0` (CurrentTime) gracefully.
 
 ---
 
@@ -73,23 +80,25 @@ utils.later_add(Meta.LaterType.BEFORE_REDRAW, () => {
 ```
 src/
   extension.ts          — Main entry point — lifecycle, signals, event dispatch
-  prefs.ts              — Libadwaita preferences window
+  prefs.ts              — Libadwaita preferences window (fixed 720x650 panel, close button layout)
   engine/
     auto_tiler.ts       — High-level tiling coordinator
     forest.ts           — Tiling tree world (Forest extends Ecs.World)
-    fork.ts             — Fork node — two children + orientation + split ratio
+    fork.ts             — Fork node — two children + orientation + split ratio + left-pinning
+    presets.ts          — Tiling presets: Columns, Stacked, Grid, Spiral
     stack.ts            — Stack container — tabbed windows in one tile slot
     tiling.ts           — Geometry calculation and tile placement
   window/
-    window.ts           — ShellWindow — Aura border, restack, actor bindings
+    window.ts           — ShellWindow — Aura border, restack, actor bindings, border timeout sets
     focus.ts            — Focus management and window activation
     movement.ts         — Window move/resize operations
   ui/
     workspace_switcher_style.ts — GNOME 48+ workspace overview styling
     overview_layout.ts  — WorkspaceLayout patch to mirror tile positions in overview
-    panel_settings.ts   — Panel indicator (Indicator class)
+    panel_settings.ts   — Panel indicator (Indicator class with layouts/presets UI)
     panel_transparency.ts — CSS-injection panel transparency manager
     theme_consistency/   — Rounded/Sharp corners logic for GTK/Shell
+    dialog_add_exception.ts — Modal dialog for adding floating window exceptions
   system/
     window_buttons.ts   — WindowButtonsManager (min/max/close button layout)
     settings.ts         — ExtensionSettings wrapper over GSettings
@@ -98,6 +107,9 @@ src/
     executor.ts         — GLib-based event executor
     scheduler.ts        — system76-scheduler foreground-process integration
     dbus_service.ts     — D-Bus service for external focus/window commands
+  floating_exceptions/
+    config.ts           — Exception configurations and rules storage
+    main.ts             — Class/Title exceptions parser and matcher
   core/
     ecs.ts              — Entity-Component-System primitives
     events.ts           — Event tagging and data structures
@@ -149,7 +161,7 @@ Applies uniform rounded corners across the desktop environment.
 ### 5.5 Panel Transparency (`src/ui/panel_transparency.ts`)
 CSS-injection manager that makes the GNOME panel transparent or semi-transparent.
 - Injects a temp CSS file into `St.ThemeContext` (same lifecycle pattern as other managers).
-- Supports configurable opacity (0–100%), blur-style dark gradient backdrop, and hot-reload on setting change without full disable/enable cycle.
+- Supports configurable opacity (0–100%), and hot-reload on setting change without full disable/enable cycle.
 - Fully EGO-compliant: temp file is deleted on `disable()`.
 
 ### 5.6 Window Buttons Manager (`src/system/window_buttons.ts`)
@@ -162,10 +174,33 @@ Halt-mode implemented in `extension.ts` using the `_ext_soft_disabled` flag.
 - **Functionality**: Disables all tiling, keybindings, and injections without removing the panel indicator.
 - **State Recovery**: Re-enabling the extension triggers a full re-tiling of the current workspace.
 
-> **⚠️ Bug fixed in 2.8.3:** `ext_soft_disable()` previously contained `const indicator = (PanelSettings as any).indicator` which shadowed the module-level `indicator` with `undefined` (since `panel_settings.ts` exports no `indicator` instance). The toggle state in the panel menu was never updated on soft-disable. Fix: remove the shadowing local declaration and use the module-level `indicator` directly.
-
 ### 5.8 Large Window Handling (Floating Exceptions)
-Windows with large minimum size constraints (e.g., GNOME System Monitor) are handled via **Floating Window Exceptions**. The extension relies on standard upstream behavior (allowing the window to overlap if tiled in a space that is too small) and expects the user to either toggle the window to floating mode or add its WM_CLASS to the exception list. The experimental Auto-Swap logic was removed due to instability.
+Windows with large minimum size constraints (e.g., GNOME System Monitor) are handled via **Floating Window Exceptions**. The extension relies on standard upstream behavior (allowing the window to overlap if tiled in a space that is too small) and expects the user to either toggle the window to floating mode or add its WM_CLASS to the exception list.
+
+### 5.9 Layout Presets (`src/engine/presets.ts`)
+Users can apply pre-defined binary tree layouts to workspaces with 2 to 6 windows:
+- **Columns**: Cascades windows horizontally.
+- **Stacked**: Cascades windows vertically.
+- **Grid**: Places windows in a balanced grid (e.g. 2x2 for 4 windows).
+- **Spiral**: Places windows recursively in alternating horizontal and vertical splits.
+
+### 5.10 Lock Master Window (`src/engine/fork.ts`)
+Locks the left branch (master window or sub-tree) of the workspace's toplevel fork.
+- Sets `left_pinned = true` on the toplevel fork.
+- Enforces a minimum size of 35% (`LEFT_PIN_MIN_RATIO = 0.35`) for the left branch.
+- Prevents windows from being pushed out or swapped into the left master slot, preserving the layout split during resizing or snapping.
+
+### 5.11 Drag-and-Swap Zone (`src/engine/auto_tiler.ts`)
+Dragging a window to the center (middle 40% area) of another window triggers a direct swap (`attach_swap`) instead of a side split.
+
+### 5.12 Top Smart Gap (`src/extension.ts`)
+Provides a customizable `panel-top-gap` setting. When the panel is transparent (panel-transparency enabled and opacity is 0), the top side of the outer gap is replaced by the custom top gap value. This allows tiled windows to align closer to the top screen edge when the panel is invisible.
+
+### 5.13 EGO Compliance & Memory Management
+- **Redundant try-catch blocks** are forbidden. Always use direct type checks (`typeof`) for capability detection.
+- **Panel Hover Guard**: Focus changes to a panel actor (detected via `clutter_focus_is_shell_panel()`) do not trigger active hint border hide/show cycles, preventing flickering.
+- **Timeout Cleanup**: Timeout source IDs (like `show_border` callbacks) are tracked globally in `ACTIVE_HINT_SHOW_IDS` and explicitly removed on extension disable to avoid memory leaks.
+- **Compositor Double-Commits**: Removed secondary `move_frame` call in the tiling path; `move_resize_frame` is sufficient to move and resize windows atomically on Mutter 18+.
 
 ---
 
@@ -208,6 +243,21 @@ Windows with large minimum size constraints (e.g., GNOME System Monitor) are han
 - **Cause:** To prevent infinite resize loops and crashes (which occurred in previous Auto-Swap implementations), O-Tiling enforces a minimum split size of 256px and does not auto-correct windows that refuse to shrink. This mirrors the upstream Pop Shell stability approach.
 - **Resolution:** This is a known architectural limitation. Users should add the problematic application's `WM_CLASS` to the **Floating Exceptions** list or use Adjustment Mode (`Super + Enter`) to manually resize the tile grid to accommodate the window.
 
+### Bug K — Source ID Not Found Warnings
+- **Fix:** Timeout callback handlers verify source ID matching before nulling references or calling `GLib.source_remove()` to prevent redundant source removals.
+
+### Bug L — Active Hint Border Flickering on Panel Hover
+- **Fix:** Implemented `clutter_focus_is_shell_panel()` to keep active border drawn when hover focus drifts to Shell panel actors.
+
+### Bug M — Redundant Compositor Commits in Mutter 18 / GNOME 50
+- **Fix:** Removed redundant `move_frame()` call following `move_resize_frame()` in window positioning path.
+
+### Bug N — EGO Reject: Redundant Try-Catch Blocks
+- **Fix:** Audited codebase and replaced empty/blind try-catch blocks with clean capability checks.
+
+### Bug O — Floating Exception Class Name Matching
+- **Fix:** Corrected window class matching in the exceptions dialog to ensure dialog windows like "Floating Window Exceptions" float by default.
+
 ---
 
-*Document Version: 2.8.5 | Updated: May 16, 2026*
+*Document Version: 2.8.13 | Updated: June 9, 2026*
