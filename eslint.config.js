@@ -1,8 +1,7 @@
 import eslint from "@eslint/js";
 import tseslint from "typescript-eslint";
-import { defineConfig } from "eslint";
 
-export default defineConfig(
+export default tseslint.config(
   {
     name: "o-tiling/ignores",
     ignores: ["dist/**", "node_modules/**", "venv/**", "*.zip"],

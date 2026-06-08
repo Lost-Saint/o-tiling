@@ -17,7 +17,7 @@ export class AddExceptionDialog {
         });
 
         // Title with modern typography
-        let title = new St.Label({
+        const title = new St.Label({
             text: 'Add Floating Exception',
             x_align: Clutter.ActorAlign.CENTER,
             style_class: 'modal-dialog-linked-button', // Gives it a nice bold look in some themes, or just inline
@@ -25,19 +25,19 @@ export class AddExceptionDialog {
         });
 
         // Description
-        let desc = new St.Label({
+        const desc = new St.Label({
             text: 'Float the selected window, or all windows from the application.',
             x_align: Clutter.ActorAlign.CENTER,
             style: 'color: #a0a0a0; font-size: 0.9em; margin-bottom: 24px;',
         });
 
-        let l = this.dialog.contentLayout;
+        const l = this.dialog.contentLayout;
 
         l.add_child(title);
         l.add_child(desc);
 
         // Modern width scaling
-        let monitor = lib.current_monitor();
+        const monitor = lib.current_monitor();
         this.dialog.contentLayout.width = monitor ? Math.max(monitor.width / 4, 400) : 400;
 
         this.dialog.addButton({

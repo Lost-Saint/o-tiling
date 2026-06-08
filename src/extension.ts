@@ -923,7 +923,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     exception_add(win: Window.ShellWindow) {
         this.exception_selecting = false;
-        let d = new add_exception.AddExceptionDialog(
+        const d = new add_exception.AddExceptionDialog(
             // Cancel
             () => this.exception_dialog(),
             // this_app
@@ -938,7 +938,7 @@ export class Ext extends Ecs.System<ExtEvent> {
             },
             // current-window
             () => {
-                let wmclass = win.meta.get_wm_class();
+                const wmclass = win.meta.get_wm_class();
                 if (wmclass) this.conf.add_window_exception(wmclass, win.title());
                 this.exception_dialog();
             },
@@ -953,7 +953,7 @@ export class Ext extends Ecs.System<ExtEvent> {
     }
 
     exception_dialog() {
-        let path = get_current_path() + '/floating_exceptions/main.js';
+        const path = get_current_path() + '/floating_exceptions/main.js';
 
         const event_handler = (event: string): boolean => {
             switch (event) {

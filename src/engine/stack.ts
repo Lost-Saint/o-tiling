@@ -271,8 +271,8 @@ export class Stack {
                     button.set_style_class_name(name);
                     let tab_color = '';
                     if (component.active) {
-                        let settings = this.ext.settings;
-                        let color_value = settings.hint_color_rgba();
+                        const settings = this.ext.settings;
+                        const color_value = settings.hint_color_rgba();
                         tab_color = `${color_value}; color: ${utils.is_dark(color_value) ? 'white' : 'black'}`;
                     } else {
                         tab_color = `${INACTIVE_TAB_STYLE}`;
