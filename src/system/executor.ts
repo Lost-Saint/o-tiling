@@ -50,9 +50,9 @@ export class GLibExecutor<T> implements Executor<T> {
         if (this.#event_loop !== null) {
             // Use the matching removal fn: later_remove for laters, source_remove for idle.
             if (this.#used_laters) {
-                try { utils.later_remove(this.#event_loop); } catch (_) {}
+                utils.later_remove(this.#event_loop);
             } else {
-                try { GLib.source_remove(this.#event_loop); } catch (_) {}
+                GLib.source_remove(this.#event_loop);
             }
             this.#event_loop = null;
         }
@@ -78,6 +78,9 @@ export class OnceExecutor<X, T extends Iterable<X>> {
 
             if (typeof next === 'undefined') {
                 if (then) {
+                    if (this.#signal !== null) {
+                        GLib.source_remove(this.#signal);
+                    }
                     const id2 = GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
                         if (this.#signal === id2) {
                             this.#signal = null;
@@ -107,9 +110,7 @@ export class OnceExecutor<X, T extends Iterable<X>> {
 
     stop() {
         if (this.#signal !== null) {
-            try {
-                GLib.source_remove(this.#signal);
-            } catch (_) {}
+            GLib.source_remove(this.#signal);
             this.#signal = null;
         }
     }
@@ -151,9 +152,7 @@ export class ChannelExecutor<X> {
 
     stop() {
         if (this.#signal !== null) {
-            try {
-                GLib.source_remove(this.#signal);
-            } catch (_) {}
+            GLib.source_remove(this.#signal);
             this.#signal = null;
         }
         this.#channel.splice(0);
