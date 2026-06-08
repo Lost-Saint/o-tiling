@@ -99,6 +99,8 @@ export class WorkspaceSwitcherStyle {
   private _workspaceRemovedId: number | null = null;
   private _overviewShowingId: number | null = null;
   private _origUpdateMaxThumbnailScale: any = null;
+  private _patchedUpdateMaxThumbnailScale: any = null;
+  private _patchedThumbnailsBox: any = null;
   private _scrollIdleId: number | null = null;
 
   constructor(accentColor: string) {
@@ -276,6 +278,15 @@ export class WorkspaceSwitcherStyle {
       const thumbnailsBox = this._getThumbnailsBox();
       if (!thumbnailsBox) return;
 
+      if (
+        this._patchedThumbnailsBox &&
+        this._patchedThumbnailsBox !== thumbnailsBox
+      ) {
+        this._restoreThumbnailScale();
+      }
+
+      this._patchedThumbnailsBox = thumbnailsBox;
+
       // 1. Center the thumbnails strip horizontally
       thumbnailsBox.set_x_expand(false);
       thumbnailsBox.set_x_align(Clutter.ActorAlign.CENTER);
@@ -298,7 +309,7 @@ export class WorkspaceSwitcherStyle {
           thumbnailsBox._updateMaxThumbnailScale;
 
         const self = this;
-        thumbnailsBox._updateMaxThumbnailScale = function (
+        const patchedUpdateMaxThumbnailScale = function (
           this: any,
           ...args: any[]
         ) {
@@ -320,6 +331,8 @@ export class WorkspaceSwitcherStyle {
 
           this.queue_relayout();
         };
+        this._patchedUpdateMaxThumbnailScale = patchedUpdateMaxThumbnailScale;
+        thumbnailsBox._updateMaxThumbnailScale = patchedUpdateMaxThumbnailScale;
       }
 
       // Initial force update
@@ -346,12 +359,15 @@ export class WorkspaceSwitcherStyle {
   private _restoreThumbnailScale(): void {
     if (!isGnome50()) return;
     try {
-      const thumbnailsBox = this._getThumbnailsBox();
+      const thumbnailsBox = this._patchedThumbnailsBox;
       if (thumbnailsBox) {
-        if (this._origUpdateMaxThumbnailScale) {
+        if (
+          this._origUpdateMaxThumbnailScale &&
+          thumbnailsBox._updateMaxThumbnailScale ===
+            this._patchedUpdateMaxThumbnailScale
+        ) {
           thumbnailsBox._updateMaxThumbnailScale =
             this._origUpdateMaxThumbnailScale;
-          this._origUpdateMaxThumbnailScale = null;
         }
 
         if (this._origMaxThumbnailScale !== null)
@@ -366,6 +382,9 @@ export class WorkspaceSwitcherStyle {
         thumbnailsBox.queue_relayout?.();
       }
     } catch (_) {}
+    this._patchedThumbnailsBox = null;
+    this._patchedUpdateMaxThumbnailScale = null;
+    this._origUpdateMaxThumbnailScale = null;
     this._origMaxThumbnailScale = null;
     this._origMinThumbnailScale = null;
   }

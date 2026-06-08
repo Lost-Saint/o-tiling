@@ -789,6 +789,24 @@ export default class OTilingPreferences extends ExtensionPreferences {
         .split(",")
         .map((s) => s.trim())
         .filter((s) => s.length > 0);
+
+      const valid = values.every((value) => {
+        const parsed = (Gtk.accelerator_parse as any)(value);
+        if (Array.isArray(parsed)) {
+          if (typeof parsed[0] === "boolean") {
+            return parsed[0] && parsed[1] !== 0;
+          }
+          return parsed[0] !== 0;
+        }
+        return Boolean(parsed);
+      });
+
+      if (!valid) {
+        row.add_css_class("error");
+        return;
+      }
+
+      row.remove_css_class("error");
       settings.set_strv(key, values);
     });
   }

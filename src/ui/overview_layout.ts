@@ -79,7 +79,7 @@ export class OverviewLayoutManager {
           if (!metaWin) continue;
 
           // Only override for windows managed by O-Tiling that are currently tiled
-          const winEntity = self._ext.window_entity(metaWin);
+          const winEntity = self._ext.lookup_window_entity(metaWin);
           if (!winEntity) continue;
 
           const isTiled = self._ext.auto_tiler?.attached.contains(winEntity);

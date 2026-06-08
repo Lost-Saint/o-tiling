@@ -19,7 +19,18 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 const { OnceCell } = once_cell;
 
-export var window_tracker = Shell.WindowTracker.get_default();
+let window_tracker_: Shell.WindowTracker | null = null;
+
+export function get_window_tracker(): Shell.WindowTracker {
+    if (!window_tracker_) {
+        window_tracker_ = Shell.WindowTracker.get_default();
+    }
+    return window_tracker_;
+}
+
+export function reset_window_tracker(): void {
+    window_tracker_ = null;
+}
 
 /** Active hint show timeouts. Used to clean up on extension disable. */
 const ACTIVE_HINT_SHOW_IDS = new Set<number>();
@@ -90,6 +101,20 @@ function clutter_focus_is_shell_panel(): boolean {
         }
     } catch (_) {}
     return false;
+}
+
+function get_window_actors(): Clutter.Actor[] {
+    try {
+        const actors = (global as any).compositor?.get_window_actors?.();
+        if (actors) return actors;
+    } catch (_) {}
+
+    try {
+        const actors = (global as any).get_window_actors?.();
+        if (actors) return actors;
+    } catch (_) {}
+
+    return [];
 }
 
 export class ShellWindow {
@@ -661,7 +686,7 @@ export class ShellWindow {
 
             parent.set_child_above_sibling(border, actor);
 
-            for (const above_actor of (global as any).get_window_actors()) {
+            for (const above_actor of get_window_actors() as any[]) {
                 const meta = above_actor?.get_meta_window?.();
                 if (!meta || !meta.is_above()) continue;
                 const above_parent = above_actor.get_parent();

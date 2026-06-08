@@ -35,7 +35,6 @@ import { WorkspaceSwitcherStyle, isGnome50 } from './ui/workspace_switcher_style
 import { ThemeConsistencyManager } from './ui/theme_consistency/index.js';
 import { PanelTransparencyManager } from './ui/panel_transparency.js';
 import { OverviewLayoutManager } from './ui/overview_layout.js';
-import { applyThemeConsistency, removeThemeConsistency } from './ui/theme_consistency/apply.js';
 
 
 
@@ -63,7 +62,6 @@ const {
     layoutManager,
     overview,
     sessionMode,
-    windowAttentionHandler,
 } = Main;
 
 function is_modal_blocking_focus(): boolean {
@@ -91,13 +89,10 @@ import {
 // import { SwitcherList } from 'resource:///org/gnome/shell/ui/switcherPopup.js';
 import { Workspace } from 'resource:///org/gnome/shell/ui/workspace.js';
 import { WindowPreview } from 'resource:///org/gnome/shell/ui/windowPreview.js';
-import { PACKAGE_VERSION } from 'resource:///org/gnome/shell/misc/config.js';
 import * as Tags from './utils/tags.js';
 import { get_current_path } from './utils/paths.js';
 
-const STYLESHEET_PATH = stylesheet_path('stylesheet');
-const STYLESHEET = Gio.File.new_for_path(STYLESHEET_PATH);
-const GNOME_VERSION = PACKAGE_VERSION;
+let stylesheet_file_: Gio.File | null = null;
 
 interface Display {
     area: Rectangle;
@@ -578,7 +573,6 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.theme_consistency_handler.disable();
             this.theme_consistency_handler = null;
         }
-        removeThemeConsistency();
 
         if (this.panel_transparency_handler) {
             this.panel_transparency_handler.disable();
@@ -3128,7 +3122,6 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.theme_consistency_handler.disable();
             this.theme_consistency_handler = null;
         }
-        removeThemeConsistency();
         if (this.workspace_switcher_style_handler) {
             this.workspace_switcher_style_handler.disable();
             this.workspace_switcher_style_handler = null;
@@ -3292,13 +3285,9 @@ export class Ext extends Ecs.System<ExtEvent> {
                 this.theme_consistency_handler = new ThemeConsistencyManager();
             }
             this.theme_consistency_handler.enable(style as any);
-
-            // Also apply GTK theme consistency
-            applyThemeConsistency(style as 'rounded' | 'sharp');
         } else {
             this.theme_consistency_handler?.disable();
             this.theme_consistency_handler = null;
-            removeThemeConsistency();
         }
 
         if (save) {
@@ -3668,6 +3657,20 @@ export class Ext extends Ecs.System<ExtEvent> {
     }
 
     /// Fetches the window entity which is associated with the metacity window metadata.
+    lookup_window_entity(meta: Meta.Window | null): Entity | null {
+        if (!meta) return null;
+
+        let id: number;
+
+        try {
+            id = meta.get_stable_sequence();
+        } catch (_) {
+            return null;
+        }
+
+        return this.ids.find((comp) => comp == id).next().value ?? null;
+    }
+
     window_entity(meta: Meta.Window | null): Entity | null {
         if (!meta) return null;
 
@@ -3690,7 +3693,7 @@ export class Ext extends Ecs.System<ExtEvent> {
             let window_app: any, name: string;
 
             try {
-                window_app = Window.window_tracker.get_window_app(meta);
+                window_app = Window.get_window_tracker().get_window_app(meta);
                 name = window_app.get_name().replace(/&/g, '&amp;');
             } catch (e) {
                 return null;
@@ -3838,8 +3841,6 @@ export default class OTilingExtension extends Extension {
         ext.injections_add();
         ext.signals_attach();
 
-        disable_window_attention_handler();
-
         layoutManager.addChrome(ext.overlay as any);
 
         const currentPanel = (Main as any).panel;
@@ -3876,26 +3877,9 @@ export default class OTilingExtension extends Extension {
             indicator = null;
         }
 
-        enable_window_attention_handler();
         Window.cleanup_main_loop_sources();
+        Window.reset_window_tracker();
         scheduler.destroy();
-    }
-}
-
-const handler = windowAttentionHandler;
-
-function enable_window_attention_handler() {
-    if (handler && !handler._windowDemandsAttentionId) {
-        handler._windowDemandsAttentionId = (global as any).display.connect('window-demands-attention', (display: any, window: any) => {
-            handler._onWindowDemandsAttention(display, window);
-        });
-    }
-}
-
-function disable_window_attention_handler() {
-    if (handler && handler._windowDemandsAttentionId) {
-        (global as any).display.disconnect(handler._windowDemandsAttentionId);
-        handler._windowDemandsAttentionId = null;
     }
 }
 
@@ -3903,20 +3887,28 @@ function stylesheet_path(name: string) {
     return get_current_path() + '/' + name + '.css';
 }
 
+function stylesheet_file(): Gio.File {
+    if (!stylesheet_file_) {
+        stylesheet_file_ = Gio.File.new_for_path(stylesheet_path('stylesheet'));
+    }
+    return stylesheet_file_;
+}
+
 // Supplements the loaded theme with the extension's theme.
 function load_theme(): string | any {
     try {
+        const stylesheet = stylesheet_file();
         const theme_context = St.ThemeContext.get_for_stage(((global as any).stage as any));
         const existing_theme: null | any = theme_context.get_theme();
 
         // get_theme() returns null if no custom theme — use new St.Theme()
         const theme = existing_theme ?? new St.Theme({});
 
-        theme.unload_stylesheet(STYLESHEET);
-        theme.load_stylesheet(STYLESHEET);
+        theme.unload_stylesheet(stylesheet);
+        theme.load_stylesheet(stylesheet);
         theme_context.set_theme(theme);
 
-        return STYLESHEET_PATH;
+        return stylesheet.get_path();
     } catch (e) {
         log.error('failed to load stylesheet: ' + e);
         return null;
@@ -3925,9 +3917,11 @@ function load_theme(): string | any {
 
 function unload_theme(): void {
     try {
+        if (!stylesheet_file_) return;
         const theme_context = St.ThemeContext.get_for_stage(((global as any).stage as any));
         const theme: null | any = theme_context.get_theme();
-        theme?.unload_stylesheet(STYLESHEET);
+        theme?.unload_stylesheet(stylesheet_file_);
+        stylesheet_file_ = null;
     } catch (e) {
         log.error('failed to unload stylesheet: ' + e);
     }

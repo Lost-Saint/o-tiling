@@ -8,6 +8,7 @@ export class WindowButtonsManager {
     private _settings: ExtensionSettings;
     private _signalIds: number[] = [];
     private _originalLayout: string | null = null;   // ← save original
+    private _lastAppliedLayout: string | null = null;
 
     constructor(settings: ExtensionSettings) {
         this._settings = settings;
@@ -17,6 +18,8 @@ export class WindowButtonsManager {
      * Enables the manager and connects settings signals.
      */
     enable() {
+        if (this._signalIds.length > 0) return;
+
         // Save the layout BEFORE we touch it (only once)
         const wm = this._settings.wm;
         if (wm && this._originalLayout === null) {
@@ -41,11 +44,20 @@ export class WindowButtonsManager {
         }
         this._signalIds = [];
 
-        // Restore the original layout when the extension is disabled
-        if (this._originalLayout !== null && this._settings.wm) {
+        // Restore only if the layout still matches the last value we applied.
+        // If the user changed it while the extension was enabled, leave it alone.
+        if (this._originalLayout !== null && this._settings.wm && this._lastAppliedLayout !== null) {
+            const currentLayout = this._settings.wm.get_string('button-layout');
+            if (currentLayout !== this._lastAppliedLayout) {
+                this._originalLayout = null;
+                this._lastAppliedLayout = null;
+                return;
+            }
+
             this._settings.wm.set_string('button-layout', this._originalLayout);
-            this._originalLayout = null;
         }
+        this._originalLayout = null;
+        this._lastAppliedLayout = null;
     }
 
     /**
@@ -95,5 +107,6 @@ export class WindowButtonsManager {
 
         const new_layout = `${BtnLeft.join(',')}:${BtnRight.join(',')}`;
         wm.set_string('button-layout', new_layout);
+        this._lastAppliedLayout = new_layout;
     }
 }

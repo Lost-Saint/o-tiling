@@ -2,6 +2,7 @@ UUID    := o-tiling@oliwebd.github.com
 NAME    := o-tiling
 INSTALL := $(HOME)/.local/share/gnome-shell/extensions/$(UUID)
 DIST    := dist
+SRC_TS  := $(shell find src -name '*.ts')
 
 .PHONY: all setup build lint install uninstall clean zip help pack
 
@@ -11,7 +12,7 @@ all: $(DIST)/extension.js
 node_modules/.pnpm-lock.yaml: package.json
 	pnpm install
 
-$(DIST)/extension.js $(DIST)/prefs.js: node_modules/.pnpm-lock.yaml src/*.ts
+$(DIST)/extension.js $(DIST)/prefs.js: node_modules/.pnpm-lock.yaml $(SRC_TS) tsconfig.json
 	pnpm run build
 
 schemas/gschemas.compiled: schemas/org.gnome.shell.extensions.$(NAME).gschema.xml
