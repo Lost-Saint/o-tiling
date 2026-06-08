@@ -102,9 +102,12 @@ export class Forest extends Ecs.World {
             const window = ext.windows.get(entity);
             if (!window) continue;
 
-            // Only arrange windows on the target workspace
-            // (-1 can be used as a sentinel to arrange all)
-            if (workspace >= 0 && window.workspace_id() !== workspace) continue;
+            // Skip windows not on target workspace; -1 arranges all.
+            // Secondary monitors (ignore-workspace) always pass through.
+            if (workspace >= 0 && window.workspace_id() !== workspace) {
+                if (!ext.should_ignore_workspace(window.meta.get_monitor()))
+                    continue;
+            }
 
             let on_complete = () => {
                 if (!window.actor_exists()) return;
