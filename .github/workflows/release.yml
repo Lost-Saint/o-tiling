@@ -8,7 +8,6 @@ on:
   pull_request:
     branches:
       - main
-      - master
       - rc
   workflow_dispatch:
 
