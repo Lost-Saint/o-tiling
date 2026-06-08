@@ -2,11 +2,9 @@ name: Build & Release
 
 on:
   push:
-    branches:
-      - main
-      - master
     tags:
       - "v*.*.*"
+      - "v*.*.*-rc*"
   pull_request:
     branches:
       - main
