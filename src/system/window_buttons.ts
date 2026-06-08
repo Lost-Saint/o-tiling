@@ -7,7 +7,7 @@ import type { ExtensionSettings } from './settings.js';
 export class WindowButtonsManager {
     private _settings: ExtensionSettings;
     private _signalIds: number[] = [];
-    private _originalLayout: string | null = null;   // ← save original
+    private _originalLayout: string | null = null; // ← save original
     private _lastAppliedLayout: string | null = null;
 
     constructor(settings: ExtensionSettings) {
@@ -28,7 +28,7 @@ export class WindowButtonsManager {
 
         this._signalIds.push(
             this._settings.ext.connect('changed::show-minimize-maximize-buttons', () => this.sync()),
-            this._settings.ext.connect('changed::show-close-button', () => this.sync())
+            this._settings.ext.connect('changed::show-close-button', () => this.sync()),
         );
 
         // ↓ Do NOT call sync() here — let the user's existing layout stand.
@@ -82,9 +82,10 @@ export class WindowButtonsManager {
 
         // If buttons are currently on the left, keep them left.
         // If on the right (or not present yet), default to right.
-        const isRight = !leftHasButtons && !rightHasButtons
-            ? true              // no buttons anywhere yet → default right
-            : rightHasButtons;  // honour current placement
+        const isRight = !leftHasButtons && !rightHasButtons ?
+            true // no buttons anywhere yet → default right
+             :
+            rightHasButtons; // honour current placement
 
         const BtnRight = (right ?? '').split(',').filter(s => !BTN.includes(s.trim()));
         const BtnLeft = (left ?? '').split(',').filter(s => !BTN.includes(s.trim()));

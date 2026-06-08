@@ -15,7 +15,7 @@ export class ThemeConsistencyManager {
 
     enable(style: 'rounded' | 'sharp' = 'rounded'): void {
         if (this._file && this._currentStyle === style) return;
-        
+
         if (this._file) {
             this.disable();
         }
@@ -35,12 +35,16 @@ export class ThemeConsistencyManager {
                 theme.load_stylesheet(this._file);
                 log.info(`ThemeConsistencyManager: session CSS (${style}) injected`);
             } else {
-                try { this._file?.delete(null); } catch (_) {}
+                try {
+                    this._file?.delete(null);
+                } catch (_) {}
                 this._file = null;
             }
         } catch (e) {
             log.error(`ThemeConsistencyManager: failed to inject CSS: ${e}`);
-            try { this._file?.delete(null); } catch (_) {}
+            try {
+                this._file?.delete(null);
+            } catch (_) {}
             this._file = null;
         }
     }

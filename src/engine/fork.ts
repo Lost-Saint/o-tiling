@@ -74,9 +74,9 @@ export class Fork {
     /** The calculated left area of this fork */
     area_of_left(ext: Ext): Rect.Rectangle {
         return new Rect.Rectangle(
-            this.is_horizontal()
-                ? [this.area.x, this.area.y, this.length_left - ext.gap_inner_half, this.area.height]
-                : [this.area.x, this.area.y, this.area.width, this.length_left - ext.gap_inner_half],
+            this.is_horizontal() ?
+                [this.area.x, this.area.y, this.length_left - ext.gap_inner_half, this.area.height] :
+                [this.area.x, this.area.y, this.area.width, this.length_left - ext.gap_inner_half],
         );
     }
 
@@ -383,8 +383,9 @@ export class Fork {
 
     /** Toggles the orientation of this fork */
     toggle_orientation() {
-        this.orientation =
-            Lib.Orientation.HORIZONTAL === this.orientation ? Lib.Orientation.VERTICAL : Lib.Orientation.HORIZONTAL;
+        this.orientation = Lib.Orientation.HORIZONTAL === this.orientation ?
+            Lib.Orientation.VERTICAL :
+            Lib.Orientation.HORIZONTAL;
 
         this.orientation_changed = true;
         if (this.n_toggled === 1) {

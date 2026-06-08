@@ -188,10 +188,9 @@ export function map_eq<K, V>(map1: Map<K, V>, map2: Map<K, V>) {
     return true;
 }
 
-
 export function maximize(
     window: Meta.Window,
-    flags: number = 3 // Meta.MaximizeFlags.BOTH
+    flags: number = 3, // Meta.MaximizeFlags.BOTH
 ) {
     if (typeof (window as any).set_maximize_flags === 'function') {
         (window as any).set_maximize_flags(flags);
@@ -207,7 +206,7 @@ export function maximize(
 
 export function unmaximize(
     window: Meta.Window,
-    flags: number = 3 // Meta.MaximizeFlags.BOTH
+    flags: number = 3, // Meta.MaximizeFlags.BOTH
 ) {
     if (typeof (window as any).set_unmaximize_flags === 'function') {
         (window as any).set_unmaximize_flags(flags);
@@ -256,7 +255,7 @@ export function set_alpha(color: string, alpha: number): string {
         }
         return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     }
-    
+
     // If it's a named color or something we can't parse, we can't easily set alpha
     // unless we use a temporary actor to parse it, which is overkill here.
     // We'll return it as is, but log a warning if it's not a standard format.
@@ -268,18 +267,18 @@ export function set_alpha(color: string, alpha: number): string {
  */
 export function isValidColor(color: string): boolean {
     if (!color) return false;
-    
+
     // Hex: #abc or #abcdef or #abcdef00
     if (/^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(color)) {
         return true;
     }
-    
+
     // RGB/RGBA: rgb(255, 255, 255) or rgba(255, 255, 255, 1.0)
     // We're being a bit lenient with the spaces and decimals
     if (/^rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(,\s*[\d.]+\s*)?\)$/i.test(color)) {
         return true;
     }
-    
+
     return false;
 }
 
@@ -344,7 +343,7 @@ export function get_current_time(): number {
  */
 export function activate_window(window: Meta.Window, move_mouse: boolean = true) {
     if (!window || window.is_override_redirect()) return;
-    
+
     try {
         const time = get_current_time();
         if (typeof (window as any).activate === 'function') {

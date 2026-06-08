@@ -412,10 +412,11 @@ export class Stack {
 
     /** Deactivate the signals belonging to an entity */
     deactivate(w: ShellWindow) {
-        for (const c of this.tabs)
+        for (const c of this.tabs) {
             if (Ecs.entity_eq(c.entity, w.entity)) {
                 this.tab_disconnect(c);
             }
+        }
 
         if (this.active_signals && Ecs.entity_eq(this.active, w.entity)) {
             this.active_disconnect();
@@ -457,7 +458,7 @@ export class Stack {
             if (Ecs.entity_eq(this.ext.grab_op.entity, this.active)) {
                 if (this.widgets) {
                     const parent = this.widgets.tabs.get_parent();
-                    const actor = (this.active_meta()?.get_compositor_private() as any);
+                    const actor = this.active_meta()?.get_compositor_private() as any;
                     if (actor && parent) {
                         parent.set_child_below_sibling(this.widgets.tabs, actor);
                     }

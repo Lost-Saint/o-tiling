@@ -67,12 +67,13 @@ export class MainView implements View {
             subtitle: 'Updated based on validated user reports.',
             activatable: true,
         });
-        exceptions_row.add_suffix(new Gtk.Image({
-            icon_name: 'go-next-symbolic',
-            valign: Gtk.Align.CENTER,
-        }));
-        exceptions_row.connect('activated', () =>
-            this.callback({ tag: 1, view: ViewNum.Exceptions }));
+        exceptions_row.add_suffix(
+            new Gtk.Image({
+                icon_name: 'go-next-symbolic',
+                valign: Gtk.Align.CENTER,
+            }),
+        );
+        exceptions_row.connect('activated', () => this.callback({ tag: 1, view: ViewNum.Exceptions }));
 
         this.list = new Adw.PreferencesGroup({
             title: 'User Exceptions',

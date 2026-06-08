@@ -188,8 +188,6 @@ export class ShellWindow {
         this.bind_window_events();
         this.bind_hint_events();
 
-
-
         this.hide_border();
         this.restack();
         this.update_border_layout();
@@ -233,7 +231,8 @@ export class ShellWindow {
         const settings = this.ext.settings;
         const change_id = settings.ext.connect('changed', (_, key) => {
             if (this.border) {
-                if (key === 'hint-color-rgba' ||
+                if (
+                    key === 'hint-color-rgba' ||
                     key === 'active-hint-overlay-color-rgba' ||
                     key === 'active-hint-border-radius' ||
                     key === 'active-hint-border-width' ||
@@ -301,7 +300,11 @@ export class ShellWindow {
         if (result.kind === 1) {
             out = result.value.trim();
         } else {
-            log.error(`failed to fetch cmdline: ${(result as any).value.format ? (result as any).value.format() : result.value}`);
+            log.error(
+                `failed to fetch cmdline: ${
+                    (result as any).value.format ? (result as any).value.format() : result.value
+                }`,
+            );
         }
 
         return out;
@@ -535,9 +538,9 @@ export class ShellWindow {
                     actor.mapped &&
                     this.same_workspace() &&
                     (this.meta.appears_focused ||
-                     this.ext.focus_window() == this ||
-                     (this.ext.prev_focused[1] !== null && this.ext.prev_focused[1] === this.entity) ||
-                     overlay_all) &&
+                        this.ext.focus_window() == this ||
+                        (this.ext.prev_focused[1] !== null && this.ext.prev_focused[1] === this.entity) ||
+                        overlay_all) &&
                     !this.meta.is_fullscreen() &&
                     (!this.is_single_max_screen() || this.is_snap_edge()) &&
                     !this.meta.minimized &&
@@ -593,7 +596,9 @@ export class ShellWindow {
                     log.debug(`show_border: panel-hover bail — border kept for ${this.meta.get_wm_class()}`);
                     return;
                 }
-                log.debug(`show_border: HIDING for ${this.meta.get_wm_class()} appears_focused=${this.meta.appears_focused}`);
+                log.debug(
+                    `show_border: HIDING for ${this.meta.get_wm_class()} appears_focused=${this.meta.appears_focused}`,
+                );
 
                 border.remove_all_transitions();
                 if (this.destroying || !this.same_workspace()) {
@@ -641,8 +646,6 @@ export class ShellWindow {
         });
     }
 
-
-
     /**
      * Sort the window group/always top group with each window border
      * @param updateState NORMAL, RAISED, WORKSPACE_CHANGED
@@ -669,7 +672,7 @@ export class ShellWindow {
             if (!this.actor_exists()) return GLib.SOURCE_REMOVE;
 
             const border = this.border;
-            const actor = (this.meta.get_compositor_private() as any);
+            const actor = this.meta.get_compositor_private() as any;
             if (!actor || !border) return GLib.SOURCE_REMOVE;
 
             const parent = actor.get_parent();
@@ -817,7 +820,8 @@ export class ShellWindow {
             if (is_focused) {
                 const total_radius = current_radius + width_value;
 
-                let style = `border-color: ${color_value}; border-radius: ${total_radius}px; border-width: ${width_value}px; outline: none; background-clip: padding-box; box-shadow: none;`;
+                let style =
+                    `border-color: ${color_value}; border-radius: ${total_radius}px; border-width: ${width_value}px; outline: none; background-clip: padding-box; box-shadow: none;`;
 
                 if (overlay_opacity > 0 && !is_maximized_os) {
                     const overlay_color = utils.set_alpha(overlay_base, overlay_opacity);
@@ -830,7 +834,8 @@ export class ShellWindow {
             } else {
                 const total_radius = current_radius;
 
-                let style = `border-color: transparent; border-radius: ${total_radius}px; border-width: 0px; outline: none; background-clip: padding-box;`;
+                let style =
+                    `border-color: transparent; border-radius: ${total_radius}px; border-width: 0px; outline: none; background-clip: padding-box;`;
                 style += ' box-shadow: none;';
 
                 if (overlay_opacity > 0 && !is_maximized_os) {
@@ -869,7 +874,6 @@ export class ShellWindow {
     private workspace_changed() {
         this.restack(RESTACK_STATE.WORKSPACE_CHANGED, true);
     }
-
 
     private is_browser(): boolean {
         const wm_class = this.meta.get_wm_class();
@@ -920,8 +924,7 @@ export function activate(ext: Ext, move_mouse: boolean, win: Meta.Window) {
         workspace.activate_with_focus(win, utils.get_current_time());
         win.raise();
 
-        const pointer_placement_permitted =
-            move_mouse &&
+        const pointer_placement_permitted = move_mouse &&
             !(Main as any).isModal &&
             !(Main as any).layoutManager?.modalDialogGroup?.get_children()?.length &&
             ext.settings.mouse_cursor_follows_active_window() &&
