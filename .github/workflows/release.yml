@@ -287,12 +287,20 @@ jobs:
           ### Supported GNOME Shell versions
           GNOME Shell 49 (Fedora 43) and 50 (Fedora 44).
 
-          > **Installation:**
+          > **⚡ Quick Install (One Command):**
+          > \`\`\`bash
+          > curl -L https://github.com/oliwebd/o-tiling/releases/download/v${VERSION}/${UUID}-v${VERSION}.zip \\
+          >   -o /tmp/o-tiling.zip \\
+          >   && gnome-extensions install --force /tmp/o-tiling.zip \\
+          >   && gnome-extensions enable ${UUID}
+          > \`\`\`
+          > 
+          > **📦 Manual Install:**
           > \`\`\`bash
           > gnome-extensions install --force ${UUID}-v${VERSION}.zip
           > gnome-extensions enable ${UUID}
           > \`\`\`
-          > Log out and back in on Wayland to activate.
+          > *Note: Log out and back in to activate.*
 
           ### Changes since last release
           ${{ steps.changelog.outputs.CHANGELOG }}
