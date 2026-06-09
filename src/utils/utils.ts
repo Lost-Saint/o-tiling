@@ -13,18 +13,16 @@ const { Error } = error;
 export function is_wayland(): boolean {
     // GNOME 50 removed Meta.is_wayland_compositor() — use global.context first,
     // fall back to the old Meta API, then fall back to environment detection.
-    try {
-        if (typeof (global as any).context?.is_wayland_compositor === 'function') {
-            return (global as any).context.is_wayland_compositor();
-        }
-    } catch (_) {}
-    try {
-        if (typeof (Meta as any).is_wayland_compositor === 'function') {
-            return (Meta as any).is_wayland_compositor();
-        }
-    } catch (_) {}
+    if (typeof (global as any).context?.is_wayland_compositor === 'function') {
+        return (global as any).context.is_wayland_compositor();
+    }
+    if (typeof (Meta as any).is_wayland_compositor === 'function') {
+        return (Meta as any).is_wayland_compositor();
+    }
     // Last resort: Wayland sessions have WAYLAND_DISPLAY set but no DISPLAY.
-    return GLib.getenv('WAYLAND_DISPLAY') !== null && GLib.getenv('DISPLAY') === null;
+    return (
+        GLib.getenv('WAYLAND_DISPLAY') !== null && GLib.getenv('DISPLAY') === null
+    );
 }
 
 export function block_signal(object: GObject.Object, signal: SignalID) {
@@ -35,7 +33,9 @@ export function unblock_signal(object: GObject.Object, signal: SignalID) {
     GObject.signal_handler_unblock(object, signal);
 }
 
-export function read_to_string(path: string): Promise<result.Result<string, error.Error>> {
+export function read_to_string(
+    path: string,
+): Promise<result.Result<string, error.Error>> {
     const file = Gio.File.new_for_path(path);
     return new Promise((resolve) => {
         file.load_contents_async(null, (obj: any, res: any) => {
@@ -47,7 +47,11 @@ export function read_to_string(path: string): Promise<result.Result<string, erro
                     resolve(Err(new Error(`failed to load contents of ${path}`)));
                 }
             } catch (e) {
-                resolve(Err(new Error(String(e)).context(`failed to load contents of ${path}`)));
+                resolve(
+                    Err(
+                        new Error(String(e)).context(`failed to load contents of ${path}`),
+                    ),
+                );
             }
         });
     });
@@ -101,7 +105,11 @@ export function is_dark(color: string): boolean {
 }
 
 /** Utility function for running a process in the background and fetching its standard output as a string. */
-export function async_process(argv: Array<string>, input = null, cancellable: null | any = null): Promise<string> {
+export function async_process(
+    argv: Array<string>,
+    input = null,
+    cancellable: null | any = null,
+): Promise<string> {
     let flags = Gio.SubprocessFlags.STDOUT_PIPE;
 
     if (input !== null) flags |= Gio.SubprocessFlags.STDIN_PIPE;
@@ -122,7 +130,9 @@ export function async_process(argv: Array<string>, input = null, cancellable: nu
                 const bytes = proc.communicate_utf8_finish(res)[1];
                 resolve(bytes.toString());
             } catch (e) {
-                reject(e instanceof globalThis.Error ? e : new globalThis.Error(String(e)));
+                reject(
+                    e instanceof globalThis.Error ? e : new globalThis.Error(String(e)),
+                );
             }
         });
     });
@@ -224,7 +234,10 @@ export function is_maximized(window: Meta.Window): boolean {
     if (typeof (window as any).is_maximized === 'function') {
         return (window as any).is_maximized();
     }
-    return (window as any).maximized_horizontally || (window as any).maximized_vertically;
+    return (
+        (window as any).maximized_horizontally ||
+        (window as any).maximized_vertically
+    );
 }
 
 /**
@@ -285,18 +298,17 @@ export function isValidColor(color: string): boolean {
 /**
  * Schedules a callback to be executed later, handling GNOME 45+ API changes.
  */
-export function later_add(type: Meta.LaterType, action: () => boolean | number): number {
-    try {
-        const laters = (global as any).compositor?.get_laters?.();
-        if (laters && typeof laters.add === 'function') {
-            return laters.add(type, action);
-        }
-    } catch (_) {}
-    try {
-        if (typeof (Meta as any).later_add === 'function') {
-            return (Meta as any).later_add(type, action);
-        }
-    } catch (_) {}
+export function later_add(
+    type: Meta.LaterType,
+    action: () => boolean | number,
+): number {
+    const laters = (global as any).compositor?.get_laters?.();
+    if (laters && typeof laters.add === 'function') {
+        return laters.add(type, action);
+    }
+    if (typeof (Meta as any).later_add === 'function') {
+        return (Meta as any).later_add(type, action);
+    }
     // Last-resort safe fallback: GLib idle
     return GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
         action();
@@ -309,19 +321,15 @@ export function later_add(type: Meta.LaterType, action: () => boolean | number):
  */
 export function later_remove(id: number) {
     if (!id) return;
-    try {
-        const laters = (global as any).compositor?.get_laters?.();
-        if (laters && typeof laters.remove === 'function') {
-            laters.remove(id);
-            return;
-        }
-    } catch (_) {}
-    try {
-        if (typeof (Meta as any).later_remove === 'function') {
-            (Meta as any).later_remove(id);
-            return;
-        }
-    } catch (_) {}
+    const laters = (global as any).compositor?.get_laters?.();
+    if (laters && typeof laters.remove === 'function') {
+        laters.remove(id);
+        return;
+    }
+    if (typeof (Meta as any).later_remove === 'function') {
+        (Meta as any).later_remove(id);
+        return;
+    }
     GLib.source_remove(id);
 }
 
@@ -341,7 +349,10 @@ export function get_current_time(): number {
 /**
  * Safely activates a window using a non-blocking timestamp.
  */
-export function activate_window(window: Meta.Window, move_mouse: boolean = true) {
+export function activate_window(
+    window: Meta.Window,
+    move_mouse: boolean = true,
+) {
     if (!window || window.is_override_redirect()) return;
 
     try {

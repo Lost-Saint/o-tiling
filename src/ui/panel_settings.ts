@@ -13,7 +13,6 @@ import {
     PopupSeparatorMenuItem,
 } from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import { Button } from 'resource:///org/gnome/shell/ui/panelMenu.js';
-import GObject from 'gi://GObject';
 
 import { get_current_path } from '../utils/paths.js';
 import { apply_preset, PresetType } from '../engine/presets.js';

@@ -50,13 +50,9 @@ export class GLibExecutor<T> implements Executor<T> {
         if (this.#event_loop !== null) {
             // Use the matching removal fn: later_remove for laters, source_remove for idle.
             if (this.#used_laters) {
-                try {
-                    utils.later_remove(this.#event_loop);
-                } catch (_) {}
+                utils.later_remove(this.#event_loop);
             } else {
-                try {
-                    GLib.source_remove(this.#event_loop);
-                } catch (_) {}
+                GLib.source_remove(this.#event_loop);
             }
             this.#event_loop = null;
         }
