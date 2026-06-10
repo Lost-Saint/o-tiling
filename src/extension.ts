@@ -2377,13 +2377,17 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         // Disconnect all signals for the removed workspace
         const to_delete = [];
-        for (const [ws, signals] of this.workspace_signals) {
-            let idx = -1;
-            try { idx = ws.index(); } catch (_) { idx = -1; }
-            if (idx === -1) { // -1 means it's being/has been removed
-                for (const signal of signals) {
-                    try { ws.disconnect(signal); } catch (_) { }
-                }
+        const current_workspaces = [];
+        const n = (global as any).workspace_manager.get_n_workspaces();
+        for (let i = 0; i < n; i++) {
+            const w = (global as any).workspace_manager.get_workspace_by_index(i);
+            if (w) current_workspaces.push(w);
+        }
+
+        for (const [ws] of this.workspace_signals) {
+            if (!current_workspaces.includes(ws)) {
+                // Workspace has been removed; references are automatically cleaned up on disposal,
+                // we just need to delete our map reference to avoid leaks.
                 to_delete.push(ws);
             }
         }
@@ -2743,9 +2747,18 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         this.signals.clear();
 
+        const current_workspaces = [];
+        const n = (global as any).workspace_manager.get_n_workspaces();
+        for (let i = 0; i < n; i++) {
+            const w = (global as any).workspace_manager.get_workspace_by_index(i);
+            if (w) current_workspaces.push(w);
+        }
+
         for (const [ws, signals] of this.workspace_signals) {
-            for (const signal of signals) {
-                try { ws.disconnect(signal); } catch (_) { }
+            if (current_workspaces.includes(ws)) {
+                for (const signal of signals) {
+                    ws.disconnect(signal);
+                }
             }
         }
         this.workspace_signals.clear();
