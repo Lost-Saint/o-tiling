@@ -2333,8 +2333,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         for (const [ws] of this.workspace_signals) {
             if (!current_workspaces.includes(ws)) {
-                // Workspace has been removed; references are automatically cleaned up on disposal,
-                // we just need to delete our map reference to avoid leaks.
+                // Delete map reference to avoid leaks since workspace is removed.
                 to_delete.push(ws);
             }
         }
@@ -2540,8 +2539,7 @@ export class Ext extends Ecs.System<ExtEvent> {
                     }
                 };
 
-                // Delay in case the focused window was not focused yet.
-                // Note: Fixes Intellij IDE windows.
+                // Delay to allow focus to resolve (fixes IntelliJ IDE windows).
                 this.register_fn(() => {
                     // Skip if Clutter key-focus is on a shell panel/dock/indicator actor using the shared helper.
                     if (Window.clutter_focus_is_shell_panel()) {
@@ -3461,8 +3459,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         const new_dpi = St.ThemeContext.get_for_stage(((global as any).stage as any)).scale_factor;
         this.dpi = new_dpi;
 
-        // Reload gap and grid values from settings using the new DPI.
-        // This avoids accumulating rounding errors from repeated scaling.
+        // Reload gap and grid values using the new DPI to avoid scaling errors.
         this.load_settings();
 
         // Retile all forks with updated gap/grid values.
@@ -3535,8 +3532,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
             if (this.auto_tiler && !win.meta.minimized && win.is_tilable(this) && this.is_workspace_tiled(win.workspace_id())) {
                 const id = actor.connect('first-frame', () => {
-                    // If prev_focused is empty (e.g. launched from app grid with no prior focus),
-                    // attempt to recover it from workspace_active before tiling.
+                    // Recover prev_focused from workspace_active if empty before tiling.
                     if (this.auto_tiler && !this.previously_focused(win)) {
                         const ws_id = win.workspace_id();
                         const entity = this.workspace_active.get(ws_id);
