@@ -2891,8 +2891,7 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.auto_tiler = null;
         }
 
-        // 2. Hide and destroy ALL window borders, disconnect window-specific signals
-        // Collect entities first to avoid modification during iteration
+        // 2. Hide borders and disconnect window signals
         const entities = Array.from(this.windows.iter()).map(([e]) => e);
         for (const entity of entities) {
             const win = this.windows.get(entity);
@@ -2987,10 +2986,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         this.workspace_active.clear();
     }
 
-    /**
-     * Soft-enable: restores ALL extension features after a soft-disable.
-     * Reads saved settings to restore the state the user had configured.
-     */
+    /** Soft-enable: restores extension features after a soft-disable */
     ext_soft_enable() {
         if (!this._ext_soft_disabled) return;
         this._ext_soft_disabled = false;
@@ -3764,10 +3760,7 @@ let default_getwindowlist_windowswitcher: any;
 let default_getcaption_windowpreview: any;
 let default_getcaption_workspace: any;
 
-/**
- * Decorates the default gnome-shell workspace/overview handling of skip_task_bar
- * and includes those window types in o-tiling. Called on extension enable.
- */
+/** Decorates skip_taskbar handling to include specific window types */
 function _show_skip_taskbar_windows(ext: Ext) {
     // Handle the overview
     if (WS_OVERVIEW_KEY && default_isoverviewwindow_ws === null) {
@@ -3900,10 +3893,7 @@ function _hide_skip_taskbar_windows() {
     }
 }
 
-/**
- * Checks if a window is a valid minimize-to-tray target by verifying its type
- * and checking that it is not an override-redirect window.
- */
+/** Checks if a window is a valid minimize-to-tray target */
 function is_valid_minimize_to_tray(meta_win: Meta.Window, ext: Ext) {
     const cfg = ext.conf;
     let valid_min_to_tray = false;
