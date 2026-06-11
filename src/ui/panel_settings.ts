@@ -263,7 +263,7 @@ function floating_window_exceptions(ext: Ext, menu: any): any {
         icon_size: 16,
         style_class: 'popup-menu-icon'
     });
-    
+
     if (typeof (item as any).insert_child_at_index === 'function') {
         (item as any).insert_child_at_index(icon, 0);
     } else {
@@ -507,18 +507,10 @@ function presets_row(ext: Ext): any {
 
 // ── WorkspaceNumberIndicator ──────────────────────────────────────────────────
 
-/**
- * A small panel widget that shows the current workspace number and total,
- * e.g. "2 / 4". It replaces the visual role of GNOME's dot indicator.
- *
- * Leak-proof: every signal is stored and disconnected in destroy().
- */
 export class WorkspaceNumberIndicator {
-    /** The St.Button added to the panel via addToStatusArea(). */
-    readonly button: St.Button;
+    readonly button: any; // PanelMenu.Button
 
     private _label: St.Label;
-    private _wmSignalId: number | null = null;
     private _wsChangedId: number | null = null;
     private _wsAddedId: number | null = null;
     private _wsRemovedId: number | null = null;
@@ -530,60 +522,56 @@ export class WorkspaceNumberIndicator {
             style: 'font-weight: 600; font-size: 13px; padding: 0 6px;',
         });
 
-        this.button = new St.Button({
-            child: this._label,
-            style_class: 'panel-button',
-            reactive: true,
-            can_focus: true,
-            track_hover: true,
-        });
+        // Must be PanelMenu.Button (not St.Button) so addToStatusArea() works
+        this.button = new Button(0.0, 'O-Tiling Workspace Number');
+        this.button.add_child(this._label);
 
-        // Left-click opens the overview (same as the default workspace indicator)
-        this.button.connect('clicked', () => {
-            if (Main.overview.visible) {
-                Main.overview.hide();
-            } else {
-                Main.overview.show();
+        // Return EVENT_STOP so PanelMenu.Button doesn't try to toggle its empty menu
+        this.button.connect('button-press-event', (_actor: any, event: any) => {
+            if (event.get_button() === 1) {
+                if (Main.overview.visible) {
+                    Main.overview.hide();
+                } else {
+                    Main.overview.show();
+                }
+                return Clutter.EVENT_STOP;
             }
+            return Clutter.EVENT_PROPAGATE;
         });
 
         this._attach();
         this._update();
     }
 
-    /** Connect workspace change signals so the label stays in sync. */
     private _attach(): void {
         const wm = (global as any).workspace_manager;
-
         this._wsChangedId = wm.connect('active-workspace-changed', () => this._update());
-        this._wsAddedId   = wm.connect('workspace-added',          () => this._update());
-        this._wsRemovedId = wm.connect('workspace-removed',        () => this._update());
+        this._wsAddedId = wm.connect('workspace-added', () => this._update());
+        this._wsRemovedId = wm.connect('workspace-removed', () => this._update());
     }
 
-    /** Refresh the label text. */
     private _update(): void {
         try {
             const wm = (global as any).workspace_manager;
-            const current = wm.get_active_workspace_index() + 1; // 1-based
-            const total   = wm.get_n_workspaces();
+            const current = wm.get_active_workspace_index() + 1;
+            const total = wm.get_n_workspaces();
             this._label.text = `${current} / ${total}`;
-        } catch (_) { /* best-effort during shell transitions */ }
+        } catch (_) { }
     }
 
-    /** Disconnects all signals and destroys the actor. Must be called on disable. */
     destroy(): void {
         const wm = (global as any).workspace_manager;
 
         if (this._wsChangedId !== null) {
-            try { wm.disconnect(this._wsChangedId); } catch (_) {}
+            try { wm.disconnect(this._wsChangedId); } catch (_) { }
             this._wsChangedId = null;
         }
         if (this._wsAddedId !== null) {
-            try { wm.disconnect(this._wsAddedId); } catch (_) {}
+            try { wm.disconnect(this._wsAddedId); } catch (_) { }
             this._wsAddedId = null;
         }
         if (this._wsRemovedId !== null) {
-            try { wm.disconnect(this._wsRemovedId); } catch (_) {}
+            try { wm.disconnect(this._wsRemovedId); } catch (_) { }
             this._wsRemovedId = null;
         }
 
