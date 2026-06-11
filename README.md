@@ -4,6 +4,10 @@
 
 > **Supported GNOME versions:** 48, 49, and 50 (Fedora 42 / 43 / 44)
 
+[![Install on GNOME Extensions](https://img.shields.io/badge/GNOME%20Extensions-Install-4A90D9?logo=gnome&logoColor=white)](https://extensions.gnome.org/extension/9875/o-tiling/)
+
+🔗 **[extensions.gnome.org/extension/9875/o-tiling/](https://extensions.gnome.org/extension/9875/o-tiling/)**
+
 ---
 
 ## What Is Auto-Tiling?

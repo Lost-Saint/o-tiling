@@ -1345,7 +1345,7 @@ export class Ext extends Ecs.System<ExtEvent> {
                 if (window.same_workspace()) {
                     window.show_border();
                 } else {
-                    window.hide_border(true);
+                    window.hide_border();
                 }
             }
             this._bordered_entity = this.focus_window()?.entity ?? null;
@@ -1361,7 +1361,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     hide_all_borders(instant: boolean = false) {
         for (const window of this.windows.values()) {
-            window.hide_border(instant);
+            window.hide_border();
         }
         this._bordered_entity = null;
         Window.cleanup_main_loop_sources();
