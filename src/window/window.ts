@@ -234,6 +234,7 @@ export class ShellWindow {
         const change_id = settings.ext.connect('changed', (_, key) => {
             if (this.border) {
                 if (key === 'hint-color-rgba' ||
+                    key === 'active-hint-overlay-enabled' ||
                     key === 'active-hint-overlay-color-rgba' ||
                     key === 'active-hint-border-radius' ||
                     key === 'active-hint-border-width' ||
@@ -692,11 +693,20 @@ export class ShellWindow {
         const color_value = settings.hint_color_rgba();
         const radius_value = settings.active_hint_border_radius();
         const width_value = settings.active_hint_border_width();
-        const overlay_opacity = settings.active_hint_overlay_opacity() / 100;
+
+        // The tint overlay is only active when explicitly enabled.
+        const overlay_enabled = settings.active_hint_overlay_enabled();
+        const overlay_opacity = overlay_enabled ? settings.active_hint_overlay_opacity() / 100 : 0;
+
+        // When `active_hint_overlay_only_active()` is true (default), only the
+        // focused window gets the tint.  When false ("all windows"), every
+        // tiled window on the workspace gets it.
+        const only_active = settings.active_hint_overlay_only_active();
 
         if (this.border) {
             const is_focused = this.meta.appears_focused;
             const overlay_color_val = settings.active_hint_overlay_color_rgba();
+            // 'auto' means fall back to the GNOME accent / border color.
             const overlay_base = overlay_color_val === 'auto' ? color_value : overlay_color_val;
 
             const is_maximized_os = this.is_maximized() || this.is_snap_edge();
@@ -706,12 +716,18 @@ export class ShellWindow {
                 current_radius = Math.min(current_radius, 12);
             }
 
+            // Decide whether this window should show the tint.
+            // - overlay disabled:  never show
+            // - only_active mode:  show only when this window is focused
+            // - all-windows mode:  show on every tiled window (focused or not)
+            const show_tint = overlay_opacity > 0 && !is_maximized_os &&
+                (only_active ? is_focused : true);
+
             if (is_focused) {
                 const total_radius = current_radius + width_value;
-
                 let style = `border-color: ${color_value}; border-radius: ${total_radius}px; border-width: ${width_value}px; outline: none; background-clip: padding-box; box-shadow: none;`;
 
-                if (overlay_opacity > 0 && !is_maximized_os) {
+                if (show_tint) {
                     const overlay_color = utils.set_alpha(overlay_base, overlay_opacity);
                     style += ` background-color: ${overlay_color};`;
                 } else {
@@ -721,11 +737,9 @@ export class ShellWindow {
                 this.border.set_style(style);
             } else {
                 const total_radius = current_radius;
+                let style = `border-color: transparent; border-radius: ${total_radius}px; border-width: 0px; outline: none; background-clip: padding-box; box-shadow: none;`;
 
-                let style = `border-color: transparent; border-radius: ${total_radius}px; border-width: 0px; outline: none; background-clip: padding-box;`;
-                style += ' box-shadow: none;';
-
-                if (overlay_opacity > 0 && !is_maximized_os) {
+                if (show_tint) {
                     const overlay_color = utils.set_alpha(overlay_base, overlay_opacity);
                     style += ` background-color: ${overlay_color};`;
                 } else {
