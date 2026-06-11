@@ -241,9 +241,9 @@ export default class OTilingPreferences extends ExtensionPreferences {
             settings.set_string('hint-color-rgba', rgba.to_string());
         });
 
-        // ── Active Window Tint Overlay (4 settings) ──────────────────────────
+        // ── Window Tint Overlay (4 settings) ──────────────────────────
         const auraOverlayGroup = new Adw.PreferencesGroup({
-            title: _('Active Window Tint Overlay'),
+            title: _('Window Tint Overlay'),
         });
         appearancePage.add(auraOverlayGroup);
 
@@ -255,13 +255,24 @@ export default class OTilingPreferences extends ExtensionPreferences {
         auraOverlayGroup.add(overlayEnabled);
         settings.bind('active-hint-overlay-enabled', overlayEnabled as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
-        // <2> Opacity slider (SpinRow 0–100%)
-        const overlayOpacity = new Adw.SpinRow({
+        // <2> Opacity slider (Scale 0–100%)
+        const overlayOpacityRow = new Adw.ActionRow({
             title: _('Overlay Opacity (%)'),
             subtitle: _('How opaque the tint overlay appears (0 = invisible, 100 = solid)'),
-            adjustment: new Gtk.Adjustment({ lower: 0, upper: 100, step_increment: 1 }),
         });
-        auraOverlayGroup.add(overlayOpacity);
+        auraOverlayGroup.add(overlayOpacityRow);
+
+        const overlayOpacity = new Gtk.Scale({
+            orientation: Gtk.Orientation.HORIZONTAL,
+            adjustment: new Gtk.Adjustment({ lower: 0, upper: 100, step_increment: 1, page_increment: 10 }),
+            hexpand: true,
+            valign: Gtk.Align.CENTER,
+            draw_value: true,
+            value_pos: Gtk.PositionType.RIGHT,
+        });
+        overlayOpacity.set_size_request(200, -1);
+        overlayOpacityRow.add_suffix(overlayOpacity);
+
         settings.bind('active-hint-overlay-opacity', overlayOpacity as any, 'value', Gio.SettingsBindFlags.DEFAULT);
 
         // <3> Color dialog — default = GNOME accent color, with custom color support
@@ -352,7 +363,7 @@ export default class OTilingPreferences extends ExtensionPreferences {
         // ── Sensitivity gating ──────────────────────────────────────────────
         const updateOverlaySensitivity = () => {
             const isEnabled = overlayEnabled.active;
-            overlayOpacity.sensitive = isEnabled;
+            overlayOpacityRow.sensitive = isEnabled;
             overlayColorRow.sensitive = isEnabled;
             overlayOnlyActive.sensitive = isEnabled;
             syncColorButtonSensitivity();
