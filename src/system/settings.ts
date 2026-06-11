@@ -78,6 +78,7 @@ const SHOW_SKIPTASKBAR = 'show-skip-taskbar';
 const MOUSE_CURSOR_FOLLOWS_ACTIVE_WINDOW = 'mouse-cursor-follows-active-window';
 const MOUSE_CURSOR_FOCUS_LOCATION = 'mouse-cursor-focus-location';
 const MAX_WINDOW_WIDTH = 'max-window-width';
+const ACTIVE_HINT_OVERLAY_ENABLED = 'active-hint-overlay-enabled';
 const ACTIVE_HINT_OVERLAY_OPACITY = 'active-hint-overlay-opacity';
 const ACTIVE_HINT_OVERLAY_COLOR_RGBA = 'active-hint-overlay-color-rgba';
 
@@ -228,6 +229,10 @@ export class ExtensionSettings {
         return this.ext.get_uint(MAX_WINDOW_WIDTH);
     }
 
+    active_hint_overlay_enabled(): boolean {
+        return this.ext.get_boolean(ACTIVE_HINT_OVERLAY_ENABLED);
+    }
+
     active_hint_overlay_opacity(): number {
         return this.ext.get_uint(ACTIVE_HINT_OVERLAY_OPACITY);
     }
@@ -248,7 +253,12 @@ export class ExtensionSettings {
         return rgba;
     }
 
-
+    /** True when the tint should apply only to the active (focused) window. */
+    active_hint_overlay_only_active(): boolean {
+        // The schema key `active-hint-overlay-all-windows` means "apply to ALL",
+        // so we invert it here for the cleaner "only active" semantic.
+        return !this.ext.get_boolean(ACTIVE_HINT_OVERLAY_ALL_WINDOWS);
+    }
 
     active_hint_overlay_all_windows(): boolean {
         return this.ext.get_boolean(ACTIVE_HINT_OVERLAY_ALL_WINDOWS);
@@ -390,7 +400,11 @@ export class ExtensionSettings {
         this.ext.set_uint(MAX_WINDOW_WIDTH, set);
     }
 
-     set_active_hint_overlay_opacity(set: number) {
+    set_active_hint_overlay_enabled(set: boolean) {
+        this.ext.set_boolean(ACTIVE_HINT_OVERLAY_ENABLED, set);
+    }
+
+    set_active_hint_overlay_opacity(set: number) {
         this.ext.set_uint(ACTIVE_HINT_OVERLAY_OPACITY, set);
     }
 
@@ -403,8 +417,6 @@ export class ExtensionSettings {
             this.ext.set_string(ACTIVE_HINT_OVERLAY_COLOR_RGBA, 'auto');
         }
     }
-
-
 
     set_active_hint_overlay_all_windows(set: boolean) {
         this.ext.set_boolean(ACTIVE_HINT_OVERLAY_ALL_WINDOWS, set);

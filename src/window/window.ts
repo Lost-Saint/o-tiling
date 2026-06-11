@@ -56,8 +56,11 @@ export function cleanup_main_loop_sources() {
     }
 }
 
-/** True when Clutter key-focus is on a Shell panel actor rather than a real window. */
-function clutter_focus_is_shell_panel(): boolean {
+/** True when Clutter key-focus is on a Shell panel actor rather than a real window.
+ *  Covers the top panel (GNOME 48–50), the Quick Settings system (GNOME 49/50),
+ *  the Dash-to-Dock / Ubuntu Dock, and the system status / indicator area.
+ */
+export function clutter_focus_is_shell_panel(): boolean {
     try {
         const stage = (global as any).stage;
         if (!stage) return false;
@@ -65,14 +68,46 @@ function clutter_focus_is_shell_panel(): boolean {
         const focused_actor: Clutter.Actor | null = stage.get_key_focus?.() ?? null;
         if (!focused_actor) return false;
 
+        // A window actor always exposes get_meta_window — bail out immediately.
         if (typeof (focused_actor as any).get_meta_window === 'function') return false;
 
+        // Walk up the Clutter actor tree up to 12 levels.
         let actor: Clutter.Actor | null = focused_actor;
-        for (let depth = 0; depth < 6 && actor !== null; depth++) {
+        for (let depth = 0; depth < 12 && actor !== null; depth++) {
             const style_class: string = (actor as any).style_class ?? '';
+            const name: string = (actor as any).name ?? '';
+
             if (
+                // ── Top panel buttons / corners (GNOME 48–50) ─────────────────────────
                 style_class.includes('panel-button') ||
                 style_class.includes('panel-corner') ||
+                // Individual indicator buttons (GNOME 49/50 replaces panel-button in some places)
+                style_class.includes('panel-status-button') ||
+                // Activities button
+                style_class.includes('activities') ||
+
+                // ── System status / indicator area ─────────────────────────────────────
+                // GNOME 48: aggregate-menu, panel-status-indicators-box
+                style_class.includes('panel-status-indicators-box') ||
+                style_class.includes('aggregate-menu') ||
+                style_class.includes('system-status-area') ||
+                // GNOME 49/50: Quick Settings panel replaces aggregate-menu
+                style_class.includes('quick-settings') ||
+                style_class.includes('quick-settings-system-item') ||
+                name === 'quickSettings' ||
+                name === 'quickSettingsBox' ||
+                // Clock (all versions)
+                style_class.includes('clock-display') ||
+                name === 'dateMenu' ||
+
+                // ── Dock / Dash-to-Dock / Ubuntu dock ─────────────────────────────────
+                style_class.includes('dash-item') ||
+                style_class.includes('dash-container') ||
+                style_class.includes('dashtodock') ||
+                name === 'dashtodockContainer' ||
+                name === 'dash' ||
+
+                // ── Direct panel actor references ──────────────────────────────────────
                 actor === (Main as any).panel ||
                 actor === (Main as any).panel?.statusArea?.activities ||
                 (actor as any) === (Main as any).panel?._centerBox ||
@@ -83,7 +118,7 @@ function clutter_focus_is_shell_panel(): boolean {
             }
             actor = actor.get_parent?.() ?? null;
         }
-    } catch (_) {}
+    } catch (_) { }
     return false;
 }
 
@@ -199,6 +234,7 @@ export class ShellWindow {
         const change_id = settings.ext.connect('changed', (_, key) => {
             if (this.border) {
                 if (key === 'hint-color-rgba' ||
+                    key === 'active-hint-overlay-enabled' ||
                     key === 'active-hint-overlay-color-rgba' ||
                     key === 'active-hint-border-radius' ||
                     key === 'active-hint-border-width' ||
@@ -495,13 +531,12 @@ export class ShellWindow {
                 border.show();
 
                 if (ACTIVE_HINT_SHOW_ID !== null) GLib.source_remove(ACTIVE_HINT_SHOW_ID);
-                ACTIVE_HINT_SHOW_ID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 600, () => {
-                    if (!permitted()) {
-                        ACTIVE_HINT_SHOW_ID = null;
-                        return GLib.SOURCE_REMOVE;
+                ACTIVE_HINT_SHOW_ID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 150, () => {
+                    ACTIVE_HINT_SHOW_ID = null;
+                    if (permitted()) {
+                        border.show();
                     }
-                    border.show();
-                    return GLib.SOURCE_CONTINUE;
+                    return GLib.SOURCE_REMOVE;
                 });
             }
         }
@@ -521,13 +556,7 @@ export class ShellWindow {
     }
 
 
-
-
-
-    /**
-     * Sort the window group/always top group with each window border
-     * @param updateState NORMAL, RAISED, WORKSPACE_CHANGED
-     */
+    /** Sorts the window/always-top group with each window border based on the update state (NORMAL, RAISED, WORKSPACE_CHANGED). */
     restack(_updateState: RESTACK_STATE = RESTACK_STATE.NORMAL, immediate: boolean = false) {
         this.update_border_layout();
         if (
@@ -613,7 +642,7 @@ export class ShellWindow {
         let { x, y, width, height } = this.meta.get_frame_rect();
 
         const border = this.border;
-        let borderSize = this.ext.settings.active_hint_border_width();
+        let borderSize = this.border_size;
 
         if (border) {
             if (!(this.is_max_screen() || this.is_snap_edge())) {
@@ -664,11 +693,20 @@ export class ShellWindow {
         const color_value = settings.hint_color_rgba();
         const radius_value = settings.active_hint_border_radius();
         const width_value = settings.active_hint_border_width();
-        const overlay_opacity = settings.active_hint_overlay_opacity() / 100;
+
+        // The tint overlay is only active when explicitly enabled.
+        const overlay_enabled = settings.active_hint_overlay_enabled();
+        const overlay_opacity = overlay_enabled ? settings.active_hint_overlay_opacity() / 100 : 0;
+
+        // When `active_hint_overlay_only_active()` is true (default), only the
+        // focused window gets the tint.  When false ("all windows"), every
+        // tiled window on the workspace gets it.
+        const only_active = settings.active_hint_overlay_only_active();
 
         if (this.border) {
             const is_focused = this.meta.appears_focused;
             const overlay_color_val = settings.active_hint_overlay_color_rgba();
+            // 'auto' means fall back to the GNOME accent / border color.
             const overlay_base = overlay_color_val === 'auto' ? color_value : overlay_color_val;
 
             const is_maximized_os = this.is_maximized() || this.is_snap_edge();
@@ -678,12 +716,18 @@ export class ShellWindow {
                 current_radius = Math.min(current_radius, 12);
             }
 
+            // Decide whether this window should show the tint.
+            // - overlay disabled:  never show
+            // - only_active mode:  show only when this window is focused
+            // - all-windows mode:  show on every tiled window (focused or not)
+            const show_tint = overlay_opacity > 0 && !is_maximized_os &&
+                (only_active ? is_focused : true);
+
             if (is_focused) {
                 const total_radius = current_radius + width_value;
-
                 let style = `border-color: ${color_value}; border-radius: ${total_radius}px; border-width: ${width_value}px; outline: none; background-clip: padding-box; box-shadow: none;`;
 
-                if (overlay_opacity > 0 && !is_maximized_os) {
+                if (show_tint) {
                     const overlay_color = utils.set_alpha(overlay_base, overlay_opacity);
                     style += ` background-color: ${overlay_color};`;
                 } else {
@@ -693,11 +737,9 @@ export class ShellWindow {
                 this.border.set_style(style);
             } else {
                 const total_radius = current_radius;
+                let style = `border-color: transparent; border-radius: ${total_radius}px; border-width: 0px; outline: none; background-clip: padding-box; box-shadow: none;`;
 
-                let style = `border-color: transparent; border-radius: ${total_radius}px; border-width: 0px; outline: none; background-clip: padding-box;`;
-                style += ' box-shadow: none;';
-
-                if (overlay_opacity > 0 && !is_maximized_os) {
+                if (show_tint) {
                     const overlay_color = utils.set_alpha(overlay_base, overlay_opacity);
                     style += ` background-color: ${overlay_color};`;
                 } else {
@@ -719,12 +761,21 @@ export class ShellWindow {
     }
 
     private window_changed() {
+        // Always keep the border geometry in sync with the window frame.
         this.update_border_layout();
+
+        // Guard 1: Skip border cycle if Clutter key-focus is on a shell panel/dock to avoid a cascading restack/layout grow loop.
+        if (clutter_focus_is_shell_panel()) return;
+
+        // Guard 2: Skip the full show_border_on_focused() pipeline if appears_focused=true to avoid a compounding restack/layout grow loop.
+        if (!this.meta.appears_focused) return;
+
         this.ext.show_border_on_focused();
     }
 
     private window_raised() {
         log.debug(`window_raised: ${this.meta.get_wm_class()}`);
+        if (clutter_focus_is_shell_panel()) return;
         this.restack(RESTACK_STATE.RAISED, true);
         this.ext.show_border_on_focused();
     }

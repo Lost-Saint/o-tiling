@@ -29,11 +29,7 @@ export class AutoTiler {
         this.attached = attached;
     }
 
-    /** Swap window associations in the auto-tiler
-     *
-     * Call this when a window has swapped positions with another, so that we
-     * may update the associations in the auto-tiler world.
-     */
+    /** Swap window associations in the auto-tiler when windows swap positions. */
     attach_swap(ext: Ext, a: Entity, b: Entity) {
         const a_ent = this.attached.get(a),
             b_ent = this.attached.get(b);
@@ -229,13 +225,7 @@ export class AutoTiler {
         this.attach_to_monitor(ext, win, id, ext.settings.smart_gaps());
     }
 
-    /** Automatically tiles a window into the window tree.
-     *
-     * ## Implementation Notes
-     *
-     * - First tries to tile onto the focused window
-     * - Then tries to tile onto a monitor
-     */
+    /** Automatically tiles a window into the tree, trying the focused window first, then the monitor. */
     auto_tile(ext: Ext, win: ShellWindow, _ignore_focus?: boolean) {
         this.detach_window(ext, win.entity);
         log.debug(`attach to workspace: finding largest window`);
@@ -364,13 +354,7 @@ export class AutoTiler {
         return null;
     }
 
-    /** Performed when a window that has been dropped is destined to be tiled
-     *
-     * ## Implementation Notes
-     *
-     * - If the window is dropped onto a window, tile onto it
-     * - If no window is present, tile onto the monitor
-     */
+    /** Performed when a window is dropped to be tiled (tiles onto a window if present, else onto the monitor). */
     on_drop(ext: Ext, win: ShellWindow, via_overview: boolean = false, drop_cursor?: Rectangle) {
         const [live_cursor, monitor] = ext.cursor_status();
         const cursor = drop_cursor ?? live_cursor;
@@ -435,6 +419,13 @@ export class AutoTiler {
         const fork = this.get_parent_fork(attach_to.entity);
         if (!fork) return true;
 
+        if (fork.is_toplevel && fork.left_pinned && fork.left.is_window(attach_to.entity)) {
+            if (this.attached.contains(win.entity)) {
+                this.attach_swap(ext, win.entity, attach_to.entity);
+                return true;
+            }
+        }
+
         const is_sibling = this.windows_are_siblings(win.entity, attach_to.entity);
 
         const attach_area: Rectangular =
@@ -472,8 +463,8 @@ export class AutoTiler {
                         ? Left
                         : Right
                     : placement.swap
-                    ? Up
-                    : Down;
+                        ? Up
+                        : Down;
 
             if (stack) {
                 if (matching_stack) {
@@ -796,12 +787,12 @@ export function cursor_placement(ext: Ext, area: Rectangular, cursor: Rectangula
         side === LEFT
             ? [HORIZONTAL, true]
             : side === RIGHT
-            ? [HORIZONTAL, false]
-            : side === TOP
-            ? [VERTICAL, true]
-            : side === BOTTOM
-            ? [VERTICAL, false]
-            : null;
+                ? [HORIZONTAL, false]
+                : side === TOP
+                    ? [VERTICAL, true]
+                    : side === BOTTOM
+                        ? [VERTICAL, false]
+                        : null;
 
     return res ? { orientation: res[0], swap: res[1] } : null;
 }

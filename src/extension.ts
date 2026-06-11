@@ -783,6 +783,8 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     connect_window(win: Window.ShellWindow) {
         const size_event = () => {
+            if (Window.clutter_focus_is_shell_panel()) return;
+
             const old = this.size_requests.get(win.meta);
 
             if (old) {
@@ -1194,8 +1196,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         const stack = window.stack;
 
-        // Disconnect all signals on this window BEFORE destroying it
-        // to prevent use-after-destroy race conditions.
+
         this.window_signals.take_with(win, (signals) => {
             for (const signal of signals) {
                 try { window.meta.disconnect(signal); } catch (_) { }
@@ -1218,8 +1219,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         if (this.auto_tiler) this.auto_tiler.detach_window(this, win);
 
-        // If destroyed window belonged to a stack, ensure that the next window
-        // to be focused is also a window in the same stack
+        // If the destroyed window was in a stack, ensure the next focused window comes from that same stack.
         if (this.auto_tiler && stack !== null) {
             const stack_object = this.auto_tiler.forest.stacks.get(stack);
             const prev = this.prev_focused[1];
@@ -1503,8 +1503,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     /** Triggered when a grab operation has been ended */
     on_grab_end(meta: Meta.Window, op?: any, drop_cursor?: Rect.Rectangle) {
-        // Guard: if grab_op is already null and this is a non-overview drag,
-        // a previous on_grab_end call already handled this drop (double-fire).
+        // Guard: Skip if grab_op is null on a non-overview drag to prevent handling a double-fired drop.
         if (this.grab_op === null && op !== undefined) {
             return;
         }
@@ -2334,8 +2333,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         for (const [ws] of this.workspace_signals) {
             if (!current_workspaces.includes(ws)) {
-                // Workspace has been removed; references are automatically cleaned up on disposal,
-                // we just need to delete our map reference to avoid leaks.
+                // Delete map reference to avoid leaks since workspace is removed.
                 to_delete.push(ws);
             }
         }
@@ -2436,6 +2434,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
                     this.show_border_on_focused();
                     break;
+                case 'active-hint-overlay-enabled':
                 case 'active-hint-overlay-opacity':
                 case 'hint-color-rgba':
                 case 'active-hint-overlay-color-rgba':
@@ -2540,33 +2539,12 @@ export class Ext extends Ecs.System<ExtEvent> {
                     }
                 };
 
-                // Delay in case the focused window was not focused yet.
-                // Note: Fixes Intellij IDE windows.
+                // Delay to allow focus to resolve (fixes IntelliJ IDE windows).
                 this.register_fn(() => {
-                    // Skip if Clutter key-focus is on a Shell panel actor (panel hover).
-                    const stage = (global as any).stage;
-                    const clutter_focus = stage?.get_key_focus?.();
-
-                    if (clutter_focus && typeof clutter_focus.get_meta_window !== 'function') {
-                        let actor = clutter_focus;
-                        let depth = 0;
-
-                        while (actor && depth < 6) {
-                            const styleClass = actor.style_class || '';
-
-                            if (styleClass.includes('panel-button') ||
-                                styleClass.includes('panel-corner')) {
-                                log.debug(`focus-window handler: panel-actor early return (style_class=${styleClass})`);
-                                return; // Skip focus handling - panel hover
-                            }
-
-                            if (actor === Main.panel) return;
-                            if ((Main.panel as any)?._centerBox === actor) return;
-                            if ((Main.panel as any)?._leftBox === actor) return;
-                            if ((Main.panel as any)?._rightBox === actor) return;
-                            actor = actor.get_parent?.() || null;
-                            depth++;
-                        }
+                    // Skip if Clutter key-focus is on a shell panel/dock/indicator actor using the shared helper.
+                    if (Window.clutter_focus_is_shell_panel()) {
+                        log.debug(`focus-window handler: shell-panel/dock actor detected — skipping`);
+                        return;
                     }
 
                     const meta_window = (global as any).display.get_focus_window();
@@ -2911,8 +2889,7 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.auto_tiler = null;
         }
 
-        // 2. Hide and destroy ALL window borders, disconnect window-specific signals
-        // Collect entities first to avoid modification during iteration
+        // 2. Hide borders and disconnect window signals
         const entities = Array.from(this.windows.iter()).map(([e]) => e);
         for (const entity of entities) {
             const win = this.windows.get(entity);
@@ -3007,10 +2984,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         this.workspace_active.clear();
     }
 
-    /**
-     * Soft-enable: restores ALL extension features after a soft-disable.
-     * Reads saved settings to restore the state the user had configured.
-     */
+    /** Soft-enable: restores extension features after a soft-disable */
     ext_soft_enable() {
         if (!this._ext_soft_disabled) return;
         this._ext_soft_disabled = false;
@@ -3485,8 +3459,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         const new_dpi = St.ThemeContext.get_for_stage(((global as any).stage as any)).scale_factor;
         this.dpi = new_dpi;
 
-        // Reload gap and grid values from settings using the new DPI.
-        // This avoids accumulating rounding errors from repeated scaling.
+        // Reload gap and grid values using the new DPI to avoid scaling errors.
         this.load_settings();
 
         // Retile all forks with updated gap/grid values.
@@ -3559,8 +3532,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
             if (this.auto_tiler && !win.meta.minimized && win.is_tilable(this) && this.is_workspace_tiled(win.workspace_id())) {
                 const id = actor.connect('first-frame', () => {
-                    // If prev_focused is empty (e.g. launched from app grid with no prior focus),
-                    // attempt to recover it from workspace_active before tiling.
+                    // Recover prev_focused from workspace_active if empty before tiling.
                     if (this.auto_tiler && !this.previously_focused(win)) {
                         const ws_id = win.workspace_id();
                         const entity = this.workspace_active.get(ws_id);
@@ -3784,10 +3756,7 @@ let default_getwindowlist_windowswitcher: any;
 let default_getcaption_windowpreview: any;
 let default_getcaption_workspace: any;
 
-/**
- * Decorates the default gnome-shell workspace/overview handling of skip_task_bar
- * and includes those window types in o-tiling. Called on extension enable.
- */
+/** Decorates skip_taskbar handling to include specific window types */
 function _show_skip_taskbar_windows(ext: Ext) {
     // Handle the overview
     if (WS_OVERVIEW_KEY && default_isoverviewwindow_ws === null) {
@@ -3920,10 +3889,7 @@ function _hide_skip_taskbar_windows() {
     }
 }
 
-/**
- * Checks if a window is a valid minimize-to-tray target by verifying its type
- * and checking that it is not an override-redirect window.
- */
+/** Checks if a window is a valid minimize-to-tray target */
 function is_valid_minimize_to_tray(meta_win: Meta.Window, ext: Ext) {
     const cfg = ext.conf;
     let valid_min_to_tray = false;

@@ -241,32 +241,42 @@ export default class OTilingPreferences extends ExtensionPreferences {
             settings.set_string('hint-color-rgba', rgba.to_string());
         });
 
-        // Inner Overlay Group
+        // ── Active Window Tint Overlay (4 settings) ──────────────────────────
         const auraOverlayGroup = new Adw.PreferencesGroup({
             title: _('Active Window Tint Overlay'),
         });
         appearancePage.add(auraOverlayGroup);
 
+        // <1> Master enable toggle
+        const overlayEnabled = new Adw.SwitchRow({
+            title: _('Enable Window Tint Overlay'),
+            subtitle: _('Apply a color tint overlay on tiled windows'),
+        });
+        auraOverlayGroup.add(overlayEnabled);
+        settings.bind('active-hint-overlay-enabled', overlayEnabled as any, 'active', Gio.SettingsBindFlags.DEFAULT);
+
+        // <2> Opacity slider (SpinRow 0–100%)
         const overlayOpacity = new Adw.SpinRow({
-            title: _('Active Hint Overlay Opacity (%)'),
-            subtitle: _('Opacity of the overlay color on the active window'),
+            title: _('Overlay Opacity (%)'),
+            subtitle: _('How opaque the tint overlay appears (0 = invisible, 100 = solid)'),
             adjustment: new Gtk.Adjustment({ lower: 0, upper: 100, step_increment: 1 }),
         });
         auraOverlayGroup.add(overlayOpacity);
         settings.bind('active-hint-overlay-opacity', overlayOpacity as any, 'value', Gio.SettingsBindFlags.DEFAULT);
 
-        // Overlay (Tint) Color Customization
-        const useOverlayColor = new Adw.SwitchRow({
-            title: _('Use Custom Tint Color'),
-            subtitle: _('Override default active border color for the window background tint overlay'),
-        });
-        auraOverlayGroup.add(useOverlayColor);
-
+        // <3> Color dialog — default = GNOME accent color, with custom color support
         const overlayColorRow = new Adw.ActionRow({
-            title: _('Active Hint Overlay (Tint) Color'),
-            subtitle: _('Custom tint color to overlay on the active window'),
+            title: _('Tint Color'),
+            subtitle: _('Default uses the GNOME accent color; enable custom to override'),
         });
         auraOverlayGroup.add(overlayColorRow);
+
+        const useCustomColor = new Gtk.Switch({
+            valign: Gtk.Align.CENTER,
+            tooltip_text: _('Use a custom tint color instead of the GNOME accent color'),
+        });
+        overlayColorRow.add_suffix(useCustomColor);
+        overlayColorRow.activatable_widget = useCustomColor;
 
         const overlayColorDialog = new Gtk.ColorDialog({ with_alpha: true });
         const overlayColorButton = new Gtk.ColorDialogButton({
@@ -275,21 +285,25 @@ export default class OTilingPreferences extends ExtensionPreferences {
         });
         overlayColorRow.add_suffix(overlayColorButton);
 
-        // Apply Tint to All Windows Switch
-        const overlayAll = new Adw.SwitchRow({
-            title: _('Apply Tint to All Windows'),
-            subtitle: _('Render the background overlay tint on all tiled windows on the workspace, instead of only the active window'),
+        // <4> Only active window toggle (inverts active-hint-overlay-all-windows)
+        const overlayOnlyActive = new Adw.SwitchRow({
+            title: _('Only Active Window'),
+            subtitle: _('Tint only the focused window; disable to tint all tiled windows on the workspace'),
         });
-        auraOverlayGroup.add(overlayAll);
-        settings.bind('active-hint-overlay-all-windows', overlayAll as any, 'active', Gio.SettingsBindFlags.DEFAULT);
+        auraOverlayGroup.add(overlayOnlyActive);
 
+        // ── Wire up color row state ─────────────────────────────────────────
         const currentOverlayVal = settings.get_string('active-hint-overlay-color-rgba');
         const overlayIsCustom = currentOverlayVal !== 'auto';
-        useOverlayColor.active = overlayIsCustom;
+        useCustomColor.active = overlayIsCustom;
 
+        // Initialise button: show custom value if set, otherwise show accent color
         try {
             const initialOverlayColor = new Gdk.RGBA();
-            const colorStringToParse = overlayIsCustom ? currentOverlayVal : settings.get_string('hint-color-rgba');
+            // Fall back to hint-color-rgba which already resolves 'auto' → accent
+            const colorStringToParse = overlayIsCustom
+                ? currentOverlayVal
+                : settings.get_string('hint-color-rgba');
             if (initialOverlayColor.parse(colorStringToParse)) {
                 overlayColorButton.rgba = initialOverlayColor;
             }
@@ -297,19 +311,14 @@ export default class OTilingPreferences extends ExtensionPreferences {
             log.warn('Could not set initial overlay color: ' + e);
         }
 
-        const updateOverlaySensitivity = () => {
-            const hasOpacity = overlayOpacity.value > 0;
-            useOverlayColor.sensitive = hasOpacity;
-            overlayAll.sensitive = hasOpacity;
-            overlayColorRow.sensitive = hasOpacity && useOverlayColor.active;
+        // Color button is only actionable when custom mode is on
+        const syncColorButtonSensitivity = () => {
+            overlayColorButton.sensitive = useCustomColor.active;
         };
 
-        overlayOpacity.connect('notify::value', updateOverlaySensitivity);
-
-        useOverlayColor.connect('notify::active', () => {
-            const active = useOverlayColor.active;
-            updateOverlaySensitivity();
-            if (active) {
+        useCustomColor.connect('notify::active', () => {
+            syncColorButtonSensitivity();
+            if (useCustomColor.active) {
                 settings.set_string('active-hint-overlay-color-rgba', overlayColorButton.rgba.to_string());
             } else {
                 settings.set_string('active-hint-overlay-color-rgba', 'auto');
@@ -317,12 +326,41 @@ export default class OTilingPreferences extends ExtensionPreferences {
         });
 
         overlayColorButton.connect('notify::rgba', () => {
-            if (useOverlayColor.active) {
+            if (useCustomColor.active) {
                 settings.set_string('active-hint-overlay-color-rgba', overlayColorButton.rgba.to_string());
             }
         });
 
-        // Set initial sensitivity state
+        // ── Wire up only-active toggle ──────────────────────────────────────
+        // The schema key is "all-windows" (true = all), so we invert for the UI.
+        const currentAllWindows = settings.get_boolean('active-hint-overlay-all-windows');
+        overlayOnlyActive.active = !currentAllWindows;
+
+        overlayOnlyActive.connect('notify::active', () => {
+            settings.set_boolean('active-hint-overlay-all-windows', !overlayOnlyActive.active);
+        });
+
+        // Reflect external changes to the schema key back into the toggle
+        settings.connect('changed::active-hint-overlay-all-windows', () => {
+            const newVal = settings.get_boolean('active-hint-overlay-all-windows');
+            if (overlayOnlyActive.active === newVal) {
+                // Invert is wrong — fix it without re-triggering the toggle signal.
+                overlayOnlyActive.active = !newVal;
+            }
+        });
+
+        // ── Sensitivity gating ──────────────────────────────────────────────
+        const updateOverlaySensitivity = () => {
+            const isEnabled = overlayEnabled.active;
+            overlayOpacity.sensitive = isEnabled;
+            overlayColorRow.sensitive = isEnabled;
+            overlayOnlyActive.sensitive = isEnabled;
+            syncColorButtonSensitivity();
+        };
+
+        overlayEnabled.connect('notify::active', updateOverlaySensitivity);
+        // Set initial state
+        syncColorButtonSensitivity();
         updateOverlaySensitivity();
 
         // Set up sensitivity based on active-hint master switch
