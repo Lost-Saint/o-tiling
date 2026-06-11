@@ -783,6 +783,8 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     connect_window(win: Window.ShellWindow) {
         const size_event = () => {
+            if (Window.clutter_focus_is_shell_panel()) return;
+
             const old = this.size_requests.get(win.meta);
 
             if (old) {
@@ -1194,8 +1196,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         const stack = window.stack;
 
-        // Disconnect all signals on this window BEFORE destroying it
-        // to prevent use-after-destroy race conditions.
+
         this.window_signals.take_with(win, (signals) => {
             for (const signal of signals) {
                 try { window.meta.disconnect(signal); } catch (_) { }
@@ -1218,8 +1219,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         if (this.auto_tiler) this.auto_tiler.detach_window(this, win);
 
-        // If destroyed window belonged to a stack, ensure that the next window
-        // to be focused is also a window in the same stack
+        // If the destroyed window was in a stack, ensure the next focused window comes from that same stack.
         if (this.auto_tiler && stack !== null) {
             const stack_object = this.auto_tiler.forest.stacks.get(stack);
             const prev = this.prev_focused[1];
@@ -1503,8 +1503,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     /** Triggered when a grab operation has been ended */
     on_grab_end(meta: Meta.Window, op?: any, drop_cursor?: Rect.Rectangle) {
-        // Guard: if grab_op is already null and this is a non-overview drag,
-        // a previous on_grab_end call already handled this drop (double-fire).
+        // Guard: Skip if grab_op is null on a non-overview drag to prevent handling a double-fired drop.
         if (this.grab_op === null && op !== undefined) {
             return;
         }
@@ -2543,30 +2542,10 @@ export class Ext extends Ecs.System<ExtEvent> {
                 // Delay in case the focused window was not focused yet.
                 // Note: Fixes Intellij IDE windows.
                 this.register_fn(() => {
-                    // Skip if Clutter key-focus is on a Shell panel actor (panel hover).
-                    const stage = (global as any).stage;
-                    const clutter_focus = stage?.get_key_focus?.();
-
-                    if (clutter_focus && typeof clutter_focus.get_meta_window !== 'function') {
-                        let actor = clutter_focus;
-                        let depth = 0;
-
-                        while (actor && depth < 6) {
-                            const styleClass = actor.style_class || '';
-
-                            if (styleClass.includes('panel-button') ||
-                                styleClass.includes('panel-corner')) {
-                                log.debug(`focus-window handler: panel-actor early return (style_class=${styleClass})`);
-                                return; // Skip focus handling - panel hover
-                            }
-
-                            if (actor === Main.panel) return;
-                            if ((Main.panel as any)?._centerBox === actor) return;
-                            if ((Main.panel as any)?._leftBox === actor) return;
-                            if ((Main.panel as any)?._rightBox === actor) return;
-                            actor = actor.get_parent?.() || null;
-                            depth++;
-                        }
+                    // Skip if Clutter key-focus is on a shell panel/dock/indicator actor using the shared helper.
+                    if (Window.clutter_focus_is_shell_panel()) {
+                        log.debug(`focus-window handler: shell-panel/dock actor detected — skipping`);
+                        return;
                     }
 
                     const meta_window = (global as any).display.get_focus_window();

@@ -4,19 +4,6 @@ import GLib from 'gi://GLib';
 import Clutter from 'gi://Clutter';
 import * as log from '../utils/log.js';
 
-/**
- * PanelTransparencyManager
- *
- * Injects CSS to make the GNOME Shell panel transparent.
- * Works by loading a temporary stylesheet into the Shell theme context,
- * following the same pattern as WorkspaceSwitcherStyle and ThemeConsistencyManager.
- *
- * Supports:
- *  - Full transparency (opacity 0 background)
- *  - Semi-transparent blur-style background
- *  - Dynamic opacity level (0–100%)
- *  - Auto-restore on disable (EGO-compliant)
- */
 export class PanelTransparencyManager {
     private _file: Gio.File | null = null;
     private _opacity: number;            // 0 = fully transparent, 100 = opaque
@@ -44,12 +31,12 @@ export class PanelTransparencyManager {
                 log.info('PanelTransparencyManager: panel CSS injected');
             } else {
                 log.warn('PanelTransparencyManager: no theme to inject into');
-                try { this._file?.delete(null); } catch (_) {}
+                try { this._file?.delete(null); } catch (_) { }
                 this._file = null;
             }
         } catch (e) {
             log.error(`PanelTransparencyManager: failed to inject CSS: ${e}`);
-            try { this._file?.delete(null); } catch (_) {}
+            try { this._file?.delete(null); } catch (_) { }
             this._file = null;
         }
     }
