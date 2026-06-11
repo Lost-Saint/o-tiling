@@ -504,3 +504,89 @@ function presets_row(ext: Ext): any {
     return item;
 }
 
+
+// ── WorkspaceNumberIndicator ──────────────────────────────────────────────────
+
+/**
+ * A small panel widget that shows the current workspace number and total,
+ * e.g. "2 / 4". It replaces the visual role of GNOME's dot indicator.
+ *
+ * Leak-proof: every signal is stored and disconnected in destroy().
+ */
+export class WorkspaceNumberIndicator {
+    /** The St.Button added to the panel via addToStatusArea(). */
+    readonly button: St.Button;
+
+    private _label: St.Label;
+    private _wmSignalId: number | null = null;
+    private _wsChangedId: number | null = null;
+    private _wsAddedId: number | null = null;
+    private _wsRemovedId: number | null = null;
+
+    constructor() {
+        this._label = new St.Label({
+            text: '1 / 1',
+            y_align: Clutter.ActorAlign.CENTER,
+            style: 'font-weight: 600; font-size: 13px; padding: 0 6px;',
+        });
+
+        this.button = new St.Button({
+            child: this._label,
+            style_class: 'panel-button',
+            reactive: true,
+            can_focus: true,
+            track_hover: true,
+        });
+
+        // Left-click opens the overview (same as the default workspace indicator)
+        this.button.connect('clicked', () => {
+            if (Main.overview.visible) {
+                Main.overview.hide();
+            } else {
+                Main.overview.show();
+            }
+        });
+
+        this._attach();
+        this._update();
+    }
+
+    /** Connect workspace change signals so the label stays in sync. */
+    private _attach(): void {
+        const wm = (global as any).workspace_manager;
+
+        this._wsChangedId = wm.connect('active-workspace-changed', () => this._update());
+        this._wsAddedId   = wm.connect('workspace-added',          () => this._update());
+        this._wsRemovedId = wm.connect('workspace-removed',        () => this._update());
+    }
+
+    /** Refresh the label text. */
+    private _update(): void {
+        try {
+            const wm = (global as any).workspace_manager;
+            const current = wm.get_active_workspace_index() + 1; // 1-based
+            const total   = wm.get_n_workspaces();
+            this._label.text = `${current} / ${total}`;
+        } catch (_) { /* best-effort during shell transitions */ }
+    }
+
+    /** Disconnects all signals and destroys the actor. Must be called on disable. */
+    destroy(): void {
+        const wm = (global as any).workspace_manager;
+
+        if (this._wsChangedId !== null) {
+            try { wm.disconnect(this._wsChangedId); } catch (_) {}
+            this._wsChangedId = null;
+        }
+        if (this._wsAddedId !== null) {
+            try { wm.disconnect(this._wsAddedId); } catch (_) {}
+            this._wsAddedId = null;
+        }
+        if (this._wsRemovedId !== null) {
+            try { wm.disconnect(this._wsRemovedId); } catch (_) {}
+            this._wsRemovedId = null;
+        }
+
+        this.button.destroy();
+    }
+}

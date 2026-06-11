@@ -133,7 +133,12 @@ export default class OTilingPreferences extends ExtensionPreferences {
         overviewGroup.add(switcherStyleRow);
         settings.bind('workspace-switcher-style', switcherStyleRow as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
-
+        const wsNumberIndicatorRow = new Adw.SwitchRow({
+            title: _('Workspace Number Indicator'),
+            subtitle: _('Show workspace number (e.g. "2 / 4") in the panel instead of the dot indicator'),
+        });
+        overviewGroup.add(wsNumberIndicatorRow);
+        settings.bind('workspace-number-indicator', wsNumberIndicatorRow as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
 
         // Panel Transparency Group
