@@ -2,6 +2,44 @@ import GLib from 'gi://GLib';
 import * as log from '../../utils/log.js';
 import { getGtkCss } from './gtk.js';
 
+const O_TILING_START = '/* === O-TILING START === */';
+const O_TILING_END   = '/* === O-TILING END === */';
+
+/** Removes the O-Tiling block from a gtk.css file (leaves the rest intact). */
+function removeCssBlock(path: string): void {
+    let content = '';
+    try {
+        const [, bytes] = GLib.file_get_contents(path);
+        content = new TextDecoder().decode(bytes);
+    } catch (_) {
+        return; // File doesn't exist — nothing to remove.
+    }
+
+    const startIndex = content.indexOf(O_TILING_START);
+    const endIndex   = content.indexOf(O_TILING_END);
+
+    if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+        content = content.slice(0, startIndex) + content.slice(endIndex + O_TILING_END.length);
+        GLib.file_set_contents(path, content.trim() + '\n');
+    }
+}
+
+/**
+ * Restores the GTK theme to the stock default by removing the O-Tiling
+ * CSS block that was previously injected into gtk-4.0/gtk.css and
+ * gtk-3.0/gtk.css.  Safe to call even if no block is present.
+ */
+export function restoreGtkDefaults(): void {
+    try {
+        const home = GLib.get_home_dir();
+        removeCssBlock(`${home}/.config/gtk-4.0/gtk.css`);
+        removeCssBlock(`${home}/.config/gtk-3.0/gtk.css`);
+        log.info('ThemeConsistency: GTK css block removed — theme restored to default');
+    } catch (e) {
+        log.warn('Could not restore GTK default theme: ' + e);
+    }
+}
+
 /**
  * Applies theme consistency CSS files to GTK.
  * This function is safe to call from the preferences process
@@ -21,22 +59,20 @@ export function applyThemeConsistency(style: 'rounded' | 'sharp' = 'rounded') {
         GLib.mkdir_with_parents(gtk3Dir, 0o755);
 
         const updateCssFile = (path: string, newCss: string) => {
-            const S = '/* === O-TILING START === */';
-            const E = '/* === O-TILING END === */';
             let content = '';
             try {
                 const [, bytes] = GLib.file_get_contents(path);
                 content = new TextDecoder().decode(bytes);
             } catch (_) {}
 
-            const startIndex = content.indexOf(S);
-            const endIndex = content.indexOf(E);
+            const startIndex = content.indexOf(O_TILING_START);
+            const endIndex   = content.indexOf(O_TILING_END);
 
             if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
-                content = content.slice(0, startIndex) + content.slice(endIndex + E.length);
+                content = content.slice(0, startIndex) + content.slice(endIndex + O_TILING_END.length);
             }
 
-            content = content.trim() + '\n\n' + S + '\n' + newCss + '\n' + E + '\n';
+            content = content.trim() + '\n\n' + O_TILING_START + '\n' + newCss + '\n' + O_TILING_END + '\n';
             GLib.file_set_contents(path, content.trimStart());
         };
 

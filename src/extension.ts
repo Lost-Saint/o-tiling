@@ -36,7 +36,7 @@ import { WorkspaceSwitcherStyle, isGnome50 } from './ui/workspace_switcher_style
 import { ThemeConsistencyManager } from './ui/theme_consistency/index.js';
 import { PanelTransparencyManager } from './ui/panel_transparency.js';
 import { OverviewLayoutManager } from './ui/overview_layout.js';
-import { applyThemeConsistency } from './ui/theme_consistency/apply.js';
+import { applyThemeConsistency, restoreGtkDefaults } from './ui/theme_consistency/apply.js';
 
 
 
@@ -3120,6 +3120,8 @@ export class Ext extends Ecs.System<ExtEvent> {
         } else {
             this.theme_consistency_handler?.disable();
             this.theme_consistency_handler = null;
+            // Restore GTK gtk.css files to stock (remove the O-Tiling block).
+            restoreGtkDefaults();
         }
 
         if (save) {

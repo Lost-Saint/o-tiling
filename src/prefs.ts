@@ -6,7 +6,7 @@ import GLib from 'gi://GLib';
 import { ExtensionPreferences, gettext as _ } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 import * as log from './utils/log.js';
-import { applyThemeConsistency } from './ui/theme_consistency/apply.js';
+import { applyThemeConsistency, restoreGtkDefaults } from './ui/theme_consistency/apply.js';
 
 export default class OTilingPreferences extends ExtensionPreferences {
     async fillPreferencesWindow(window: Adw.PreferencesWindow) {
@@ -101,6 +101,8 @@ export default class OTilingPreferences extends ExtensionPreferences {
             // Apply GTK theme consistency immediately
             if (style !== 'default') {
                 applyThemeConsistency(style as 'rounded' | 'sharp');
+            } else {
+                restoreGtkDefaults();
             }
         });
 
