@@ -12,14 +12,13 @@ import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 import Meta from 'gi://Meta';
-import Pango from 'gi://Pango';
 
 const ACTIVE_TAB = 'o-tiling-tab o-tiling-tab-active';
 const INACTIVE_TAB = 'o-tiling-tab o-tiling-tab-inactive';
 const URGENT_TAB = 'o-tiling-tab o-tiling-tab-urgent';
 const INACTIVE_TAB_STYLE = '#9B8E8A';
 
-export var TAB_HEIGHT: number = 38;
+export const TAB_HEIGHT: number = 38;
 
 interface Tab {
     active: boolean;
@@ -269,7 +268,7 @@ export class Stack {
                 const button = this.buttons.get(component.button);
                 if (button) {
                     button.set_style_class_name(name);
-                    let tab_color = '';
+                    let tab_color: string;
                     if (component.active) {
                         const settings = this.ext.settings;
                         const color_value = settings.hint_color_rgba();
@@ -372,7 +371,7 @@ export class Stack {
         const settings = this.ext.settings;
         const button = this.buttons.get(tab.button);
         if (button) {
-            let tab_color = '';
+            let tab_color: string;
             if (Ecs.entity_eq(tab.entity, this.active)) {
                 const color_value = settings.hint_color_rgba();
                 tab_color = `background: ${color_value}; color: ${utils.is_dark(color_value) ? 'white' : 'black'}`;
@@ -443,7 +442,7 @@ export class Stack {
         for (const b of this.buttons.values()) {
             try {
                 b.destroy();
-            } catch (e) {}
+            } catch (_e) {}
         }
 
         if (this.widgets) {

@@ -199,12 +199,14 @@ export class World {
             this.free_slots.values().next().value :
             undefined;
 
+        let entity;
+
         if (slot !== undefined) {
             this.free_slots.delete(slot);
-            var entity = this.entities_[slot];
+            entity = this.entities_[slot];
             entity[1] += 1;
         } else {
-            var entity = entity_new(this.capacity, 0);
+            entity = entity_new(this.capacity, 0);
             this.entities_.push(entity);
             this.tags_.push(new Set());
         }

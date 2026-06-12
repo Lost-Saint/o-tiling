@@ -9,7 +9,6 @@ import * as Lib from '../utils/lib.js';
 import * as node from './node.js';
 import * as Rect from '../utils/rectangle.js';
 import { ShellWindow } from '../window/window.js';
-import Meta from 'gi://Meta';
 
 export function get_primary_monitor_index(): number {
     return (global as any).display.get_primary_monitor();

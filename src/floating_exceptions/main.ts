@@ -5,9 +5,6 @@ import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
 import Adw from 'gi://Adw?version=1';
 
-/** The directory that this script is executed from. */
-const SCRIPT_DIR = GLib.path_get_dirname(new Error().stack!.split(':')[0].slice(1));
-
 import * as config from './config.js';
 
 const WM_CLASS_ID = 'o-tiling-exceptions';
@@ -171,8 +168,8 @@ class App {
             transition_type: Gtk.StackTransitionType.SLIDE_LEFT_RIGHT,
         });
 
-        const main_page = stack.add_child(this.main_view.widget);
-        const exceptions_page = stack.add_child(this.exceptions_view.widget);
+        stack.add_child(this.main_view.widget);
+        stack.add_child(this.exceptions_view.widget);
 
         const back = new Gtk.Button({
             icon_name: 'go-previous-symbolic',
@@ -264,7 +261,7 @@ let UnixOutputStream: any;
 try {
     const GioUnix = (await import('gi://GioUnix?version=2.0')).default;
     UnixOutputStream = GioUnix.OutputStream;
-} catch (e) {
+} catch (_e) {
     UnixOutputStream = (Gio as any).UnixOutputStream;
 }
 

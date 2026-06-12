@@ -1605,7 +1605,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         }
     }
 
-    hide_all_borders(instant: boolean = false) {
+    hide_all_borders(_instant: boolean = false) {
         for (const window of this.windows.values()) {
             window.hide_border();
         }
@@ -1653,15 +1653,12 @@ export class Ext extends Ecs.System<ExtEvent> {
     /** Unmaximize any maximized windows on the same workspace. */
     unmaximize_workspace(win: Window.ShellWindow) {
         if (this.auto_tiler) {
-            let mon;
-            let work;
-
             if (!win.is_tilable(this)) {
                 return;
             }
 
-            mon = win.meta.get_monitor();
-            work = win.meta.get_workspace().index();
+            const mon = win.meta.get_monitor();
+            const work = win.meta.get_workspace().index();
 
             for (const [, compare] of this.windows.iter()) {
                 const is_same_space = compare.meta.get_monitor() === mon &&
@@ -1956,13 +1953,10 @@ export class Ext extends Ecs.System<ExtEvent> {
             // get the current window rect
             const rect = win.rect();
 
-            let h_ratio: number = 1;
-            let w_ratio: number = 1;
-
-            h_ratio = next_area.height / prev_area.height;
+            const h_ratio = next_area.height / prev_area.height;
             rect.height = rect.height * h_ratio;
 
-            w_ratio = next_area.width / prev_area.width;
+            const w_ratio = next_area.width / prev_area.width;
             rect.width = rect.width * w_ratio;
 
             if (next_area.x < prev_area.x) {
@@ -2465,7 +2459,6 @@ export class Ext extends Ecs.System<ExtEvent> {
         // tile it correctly next to an existing window.
         if (this.auto_tiler) {
             const ws_id = this.active_workspace();
-            const mon = this.active_monitor();
             const entity = this.workspace_active.get(ws_id);
             if (entity) {
                 const win = this.windows.get(entity);
@@ -2535,10 +2528,12 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     on_workspace_added(workspace: any) {
         this.ignore_display_update = true;
-        const index = typeof workspace === 'number' ? workspace : workspace.index();
+        const ws = typeof workspace === 'number' ?
+            (global as any).workspace_manager.get_workspace_by_index(workspace) :
+            workspace;
 
-        if (typeof workspace !== 'number') {
-            this.setup_workspace_signals(workspace);
+        if (ws && !this.workspace_signals.has(ws)) {
+            this.setup_workspace_signals(ws);
         }
     }
 
@@ -2692,8 +2687,12 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         for (const [ws] of this.workspace_signals) {
             if (!current_workspaces.includes(ws)) {
-                // Workspace has been removed; references are automatically cleaned up on disposal,
-                // we just need to delete our map reference to avoid leaks.
+                const signals = this.workspace_signals.get(ws) ?? [];
+                for (const signal of signals) {
+                    try {
+                        ws.disconnect(signal);
+                    } catch (_) {}
+                }
                 to_delete.push(ws);
             }
         }
@@ -2886,7 +2885,7 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.connect(
                 (global as any).display,
                 'notify::focus-window',
-                (display: any, window: any) => {
+                (_display: any, _window: any) => {
                     // Disallow refocus if a modal window is active
                     if (is_modal_blocking_focus()) {
                         return;
@@ -3994,7 +3993,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         try {
             id = meta.get_stable_sequence();
-        } catch (e) {
+        } catch (_e) {
             return null;
         }
 
@@ -4011,7 +4010,7 @@ export class Ext extends Ecs.System<ExtEvent> {
             try {
                 window_app = Window.get_window_tracker().get_window_app(meta);
                 name = window_app.get_name().replace(/&/g, '&amp;');
-            } catch (e) {
+            } catch (_e) {
                 return null;
             }
 
@@ -4311,7 +4310,6 @@ function overview_method_key(proto: any): string | null {
 let default_init_appswitcher: any;
 let default_getwindowlist_windowswitcher: any;
 let default_getcaption_windowpreview: any;
-let default_getcaption_workspace: any;
 let workspaceThumbnailPromise: Promise<any | null> | null = null;
 let patchedWorkspaceThumbnail: any = null;
 let patchedWorkspaceThumbnailKey: string | null = null;

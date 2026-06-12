@@ -2,7 +2,7 @@ import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 
 const CONF_DIR: string = GLib.get_user_config_dir() + '/o-tiling';
-export var CONF_FILE: string = CONF_DIR + '/config.json';
+export const CONF_FILE: string = CONF_DIR + '/config.json';
 
 export interface FloatRule {
     class?: string;
@@ -228,7 +228,7 @@ export class Config {
     static from_json(json: string): Config {
         try {
             return JSON.parse(json);
-        } catch (error) {
+        } catch (_error) {
             return new Config();
         }
     }

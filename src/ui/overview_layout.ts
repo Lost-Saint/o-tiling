@@ -28,8 +28,8 @@ export class OverviewLayoutManager {
             const proto = WorkspaceLayout.prototype as any;
             if (this._origUpdateWindowPositions) return;
             if (typeof proto._updateWindowPositions !== 'function') {
-                log.warn(
-                    'OverviewLayoutManager: WorkspaceLayout._updateWindowPositions not found',
+                log.debug(
+                    'OverviewLayoutManager: WorkspaceLayout._updateWindowPositions unavailable; overview layout patch skipped',
                 );
                 return;
             }

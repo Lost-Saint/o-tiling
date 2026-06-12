@@ -35,9 +35,6 @@ export function reset_window_tracker(): void {
 /** Contains SourceID of an active hint operation. Used to clean up on extension disable. */
 let ACTIVE_HINT_SHOW_ID: number | null = null;
 
-/** Duration (ms) for the active-hint border ease animation. */
-const BORDER_TRANSITION_DURATION = 200;
-
 const WM_TITLE_BLACKLIST: Array<string> = [
     'Firefox',
     'Nightly', // Firefox Nightly
@@ -48,12 +45,6 @@ enum RESTACK_STATE {
     RAISED,
     WORKSPACE_CHANGED,
     NORMAL,
-}
-
-enum RESTACK_SPEED {
-    RAISED = 50,
-    WORKSPACE_CHANGED = 100,
-    NORMAL = 150,
 }
 
 interface X11Info {
@@ -298,17 +289,9 @@ export class ShellWindow {
 
         if (this.ext.overlay) {
             const orig_overlay = 'rgba(53, 132, 228, 0.3)';
-            let final_color = overlay_base;
-
-            if (overlay_color_val === 'auto') {
-                if (utils.is_dark(color_value)) {
-                    final_color = orig_overlay;
-                } else {
-                    final_color = utils.set_alpha(color_value, 0.3);
-                }
-            } else {
-                final_color = utils.set_alpha(overlay_base, 0.3);
-            }
+            const final_color = overlay_color_val === 'auto' ?
+                utils.is_dark(color_value) ? orig_overlay : utils.set_alpha(color_value, 0.3) :
+                utils.set_alpha(overlay_base, 0.3);
 
             const radius_value = settings.active_hint_border_radius();
             this.ext.overlay.set_style(
@@ -320,8 +303,8 @@ export class ShellWindow {
     }
 
     async cmdline(): Promise<string | null> {
-        let pid = this.meta.get_pid(),
-            out = null;
+        const pid = this.meta.get_pid();
+        let out = null;
         if (-1 === pid) return out;
 
         const path = '/proc/' + pid + '/cmdline';
@@ -350,12 +333,12 @@ export class ShellWindow {
         }
     }
 
-    decoration_hide(ext: Ext): void {
+    decoration_hide(_ext: Ext): void {
         if (this.ignore_decoration()) return;
         this.was_hidden = true;
     }
 
-    decoration_show(ext: Ext): void {
+    decoration_show(_ext: Ext): void {
         if (!this.was_hidden) return;
     }
 

@@ -10,7 +10,7 @@ export class AddExceptionDialog {
     constructor(cancel: () => void, this_app: () => void, current_window: () => void, on_close: () => void) {
         this.dialog = new ModalDialog.ModalDialog({
             styleClass: 'modal-dialog o-tiling-modal',
-            destroyOnClose: false,
+            destroyOnClose: true,
             shellReactive: true,
             shouldFadeIn: true,
             shouldFadeOut: true,

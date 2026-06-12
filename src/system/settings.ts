@@ -22,7 +22,7 @@ type Settings = Gio.Settings;
 function settings_new_id(schema_id: string): Settings | null {
     try {
         return new Gio.Settings({ schema_id });
-    } catch (why) {
+    } catch (_why) {
         if (schema_id !== 'org.gnome.shell.extensions.user-theme') {
             // (global as any).log(`failed to get settings for ${schema_id}: ${why}`);
         }
@@ -142,7 +142,7 @@ export class ExtensionSettings {
         try {
             const accent = this.int.get_string('accent-color');
             return ACCENT_COLOR_MAP[accent] ?? DEFAULT_RGBA_COLOR;
-        } catch (e) {
+        } catch (_e) {
             return DEFAULT_RGBA_COLOR;
         }
     }

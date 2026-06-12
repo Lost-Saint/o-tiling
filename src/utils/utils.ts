@@ -72,7 +72,6 @@ export function exists(path: string): boolean {
  */
 export function is_dark(color: string): boolean {
     // 'rgba(251, 184, 108, 1)' - pop orange!
-    let color_val = '';
     let r = 255;
     let g = 255;
     let b = 255;
@@ -87,7 +86,7 @@ export function is_dark(color: string): boolean {
         g = parseInt(colors[1].trim());
         b = parseInt(colors[2].trim());
     } else if (color.charAt(0) === '#') {
-        color_val = color.substring(1, 7);
+        const color_val = color.substring(1, 7);
         r = parseInt(color_val.substring(0, 2), 16); // hexToR
         g = parseInt(color_val.substring(2, 4), 16); // hexToG
         b = parseInt(color_val.substring(4, 6), 16); // hexToB
@@ -348,7 +347,7 @@ export function get_current_time(): number {
  */
 export function activate_window(
     window: Meta.Window,
-    move_mouse: boolean = true,
+    _move_mouse: boolean = true,
 ) {
     if (!window || window.is_override_redirect()) return;
 

@@ -193,7 +193,7 @@ export class AutoTiler {
         const toplevel = this.forest.find_toplevel(id);
 
         if (toplevel) {
-            let onto = null;
+            let onto: ShellWindow | null;
 
             // Collect all tiled windows on this workspace
             const ws_windows = Array.from(ext.windows.values()).filter(

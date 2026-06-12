@@ -1,4 +1,4 @@
-export var Tiled = 0;
-export var Floating = 1;
-export var Blocked = 2;
-export var ForceTile = 3;
+export const Tiled = 0;
+export const Floating = 1;
+export const Blocked = 2;
+export const ForceTile = 3;
