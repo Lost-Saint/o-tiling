@@ -1,33 +1,33 @@
 {
-    "$schema": "https://json.schemastore.org/package",
-    "name": "o-tiling",
-    "version": "2.8.13",
-    "description": "Auto-tiling extension for GNOME Shell with 'Aura' focus border, customizable workspace overview styling, and theme consistency.",
-    "author": "oliwebd",
-    "type": "module",
-    "scripts": {
-        "build": "tsc && dprint fmt --no-gitignore 'dist/**/*.js' && node scripts/format-dist.mjs",
-        "format": "dprint fmt",
-        "format:check": "dprint check",
-        "lint": "eslint src",
-        "type-check": "tsc --noEmit",
-        "deploy": "pnpm run lint && pnpm run type-check && pnpm run build",
-        "debug": "bash scripts/debug.sh",
-        "shexli": "make shexli",
-        "log": "journalctl -f -o cat /usr/bin/gnome-shell | grep o-tiling",
-        "local-install": "make install"
-    },
-    "devDependencies": {
-        "@eslint/js": "^10.0.1",
-        "@girs/gjs": "4.0.4",
-        "@girs/gnome-shell": "^50.0.0",
-        "@types/node": "^25.9.1",
-        "dprint": "^0.54.0",
-        "eslint": "^10.4.1",
-        "ts-morph": "^28.0.0",
-        "ts-node": "^10.9.2",
-        "typescript": "^6.0.3",
-        "typescript-eslint": "^8.60.1"
-    },
-    "packageManager": "pnpm@11.5.2"
+  "$schema": "https://json.schemastore.org/package",
+  "name": "o-tiling",
+  "version": "2.8.17",
+  "description": "Auto-tiling extension for GNOME Shell with 'Aura' focus border, customizable workspace overview styling, and theme consistency.",
+  "author": "oliwebd",
+  "type": "module",
+  "scripts": {
+    "build": "tsc && dprint fmt --no-gitignore 'dist/**/*.js' && node scripts/format-dist.mjs",
+    "format": "dprint fmt",
+    "format:check": "dprint check",
+    "lint": "eslint src",
+    "type-check": "tsc --noEmit",
+    "deploy": "pnpm run lint && pnpm run type-check && pnpm run build",
+    "debug": "bash scripts/debug.sh",
+    "shexli": "make shexli",
+    "log": "journalctl -f -o cat /usr/bin/gnome-shell | grep o-tiling",
+    "local-install": "make install"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@girs/gjs": "4.0.4",
+    "@girs/gnome-shell": "^50.0.0",
+    "@types/node": "^25.9.1",
+    "dprint": "^0.54.0",
+    "eslint": "^10.4.1",
+    "ts-morph": "^28.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.60.1"
+  },
+  "packageManager": "pnpm@11.5.2"
 }
