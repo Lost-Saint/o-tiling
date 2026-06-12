@@ -32,8 +32,8 @@ export function reset_window_tracker(): void {
     window_tracker_ = null;
 }
 
-/** Active hint show timeouts. Used to clean up on extension disable. */
-const ACTIVE_HINT_SHOW_IDS = new Set<number>();
+/** Contains SourceID of an active hint operation. Used to clean up on extension disable. */
+let ACTIVE_HINT_SHOW_ID: number | null = null;
 
 /** Duration (ms) for the active-hint border ease animation. */
 const BORDER_TRANSITION_DURATION = 200;
@@ -64,12 +64,10 @@ interface X11Info {
 
 /** Cleanup global main loop sources in window module */
 export function cleanup_main_loop_sources() {
-    for (const id of ACTIVE_HINT_SHOW_IDS) {
-        try {
-            GLib.source_remove(id);
-        } catch (_) {}
+    if (ACTIVE_HINT_SHOW_ID !== null) {
+        GLib.source_remove(ACTIVE_HINT_SHOW_ID);
+        ACTIVE_HINT_SHOW_ID = null;
     }
-    ACTIVE_HINT_SHOW_IDS.clear();
 }
 
 /** True when Clutter key-focus is on a Shell panel actor rather than a real window. */
@@ -143,13 +141,8 @@ export class ShellWindow {
     });
 
     private _restack_id: number | null = null;
-    private _update_id: number | null = null;
-    private _active_hint_show_id: number | null = null;
 
     prev_rect: null | Rectangle = null;
-
-    /** True after the border has been placed at least once (prevents animating from origin). */
-    private _border_positioned: boolean = false;
 
     window_app: any;
 
@@ -450,9 +443,7 @@ export class ShellWindow {
             return;
         }
 
-        if (!this.meta.appears_focused) {
-            this.hide_border();
-        }
+        this.hide_border();
 
         const max_width = ext.settings.max_window_width();
         if (max_width > 0 && rect.width > max_width) {
@@ -543,64 +534,38 @@ export class ShellWindow {
     show_border() {
         if (!this.border) return;
 
-        log.debug(
-            `show_border called: ${this.meta.get_wm_class()} appears_focused=${this.meta.appears_focused}`,
-        );
-        this.queue_update();
+        this.restack();
+        this.update_border_style();
+
         if (this.ext.settings.active_hint()) {
             const border = this.border;
 
-            const permitted = () => {
-                const actor = this.meta.get_compositor_private() as any;
-                const overlay_all = this.ext.settings.active_hint_overlay_all_windows();
+            const permitted = () =>
+                this.actor_exists() &&
+                this.ext.focus_window() == this &&
+                !this.meta.is_fullscreen() &&
+                (!this.is_single_max_screen() || this.is_snap_edge()) &&
+                !this.meta.minimized;
 
-                return (
-                    actor !== null &&
-                    actor.mapped &&
-                    this.same_workspace() &&
-                    (this.meta.appears_focused ||
-                        this.ext.focus_window() == this ||
-                        (this.ext.prev_focused[1] !== null &&
-                            this.ext.prev_focused[1] === this.entity) ||
-                        overlay_all) &&
-                    !this.meta.is_fullscreen() &&
-                    (!this.is_single_max_screen() || this.is_snap_edge()) &&
-                    !this.meta.minimized &&
-                    !(Main as any).sessionMode.isLocked
-                );
-            };
-
-            // Cancel previous retry timeout before starting a new one
-            if (this._active_hint_show_id !== null) {
-                try {
-                    GLib.source_remove(this._active_hint_show_id);
-                    ACTIVE_HINT_SHOW_IDS.delete(this._active_hint_show_id);
-                } catch (_) {}
-                this._active_hint_show_id = null;
-            }
-
-            if (permitted()) {
-                log.debug(`show_border: SHOWING for ${this.meta.get_wm_class()}`);
-                border.opacity = 255;
+            if (permitted() && this.meta.appears_focused) {
                 border.show();
-                // Ensure that the border is shown (workaround for certain windows)
-                let applications = 0;
-                const id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
-                    if (!permitted() || applications >= 5) {
-                        if (this._active_hint_show_id === id) {
-                            this._active_hint_show_id = null;
-                        }
-                        ACTIVE_HINT_SHOW_IDS.delete(id);
-                        return GLib.SOURCE_REMOVE;
-                    }
 
-                    applications += 1;
-                    border.opacity = 255;
-                    border.show();
-                    return GLib.SOURCE_CONTINUE;
-                });
-                this._active_hint_show_id = id;
-                ACTIVE_HINT_SHOW_IDS.add(id);
+                if (ACTIVE_HINT_SHOW_ID !== null) {
+                    GLib.source_remove(ACTIVE_HINT_SHOW_ID);
+                }
+                ACTIVE_HINT_SHOW_ID = GLib.timeout_add(
+                    GLib.PRIORITY_DEFAULT,
+                    600,
+                    () => {
+                        if (!permitted()) {
+                            ACTIVE_HINT_SHOW_ID = null;
+                            return GLib.SOURCE_REMOVE;
+                        }
+
+                        border.show();
+                        return GLib.SOURCE_CONTINUE;
+                    },
+                );
             }
         }
     }
@@ -622,21 +587,6 @@ export class ShellWindow {
             this.meta.get_monitor() ===
                 ((global as any).backend.get_current_logical_monitor()?.get_number() ?? 0)
         );
-    }
-
-    /** Queues a layout and style update to run before the next redraw */
-    queue_update() {
-        if (this._update_id !== null) return;
-
-        this._update_id = utils.later_add(Meta.LaterType.BEFORE_REDRAW, () => {
-            this._update_id = null;
-            if (this.actor_exists()) {
-                this.update_border_style();
-                this.update_border_layout();
-                this.restack(RESTACK_STATE.NORMAL, true);
-            }
-            return GLib.SOURCE_REMOVE;
-        });
     }
 
     /**
@@ -722,13 +672,9 @@ export class ShellWindow {
         }
     }
 
-    hide_border(instant: boolean = false) {
-        log.debug(`hide_border: ${this.meta.get_wm_class()} instant=${instant}`);
+    hide_border() {
         const b = this.border;
-        if (b) {
-            b.opacity = 0;
-            b.hide();
-        }
+        if (b) b.hide();
     }
 
     update_border_layout() {
@@ -782,7 +728,6 @@ export class ShellWindow {
 
                 border.set_position(x, y);
                 border.set_size(width, height);
-                this._border_positioned = true;
             }
         }
     }
@@ -849,8 +794,8 @@ export class ShellWindow {
     }
 
     private window_changed() {
-        log.debug(`window_changed (size/pos signal): ${this.meta.get_wm_class()}`);
-        this.queue_update();
+        this.update_border_layout();
+
         this.ext.show_border_on_focused();
     }
 
@@ -884,17 +829,7 @@ export class ShellWindow {
             utils.later_remove(this._restack_id);
             this._restack_id = null;
         }
-        if (this._update_id !== null) {
-            utils.later_remove(this._update_id);
-            this._update_id = null;
-        }
-        if (this._active_hint_show_id !== null) {
-            try {
-                GLib.source_remove(this._active_hint_show_id);
-                ACTIVE_HINT_SHOW_IDS.delete(this._active_hint_show_id);
-            } catch (_) {}
-            this._active_hint_show_id = null;
-        }
+
         if (this.border) {
             this.border.destroy();
             this.border = null;
