@@ -2942,37 +2942,12 @@ export class Ext extends Ecs.System<ExtEvent> {
                     // Delay in case the focused window was not focused yet.
                     // Note: Fixes Intellij IDE windows.
                     this.register_fn(() => {
-                        // Skip if Clutter key-focus is on a Shell panel actor (panel hover).
-                        const stage = (global as any).stage;
-                        const clutter_focus = stage?.get_key_focus?.();
-
-                        if (
-                            clutter_focus &&
-                            typeof clutter_focus.get_meta_window !== 'function'
-                        ) {
-                            let actor = clutter_focus;
-                            let depth = 0;
-
-                            while (actor && depth < 6) {
-                                const styleClass = actor.style_class || '';
-
-                                if (
-                                    styleClass.includes('panel-button') ||
-                                    styleClass.includes('panel-corner')
-                                ) {
-                                    log.debug(
-                                        `focus-window handler: panel-actor early return (style_class=${styleClass})`,
-                                    );
-                                    return; // Skip focus handling - panel hover
-                                }
-
-                                if (actor === Main.panel) return;
-                                if ((Main.panel as any)?._centerBox === actor) return;
-                                if ((Main.panel as any)?._leftBox === actor) return;
-                                if ((Main.panel as any)?._rightBox === actor) return;
-                                actor = actor.get_parent?.() || null;
-                                depth++;
-                            }
+                        // Skip if Clutter key-focus is on a shell panel/dock/indicator actor using the shared helper.
+                        if (Window.clutter_focus_is_shell_panel()) {
+                            log.debug(
+                                `focus-window handler: shell-panel/dock actor detected — skipping`,
+                            );
+                            return;
                         }
 
                         const meta_window = (global as any).display.get_focus_window();

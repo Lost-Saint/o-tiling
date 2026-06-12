@@ -29,7 +29,7 @@ export const DEFAULT_FLOAT_RULES: Array<FloatRule> = [
     { class: 'Conky' },
     { title: 'Discord Updater' },
     { class: 'Enpass', title: 'Enpass Assistant' },
-    { class: 'o-tiling-exceptions' },
+    { class: 'com.o_tiling.floating_exceptions' },
     { class: 'Gjs', title: 'Settings' },
     { class: 'Gnome-initial-setup' },
     { class: 'Gnome-terminal', title: 'Preferences – General' },
@@ -157,7 +157,11 @@ export class Config {
 
     rule_disabled(rule: FloatRule): boolean {
         for (const value of this.float.values()) {
-            if (value.disabled && rule.class === value.class && value.title === rule.title) {
+            if (
+                value.disabled &&
+                rule.class === value.class &&
+                value.title === rule.title
+            ) {
                 return true;
             }
         }
@@ -169,7 +173,11 @@ export class Config {
         return JSON.stringify(this, set_to_json, 2);
     }
 
-    toggle_system_exception(wmclass: string | undefined, wmtitle: string | undefined, disabled: boolean) {
+    toggle_system_exception(
+        wmclass: string | undefined,
+        wmtitle: string | undefined,
+        disabled: boolean,
+    ) {
         if (disabled) {
             for (const value of DEFAULT_FLOAT_RULES) {
                 if (value.class === wmclass && value.title === wmtitle) {
@@ -196,7 +204,10 @@ export class Config {
         this.sync_to_disk();
     }
 
-    remove_user_exception(wmclass: string | undefined, wmtitle: string | undefined) {
+    remove_user_exception(
+        wmclass: string | undefined,
+        wmtitle: string | undefined,
+    ) {
         let index = 0;
         const found = [];
         for (const value of this.float.values()) {
@@ -240,9 +251,14 @@ export class Config {
                 }
 
                 const example = new Config();
-                example.float.push({ class: 'o-tiling-example', title: 'o-tiling-example' });
+                example.float.push({
+                    class: 'o-tiling-example',
+                    title: 'o-tiling-example',
+                });
 
-                conf.create(Gio.FileCreateFlags.NONE, null).write_all(JSON.stringify(example, undefined, 2), null);
+                conf
+                    .create(Gio.FileCreateFlags.NONE, null)
+                    .write_all(JSON.stringify(example, undefined, 2), null);
             }
 
             return { tag: 0, value: conf };
@@ -269,7 +285,13 @@ export class Config {
             const file = Config.gio_file();
             if (file.tag === 1) return file;
 
-            file.value.replace_contents(data, null, false, Gio.FileCreateFlags.NONE, null);
+            file.value.replace_contents(
+                data,
+                null,
+                false,
+                Gio.FileCreateFlags.NONE,
+                null,
+            );
 
             return { tag: 0, value: file.value };
         } catch (why) {

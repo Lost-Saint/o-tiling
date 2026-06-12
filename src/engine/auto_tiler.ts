@@ -29,11 +29,7 @@ export class AutoTiler {
         this.attached = attached;
     }
 
-    /** Swap window associations in the auto-tiler
-     *
-     * Call this when a window has swapped positions with another, so that we
-     * may update the associations in the auto-tiler world.
-     */
+    /** Swap window associations in the auto-tiler when windows swap positions. */
     attach_swap(ext: Ext, a: Entity, b: Entity) {
         const a_ent = this.attached.get(a),
             b_ent = this.attached.get(b);
@@ -119,7 +115,12 @@ export class AutoTiler {
     }
 
     /** Attaches `win` to an optionally-given monitor */
-    attach_to_monitor(ext: Ext, win: ShellWindow, workspace_id: [number, number], smart_gaps: boolean) {
+    attach_to_monitor(
+        ext: Ext,
+        win: ShellWindow,
+        workspace_id: [number, number],
+        smart_gaps: boolean,
+    ) {
         const rect = ext.monitor_work_area(workspace_id[0]);
 
         if (!smart_gaps || ext.settings.active_hint()) {
@@ -129,7 +130,11 @@ export class AutoTiler {
             rect.height -= ext.gap_outer + ext.gap_top;
         }
 
-        const [entity, fork] = this.forest.create_toplevel(win.entity, rect.clone(), workspace_id);
+        const [entity, fork] = this.forest.create_toplevel(
+            win.entity,
+            rect.clone(),
+            workspace_id,
+        );
         this.forest.on_attach(entity, win.entity);
         fork.smart_gapped = smart_gaps && !ext.settings.active_hint();
         win.smart_gapped = smart_gaps && !ext.settings.active_hint();
@@ -145,7 +150,13 @@ export class AutoTiler {
         move_by: MoveBy,
         stack_from_left: boolean = true,
     ): boolean {
-        const attached = this.forest.attach_window(ext, attachee.entity, attacher.entity, move_by, stack_from_left);
+        const attached = this.forest.attach_window(
+            ext,
+            attachee.entity,
+            attacher.entity,
+            move_by,
+            stack_from_left,
+        );
 
         if (attached) {
             const [, fork] = attached;
@@ -186,17 +197,22 @@ export class AutoTiler {
 
             // Collect all tiled windows on this workspace
             const ws_windows = Array.from(ext.windows.values()).filter(
-                w => w.known_workspace === id[1] && this.attached.contains(w.entity),
+                (w) => w.known_workspace === id[1] && this.attached.contains(w.entity),
             );
 
             if (ws_windows.length > 0) {
                 // Check if all windows are of identical size
                 const first_size = ws_windows[0].rect().width * ws_windows[0].rect().height;
-                const uniform_sizes = ws_windows.every(w => (w.rect().width * w.rect().height) === first_size);
+                const uniform_sizes = ws_windows.every(
+                    (w) => w.rect().width * w.rect().height === first_size,
+                );
 
                 const focus = ext.focus_window();
                 if (
-                    uniform_sizes && focus && focus.known_workspace === id[1] && focus.is_tilable(ext) &&
+                    uniform_sizes &&
+                    focus &&
+                    focus.known_workspace === id[1] &&
+                    focus.is_tilable(ext) &&
                     this.attached.contains(focus.entity)
                 ) {
                     onto = focus;
@@ -277,7 +293,10 @@ export class AutoTiler {
             if (reflow_fork) {
                 const fork = reflow_fork[1];
                 if (
-                    fork.is_toplevel && ext.settings.smart_gaps() && fork.right === null && !ext.settings.active_hint()
+                    fork.is_toplevel &&
+                    ext.settings.smart_gaps() &&
+                    fork.right === null &&
+                    !ext.settings.active_hint()
                 ) {
                     const rect = ext.monitor_work_area(fork.monitor);
                     fork.set_area(rect);
@@ -300,7 +319,11 @@ export class AutoTiler {
             const fork = this.forest.forks.get(fork_entity);
 
             if (fork) {
-                if (fork.left.inner.kind === 2 && fork.right && fork.right.inner.kind === 2) {
+                if (
+                    fork.left.inner.kind === 2 &&
+                    fork.right &&
+                    fork.right.inner.kind === 2
+                ) {
                     if (fork.left.is_window(win)) {
                         const sibling = ext.windows.get(fork.right.inner.entity);
                         if (sibling && sibling.rect().contains(cursor)) {
@@ -359,7 +382,11 @@ export class AutoTiler {
         return fork;
     }
 
-    largest_on_workspace(ext: Ext, monitor: number, workspace: number): null | ShellWindow {
+    largest_on_workspace(
+        ext: Ext,
+        monitor: number,
+        workspace: number,
+    ): null | ShellWindow {
         const workspace_id: [number, number] = [monitor, workspace];
         const toplevel = this.forest.find_toplevel(workspace_id);
         if (toplevel) {
@@ -369,14 +396,13 @@ export class AutoTiler {
         return null;
     }
 
-    /** Performed when a window that has been dropped is destined to be tiled
-     *
-     * ## Implementation Notes
-     *
-     * - If the window is dropped onto a window, tile onto it
-     * - If no window is present, tile onto the monitor
-     */
-    on_drop(ext: Ext, win: ShellWindow, via_overview: boolean = false, drop_cursor?: Rectangle) {
+    /** Performed when a window is dropped to be tiled (tiles onto a window if present, else onto the monitor). */
+    on_drop(
+        ext: Ext,
+        win: ShellWindow,
+        via_overview: boolean = false,
+        drop_cursor?: Rectangle,
+    ) {
         const [live_cursor, monitor] = ext.cursor_status();
         const cursor = drop_cursor ?? live_cursor;
         const workspace = ext.active_workspace();
@@ -390,7 +416,12 @@ export class AutoTiler {
             if (attach_to) {
                 this.attach_to_window(ext, attach_to, win, { auto: 0 });
             } else {
-                this.attach_to_monitor(ext, win, [monitor, workspace], ext.settings.smart_gaps());
+                this.attach_to_monitor(
+                    ext,
+                    win,
+                    [monitor, workspace],
+                    ext.settings.smart_gaps(),
+                );
             }
         };
 
@@ -416,7 +447,9 @@ export class AutoTiler {
         // If it appears to not be attaching to anything, assume we are attaching to its sibling
         if (attach_to === null) {
             if (fork.left.inner.kind === 2 && fork.right?.inner.kind === 2) {
-                const attaching = fork.left.is_window(win.entity) ? fork.right.inner.entity : fork.left.inner.entity;
+                const attaching = fork.left.is_window(win.entity) ?
+                    fork.right.inner.entity :
+                    fork.left.inner.entity;
 
                 attach_to = ext.windows.get(attaching);
             } else if (!windowless) {
@@ -427,7 +460,12 @@ export class AutoTiler {
 
         if (windowless) {
             this.detach_window(ext, win.entity);
-            this.attach_to_monitor(ext, win, [monitor, workspace], ext.settings.smart_gaps());
+            this.attach_to_monitor(
+                ext,
+                win,
+                [monitor, workspace],
+                ext.settings.smart_gaps(),
+            );
         } else if (attach_to) {
             this.place_or_stack(ext, win, attach_to, cursor);
         } else {
@@ -436,16 +474,32 @@ export class AutoTiler {
         }
     }
 
-    place_or_stack(ext: Ext, win: ShellWindow, attach_to: ShellWindow, cursor: Rectangle): boolean {
+    place_or_stack(
+        ext: Ext,
+        win: ShellWindow,
+        attach_to: ShellWindow,
+        cursor: Rectangle,
+    ): boolean {
         const fork = this.get_parent_fork(attach_to.entity);
         if (!fork) return true;
 
+        if (
+            fork.is_toplevel &&
+            fork.left_pinned &&
+            fork.left.is_window(attach_to.entity)
+        ) {
+            if (this.attached.contains(win.entity)) {
+                this.attach_swap(ext, win.entity, attach_to.entity);
+                return true;
+            }
+        }
+
         const is_sibling = this.windows_are_siblings(win.entity, attach_to.entity);
 
-        const attach_area: Rectangular =
-            (win.stack === null && attach_to.stack === null && is_sibling) || (win.stack === null && is_sibling) ?
-                fork.area :
-                attach_to.meta.get_frame_rect();
+        const attach_area: Rectangular = (win.stack === null && attach_to.stack === null && is_sibling) ||
+                (win.stack === null && is_sibling) ?
+            fork.area :
+            attach_to.meta.get_frame_rect();
 
         let placement: null | MoveBy = cursor_placement(ext, attach_area, cursor);
         const stack = ext.auto_tiler?.find_stack(attach_to.entity);
@@ -456,7 +510,8 @@ export class AutoTiler {
         const swap = (o: lib.Orientation, d: tiling.Direction) => {
             fork.set_orientation(o);
             const is_left = fork.left.is_window(win.entity);
-            const swap = (is_left && (d == Right || d == Down)) || (!is_left && (d == Left || d == Up));
+            const swap = (is_left && (d == Right || d == Down)) ||
+                (!is_left && (d == Left || d == Up));
 
             if (swap) {
                 fork.swap_branches();
@@ -618,7 +673,9 @@ export class AutoTiler {
 
         if (toggled && fork.left.is_window(win.entity)) {
             // Assign left window as stack.
-            win.stack = this.forest.stacks.insert(new Stack(ext, win.entity, fork.workspace, fork.monitor));
+            win.stack = this.forest.stacks.insert(
+                new Stack(ext, win.entity, fork.workspace, fork.monitor),
+            );
             fork.left = node.Node.stacked(win.entity, win.stack);
             fork.measure(this.forest, ext, fork.area, this.forest.on_record());
         } else if (fork.left.is_in_stack(win.entity)) {
@@ -632,7 +689,9 @@ export class AutoTiler {
             }
         } else if (toggled && fork.right?.is_window(win.entity)) {
             // Assign right window as stack
-            win.stack = this.forest.stacks.insert(new Stack(ext, win.entity, fork.workspace, fork.monitor));
+            win.stack = this.forest.stacks.insert(
+                new Stack(ext, win.entity, fork.workspace, fork.monitor),
+            );
             fork.right = node.Node.stacked(win.entity, win.stack);
             fork.measure(this.forest, ext, fork.area, this.forest.on_record());
         } else if (fork.right?.is_in_stack(win.entity)) {
@@ -644,13 +703,17 @@ export class AutoTiler {
     }
 
     stack_left(ext: Ext, fork: Fork, window: ShellWindow) {
-        window.stack = this.forest.stacks.insert(new Stack(ext, window.entity, fork.workspace, fork.monitor));
+        window.stack = this.forest.stacks.insert(
+            new Stack(ext, window.entity, fork.workspace, fork.monitor),
+        );
         fork.left = node.Node.stacked(window.entity, window.stack);
         fork.measure(this.forest, ext, fork.area, this.forest.on_record());
     }
 
     stack_right(ext: Ext, fork: Fork, window: ShellWindow) {
-        window.stack = this.forest.stacks.insert(new Stack(ext, window.entity, fork.workspace, fork.monitor));
+        window.stack = this.forest.stacks.insert(
+            new Stack(ext, window.entity, fork.workspace, fork.monitor),
+        );
         fork.right = node.Node.stacked(window.entity, window.stack);
         fork.measure(this.forest, ext, fork.area, this.forest.on_record());
     }
@@ -697,7 +760,11 @@ export class AutoTiler {
         const a_parent = this.attached.get(a);
         const b_parent = this.attached.get(b);
 
-        if (a_parent !== null && null !== b_parent && ecs.entity_eq(a_parent, b_parent)) {
+        if (
+            a_parent !== null &&
+            null !== b_parent &&
+            ecs.entity_eq(a_parent, b_parent)
+        ) {
             return a_parent;
         }
 
@@ -733,12 +800,16 @@ export class AutoTiler {
             return Err('focused window is not attached');
         }
 
-        return onto.meta.get_monitor() == win.meta.get_monitor() && onto.workspace_id() == win.workspace_id() ?
+        return onto.meta.get_monitor() == win.meta.get_monitor() &&
+                onto.workspace_id() == win.workspace_id() ?
             Ok(onto) :
             Err('window is not on the same monitor or workspace');
     }
 
-    private toggle_orientation_(ext: Ext, focused: ShellWindow): Result<void, string> {
+    private toggle_orientation_(
+        ext: Ext,
+        focused: ShellWindow,
+    ): Result<void, string> {
         if (focused.is_maximized()) {
             return Err('cannot toggle maximized window');
         }
@@ -759,7 +830,9 @@ export class AutoTiler {
         this.forest.measure(ext, fork, fork.area);
 
         for (const child of this.forest.iter(fork_entity, NodeKind.FORK)) {
-            const child_fork = this.forest.forks.get((child.inner as node.NodeFork).entity);
+            const child_fork = this.forest.forks.get(
+                (child.inner as node.NodeFork).entity,
+            );
             if (child_fork) {
                 child_fork.rebalance_orientation();
                 this.forest.measure(ext, child_fork, child_fork.area);
@@ -782,18 +855,27 @@ export class AutoTiler {
  *
  * A null indicates that the window should be stacked
  */
-export function cursor_placement(ext: Ext, area: Rectangular, cursor: Rectangular): null | MoveByCursor {
+export function cursor_placement(
+    ext: Ext,
+    area: Rectangular,
+    cursor: Rectangular,
+): null | MoveByCursor {
     const { LEFT, RIGHT, TOP, BOTTOM } = geom.Side;
     const { HORIZONTAL, VERTICAL } = lib.Orientation;
 
     // Detect if cursor is in the center replace/swap zone (middle 40% area)
-    const center_pct = 0.40;
+    const center_pct = 0.4;
     const cw = area.width * center_pct;
     const ch = area.height * center_pct;
     const cx = area.x + (area.width - cw) / 2;
     const cy = area.y + (area.height - ch) / 2;
 
-    if (cursor.x >= cx && cursor.x <= cx + cw && cursor.y >= cy && cursor.y <= cy + ch) {
+    if (
+        cursor.x >= cx &&
+        cursor.x <= cx + cw &&
+        cursor.y >= cy &&
+        cursor.y <= cy + ch
+    ) {
         return { orientation: HORIZONTAL, swap: false, replace: true };
     }
 
