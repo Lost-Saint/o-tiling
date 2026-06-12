@@ -57,6 +57,39 @@ const { cursor_rect, is_keyboard_op, is_resize_op, is_move_op } = Lib;
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 const { layoutManager, overview, sessionMode } = Main;
 
+function best_effort(context: string, action: () => void): void {
+    try {
+        action();
+    } catch (error) {
+        log.debug_error(context, error);
+    }
+}
+
+function best_effort_disconnect(object: { disconnect(id: number): void; }, id: number, context: string): void {
+    best_effort(context, () => object.disconnect(id));
+}
+
+function best_effort_source_remove(id: number, context: string): void {
+    best_effort(context, () => {
+        GLib.source_remove(id);
+    });
+}
+
+function cleanup_floating_exception_ipc(ipc: utils.AsyncIPC): void {
+    best_effort('failed to cancel floating exceptions dialog IPC', () => {
+        ipc.cancellable.cancel();
+    });
+    best_effort('failed to close floating exceptions dialog stdin', () => {
+        ipc.stdin.close(null);
+    });
+    best_effort('failed to close floating exceptions dialog stdout', () => {
+        ipc.stdout.close(null);
+    });
+    best_effort('failed to stop floating exceptions dialog process', () => {
+        ipc.child.force_exit();
+    });
+}
+
 function is_modal_blocking_focus(): boolean {
     try {
         // Public API: check if any modal dialog is currently pushed
@@ -65,14 +98,18 @@ function is_modal_blocking_focus(): boolean {
             const top_actor = stack[0]?.actor;
             return top_actor?.style_class !== 'switcher-popup';
         }
-    } catch (_) {}
+    } catch (error) {
+        log.debug_error('failed to inspect modal actor focus stack', error);
+    }
     // Fallback: use pushModal count if available (GNOME 50 compatible)
     try {
         const count = (Main as any)._modalCount ??
             (Main as any).modalCount ??
             (Main as any).layoutManager?._modalDialogCount;
         if (typeof count === 'number') return count > 0;
-    } catch (_) {}
+    } catch (error) {
+        log.debug_error('failed to inspect modal count', error);
+    }
     return false;
 }
 
@@ -321,8 +358,8 @@ export class Ext extends Ecs.System<ExtEvent> {
                         );
                     }
                 }
-            } catch (e) {
-                log.error(`Failed to handle focus-change-on-pointer-rest: ${e}`);
+            } catch (error) {
+                log.warn_error('Failed to handle focus-change-on-pointer-rest', error);
             }
         }
         const log_signal_id = log.init_log_level(this.settings.ext);
@@ -341,7 +378,9 @@ export class Ext extends Ecs.System<ExtEvent> {
         this.load_settings();
         load_theme();
 
-        this.conf.reload().catch((e: any) => log.error(e));
+        this.conf.reload().catch((error: unknown) => {
+            log.warn_error('Failed to reload configuration', error);
+        });
 
         if (this.settings.int) {
             const id1 = this.settings.int.connect('changed::gtk-theme', () => {
@@ -530,8 +569,8 @@ export class Ext extends Ecs.System<ExtEvent> {
                     this._original_focus_change_on_pointer_rest,
                 );
                 log.info('Restored Mutter focus-change-on-pointer-rest setting');
-            } catch (e) {
-                log.error(`Failed to restore focus-change-on-pointer-rest: ${e}`);
+            } catch (error) {
+                log.warn_error('Failed to restore focus-change-on-pointer-rest', error);
             }
             this._original_focus_change_on_pointer_rest = null;
         }
@@ -552,18 +591,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         }
 
         if (this._floating_exception_ipc) {
-            try {
-                this._floating_exception_ipc.cancellable.cancel();
-            } catch (_) {}
-            try {
-                this._floating_exception_ipc.stdin.close(null);
-            } catch (_) {}
-            try {
-                this._floating_exception_ipc.stdout.close(null);
-            } catch (_) {}
-            try {
-                this._floating_exception_ipc.child.force_exit();
-            } catch (_) {}
+            cleanup_floating_exception_ipc(this._floating_exception_ipc);
             this._floating_exception_ipc = null;
         }
 
@@ -583,9 +611,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         // Disconnect settings signals (EGO: all signals must be disconnected in disable)
         for (const [obj, id] of this._settings_signal_ids) {
-            try {
-                obj.disconnect(id);
-            } catch (_) {}
+            best_effort_disconnect(obj, id, 'failed to disconnect settings signal');
         }
         this._settings_signal_ids = [];
 
@@ -627,17 +653,13 @@ export class Ext extends Ecs.System<ExtEvent> {
                 const win_sigs = this.window_signals.get(entity);
                 if (win_sigs) {
                     for (const sig of win_sigs) {
-                        try {
-                            win.meta.disconnect(sig);
-                        } catch (_) {}
+                        best_effort_disconnect(win.meta, sig, 'failed to disconnect window signal');
                     }
                 }
                 const size_sigs = this.size_signals.get(entity);
                 if (size_sigs) {
                     for (const sig of size_sigs) {
-                        try {
-                            win.meta.disconnect(sig);
-                        } catch (_) {}
+                        best_effort_disconnect(win.meta, sig, 'failed to disconnect size signal');
                     }
                 }
 
@@ -668,25 +690,19 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         // Clean up schedule_idle timeout sources
         for (const src of this._schedule_idle_sources) {
-            try {
-                GLib.source_remove(src);
-            } catch (_) {}
+            best_effort_source_remove(src, 'failed to remove scheduled idle source');
         }
         this._schedule_idle_sources.clear();
 
         // Clean up pending size request timers
         for (const [, src] of this.size_requests) {
-            try {
-                GLib.source_remove(src);
-            } catch (_) {}
+            best_effort_source_remove(src, 'failed to remove pending size request source');
         }
         this.size_requests.clear();
 
         for (const [actor, signals] of this._actor_signals) {
             for (const signal of signals) {
-                try {
-                    actor.disconnect(signal);
-                } catch (_) {}
+                best_effort_disconnect(actor, signal, 'failed to disconnect actor signal');
             }
         }
         this._actor_signals.clear();
@@ -932,9 +948,7 @@ export class Ext extends Ecs.System<ExtEvent> {
             if (idx !== -1) entry.splice(idx, 1);
             if (entry.length === 0) this._actor_signals.delete(actor);
         }
-        try {
-            actor.disconnect(id);
-        } catch (_) {}
+        best_effort_disconnect(actor, id, 'failed to disconnect actor signal');
     }
 
     connect_meta(
@@ -968,9 +982,7 @@ export class Ext extends Ecs.System<ExtEvent> {
             const old = this.size_requests.get(win.meta);
 
             if (old) {
-                try {
-                    GLib.source_remove(old);
-                } catch (_) {}
+                best_effort_source_remove(old, 'failed to remove stale size request source');
             }
 
             const new_s = GLib.timeout_add(GLib.PRIORITY_LOW, 500, () => {
@@ -1027,7 +1039,9 @@ export class Ext extends Ecs.System<ExtEvent> {
                     .then(() => {
                         this.tiling_config_reapply();
                     })
-                    .catch((e: any) => log.error(e));
+                    .catch((error: unknown) => {
+                        log.warn_error('failed to reload config after exception dialog closed', error);
+                    });
             },
         );
         d.open();
@@ -1045,7 +1059,9 @@ export class Ext extends Ecs.System<ExtEvent> {
                             .then(() => {
                                 this.tiling_config_reapply();
                             })
-                            .catch((e: any) => log.error(e));
+                            .catch((error: unknown) => {
+                                log.warn_error('failed to reload config after exception dialog update', error);
+                            });
                     });
                     break;
                 case 'SELECT':
@@ -1060,18 +1076,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         if (ipc) {
             if (this._floating_exception_ipc) {
-                try {
-                    this._floating_exception_ipc.cancellable.cancel();
-                } catch (_) {}
-                try {
-                    this._floating_exception_ipc.stdin.close(null);
-                } catch (_) {}
-                try {
-                    this._floating_exception_ipc.stdout.close(null);
-                } catch (_) {}
-                try {
-                    this._floating_exception_ipc.child.force_exit();
-                } catch (_) {}
+                cleanup_floating_exception_ipc(this._floating_exception_ipc);
             }
             this._floating_exception_ipc = ipc;
             const generator = (stdout: any, res: any) => {
@@ -1091,8 +1096,9 @@ export class Ext extends Ecs.System<ExtEvent> {
                     }
                 } catch (why) {
                     if (!this._destroyed) {
-                        log.error(
-                            `failed to read response from floating exceptions dialog: ${why}`,
+                        log.warn_error(
+                            'failed to read response from floating exceptions dialog',
+                            why,
                         );
                     }
                     if (this._floating_exception_ipc === ipc) {
@@ -1416,9 +1422,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         const old_size_request = this.size_requests.get(window.meta);
         if (old_size_request) {
-            try {
-                GLib.source_remove(old_size_request);
-            } catch (_) {}
+            best_effort_source_remove(old_size_request, 'failed to remove stale size request source');
             this.size_requests.delete(window.meta);
         }
 
@@ -1428,9 +1432,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         // to prevent use-after-destroy race conditions.
         this.window_signals.take_with(win, (signals) => {
             for (const signal of signals) {
-                try {
-                    window.meta.disconnect(signal);
-                } catch (_) {}
+                best_effort_disconnect(window.meta, signal, 'failed to disconnect window signal');
             }
         });
 
@@ -1554,7 +1556,7 @@ export class Ext extends Ecs.System<ExtEvent> {
                     log.debug(msg + '}');
                 })
                 .catch((e: unknown) => {
-                    log.warn(`failed to read focused window cmdline: ${String(e)}`);
+                    log.warn_error('failed to read focused window cmdline', e);
                 });
         }
     }
@@ -2689,9 +2691,7 @@ export class Ext extends Ecs.System<ExtEvent> {
             if (!current_workspaces.includes(ws)) {
                 const signals = this.workspace_signals.get(ws) ?? [];
                 for (const signal of signals) {
-                    try {
-                        ws.disconnect(signal);
-                    } catch (_) {}
+                    best_effort_disconnect(ws, signal, 'failed to disconnect workspace signal');
                 }
                 to_delete.push(ws);
             }
@@ -3327,17 +3327,13 @@ export class Ext extends Ecs.System<ExtEvent> {
                 const win_sigs = this.window_signals.get(entity);
                 if (win_sigs) {
                     for (const sig of win_sigs) {
-                        try {
-                            win.meta.disconnect(sig);
-                        } catch (_) {}
+                        best_effort_disconnect(win.meta, sig, 'failed to disconnect window signal');
                     }
                 }
                 const size_sigs = this.size_signals.get(entity);
                 if (size_sigs) {
                     for (const sig of size_sigs) {
-                        try {
-                            win.meta.disconnect(sig);
-                        } catch (_) {}
+                        best_effort_disconnect(win.meta, sig, 'failed to disconnect size signal');
                     }
                 }
 
@@ -3373,15 +3369,11 @@ export class Ext extends Ecs.System<ExtEvent> {
             this._restack_source = null;
         }
         for (const src of this._schedule_idle_sources) {
-            try {
-                GLib.source_remove(src);
-            } catch (_) {}
+            best_effort_source_remove(src, 'failed to remove scheduled idle source');
         }
         this._schedule_idle_sources.clear();
         for (const [, src] of this.size_requests) {
-            try {
-                GLib.source_remove(src);
-            } catch (_) {}
+            best_effort_source_remove(src, 'failed to remove pending size request source');
         }
         this.size_requests.clear();
 
@@ -3979,7 +3971,8 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         try {
             id = meta.get_stable_sequence();
-        } catch (_) {
+        } catch (error) {
+            log.debug_error('failed to read stable window sequence', error);
             return null;
         }
 
@@ -3993,7 +3986,8 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         try {
             id = meta.get_stable_sequence();
-        } catch (_e) {
+        } catch (error) {
+            log.debug_error('failed to read stable window sequence', error);
             return null;
         }
 
@@ -4010,7 +4004,8 @@ export class Ext extends Ecs.System<ExtEvent> {
             try {
                 window_app = Window.get_window_tracker().get_window_app(meta);
                 name = window_app.get_name().replace(/&/g, '&amp;');
-            } catch (_e) {
+            } catch (error) {
+                log.debug_error('failed to resolve window application', error);
                 return null;
             }
 
@@ -4258,8 +4253,8 @@ function load_theme(): string | any {
         theme_context.set_theme(theme);
 
         return stylesheet.get_path();
-    } catch (e) {
-        log.error('failed to load stylesheet: ' + e);
+    } catch (error) {
+        log.error_error('failed to load stylesheet', error);
         return null;
     }
 }
@@ -4273,8 +4268,8 @@ function unload_theme(): void {
         const theme: null | any = theme_context.get_theme();
         theme?.unload_stylesheet(stylesheet_file_);
         stylesheet_file_ = null;
-    } catch (e) {
-        log.error('failed to unload stylesheet: ' + e);
+    } catch (error) {
+        log.warn_error('failed to unload stylesheet', error);
     }
 }
 
@@ -4318,9 +4313,10 @@ function get_workspace_thumbnail_class(): Promise<any | null> {
     if (!workspaceThumbnailPromise) {
         workspaceThumbnailPromise = import('resource:///org/gnome/shell/ui/workspaceThumbnail.js')
             .then((mod: any) => mod.WorkspaceThumbnail ?? null)
-            .catch((e) => {
-                log.warn(
-                    `WorkspaceThumbnail unavailable; skip-taskbar thumbnails not patched: ${e}`,
+            .catch((error) => {
+                log.warn_error(
+                    'WorkspaceThumbnail unavailable; skip-taskbar thumbnails not patched',
+                    error,
                 );
                 return null;
             });
@@ -4427,7 +4423,8 @@ function _show_skip_taskbar_windows(current_ext: Ext) {
                     };
                 }
             })
-            .catch(() => {
+            .catch((error) => {
+                log.debug_error('failed to patch WorkspaceThumbnail overview window list', error);
                 /* handled in get_workspace_thumbnail_class */
             });
     }

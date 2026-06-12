@@ -49,7 +49,9 @@ export function read_to_string(
             } catch (e) {
                 resolve(
                     Err(
-                        new Error(String(e)).context(`failed to load contents of ${path}`),
+                        new Error(log.format_error(e)).context(
+                            `failed to load contents of ${path}`,
+                        ),
                     ),
                 );
             }
@@ -158,7 +160,7 @@ export function async_process_ipc(argv: Array<string>): AsyncIPC | null {
     try {
         child = launcher.spawnv(argv);
     } catch (why) {
-        log.error(`failed to spawn ${argv}: ${why}`);
+        log.warn_error(`failed to spawn ${argv.join(' ')}`, why);
         return null;
     }
 
@@ -364,8 +366,6 @@ export function activate_window(
             window.activate(time);
         }
     } catch (e) {
-        // Log error but don't crash the shell
-        const log = (global as any).log;
-        if (log) log(`o-tiling: failed to activate window: ${e}`);
+        log.warn_error('failed to activate window', e);
     }
 }

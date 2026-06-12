@@ -32,7 +32,8 @@ export function setForeground(win: Meta.Window) {
                     const reply = Gio.DBus.system.call_finish(result);
                     const [owned] = reply.deep_unpack() as [boolean];
                     if (!owned) _failed = true;
-                } catch (_) {
+                } catch (error) {
+                    log.debug_error('failed to check system76 scheduler service', error);
                     _failed = true;
                 }
             },
@@ -76,6 +77,6 @@ export function destroy() {
 }
 
 function errorHandler(error: any) {
-    log.debug(`system76-scheduler may not be installed and running: ${error}`);
+    log.debug_error('system76-scheduler may not be installed and running', error);
     _failed = true;
 }

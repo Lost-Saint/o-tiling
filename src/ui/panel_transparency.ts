@@ -33,14 +33,18 @@ export class PanelTransparencyManager {
                 log.warn('PanelTransparencyManager: no theme to inject into');
                 try {
                     this._file?.delete(null);
-                } catch (_) {}
+                } catch (error) {
+                    log.debug_error('PanelTransparencyManager: failed to delete temporary CSS', error);
+                }
                 this._file = null;
             }
         } catch (e) {
-            log.error(`PanelTransparencyManager: failed to inject CSS: ${e}`);
+            log.error_error('PanelTransparencyManager: failed to inject CSS', e);
             try {
                 this._file?.delete(null);
-            } catch (_) {}
+            } catch (error) {
+                log.debug_error('PanelTransparencyManager: failed to delete temporary CSS', error);
+            }
             this._file = null;
         }
     }
@@ -55,8 +59,8 @@ export class PanelTransparencyManager {
 
             if (theme) theme.unload_stylesheet(this._file);
             this._file.delete(null);
-        } catch (_) {
-            /* best-effort */
+        } catch (error) {
+            log.debug_error('PanelTransparencyManager: failed to remove panel CSS', error);
         }
 
         this._file = null;

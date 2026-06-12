@@ -1,4 +1,5 @@
 import * as Ecs from '../core/ecs.js';
+import * as log from '../utils/log.js';
 import * as utils from '../utils/utils.js';
 import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
@@ -26,7 +27,13 @@ export class GLibExecutor<T> implements Executor<T> {
 
         const action = (): boolean => {
             const event = this.#events.pop();
-            if (event) system.run(event);
+            if (event) {
+                try {
+                    system.run(event);
+                } catch (error) {
+                    log.error_error('extension event handler failed', error);
+                }
+            }
 
             if (this.#events.length === 0) {
                 this.#event_loop = null;
@@ -49,10 +56,14 @@ export class GLibExecutor<T> implements Executor<T> {
     stop(): void {
         if (this.#event_loop !== null) {
             // Use the matching removal fn: later_remove for laters, source_remove for idle.
-            if (this.#used_laters) {
-                utils.later_remove(this.#event_loop);
-            } else {
-                GLib.source_remove(this.#event_loop);
+            try {
+                if (this.#used_laters) {
+                    utils.later_remove(this.#event_loop);
+                } else {
+                    GLib.source_remove(this.#event_loop);
+                }
+            } catch (error) {
+                log.debug_error('failed to stop GLib executor source', error);
             }
             this.#event_loop = null;
         }
@@ -109,7 +120,9 @@ export class OnceExecutor<X, T extends Iterable<X>> {
         if (this.#signal !== null) {
             try {
                 GLib.source_remove(this.#signal);
-            } catch (_) {}
+            } catch (error) {
+                log.debug_error('failed to stop OnceExecutor source', error);
+            }
             this.#signal = null;
         }
     }
@@ -153,7 +166,9 @@ export class ChannelExecutor<X> {
         if (this.#signal !== null) {
             try {
                 GLib.source_remove(this.#signal);
-            } catch (_) {}
+            } catch (error) {
+                log.debug_error('failed to stop ChannelExecutor source', error);
+            }
             this.#signal = null;
         }
         this.#channel.splice(0);

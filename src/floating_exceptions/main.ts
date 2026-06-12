@@ -261,7 +261,8 @@ let UnixOutputStream: any;
 try {
     const GioUnix = (await import('gi://GioUnix?version=2.0')).default;
     UnixOutputStream = GioUnix.OutputStream;
-} catch (_e) {
+} catch (error) {
+    console.debug(`o-tiling: GioUnix import unavailable, using Gio fallback: ${error}`);
     UnixOutputStream = (Gio as any).UnixOutputStream;
 }
 

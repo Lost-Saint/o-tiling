@@ -1,5 +1,6 @@
 import Gio from 'gi://Gio';
 import { get_current_path } from '../utils/paths.js';
+import * as log from '../utils/log.js';
 import * as utils from '../utils/utils.js';
 
 const DARK = ['dark', 'adapta', 'plata', 'dracula'];
@@ -22,9 +23,15 @@ type Settings = Gio.Settings;
 function settings_new_id(schema_id: string): Settings | null {
     try {
         return new Gio.Settings({ schema_id });
-    } catch (_why) {
-        if (schema_id !== 'org.gnome.shell.extensions.user-theme') {
-            // (global as any).log(`failed to get settings for ${schema_id}: ${why}`);
+    } catch (why) {
+        if (schema_id === 'org.gnome.shell.extensions.user-theme') {
+            console.debug(
+                `o-tiling: optional settings schema unavailable (${schema_id}): ${log.format_error(why)}`,
+            );
+        } else {
+            console.warn(
+                `o-tiling: failed to get settings for ${schema_id}: ${log.format_error(why)}`,
+            );
         }
 
         return null;
@@ -142,7 +149,8 @@ export class ExtensionSettings {
         try {
             const accent = this.int.get_string('accent-color');
             return ACCENT_COLOR_MAP[accent] ?? DEFAULT_RGBA_COLOR;
-        } catch (_e) {
+        } catch (error) {
+            log.debug_error('failed to read system accent color', error);
             return DEFAULT_RGBA_COLOR;
         }
     }

@@ -120,7 +120,9 @@ export function clutter_focus_is_shell_panel(): boolean {
             }
             actor = actor.get_parent?.() ?? null;
         }
-    } catch (_) {}
+    } catch (error) {
+        log.debug_error('failed to inspect Clutter key focus', error);
+    }
     return false;
 }
 
@@ -128,12 +130,16 @@ function get_window_actors(): Clutter.Actor[] {
     try {
         const actors = (global as any).compositor?.get_window_actors?.();
         if (actors) return actors;
-    } catch (_) {}
+    } catch (error) {
+        log.debug_error('failed to get compositor window actors', error);
+    }
 
     try {
         const actors = (global as any).get_window_actors?.();
         if (actors) return actors;
-    } catch (_) {}
+    } catch (error) {
+        log.debug_error('failed to get global window actors', error);
+    }
 
     return [];
 }
@@ -887,7 +893,7 @@ export function activate(ext: Ext, move_mouse: boolean, win: Meta.Window) {
             place_pointer_on(ext, win);
         }
     } catch (error) {
-        log.error(`failed to activate window: ${error}`);
+        log.warn_error('failed to activate window', error);
     }
 }
 

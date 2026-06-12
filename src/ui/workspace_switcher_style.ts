@@ -132,7 +132,7 @@ export class WorkspaceSwitcherStyle {
                 this._file = null;
             }
         } catch (e) {
-            log.error(`WorkspaceSwitcherStyle: failed to load CSS: ${e}`);
+            log.error_error('WorkspaceSwitcherStyle: failed to load CSS', e);
             this._file = null;
         }
     }
@@ -154,8 +154,8 @@ export class WorkspaceSwitcherStyle {
                 this._teardownSignals();
             }
             this._file.delete(null);
-        } catch (_) {
-            /* best-effort */
+        } catch (error) {
+            log.debug_error('WorkspaceSwitcherStyle: failed to remove CSS', error);
         }
 
         this._file = null;
@@ -207,7 +207,9 @@ export class WorkspaceSwitcherStyle {
                 if (thumbnailsBox) {
                     thumbnailsBox.remove_effect_by_name('o-tiling-blur');
                 }
-            } catch (_) {}
+            } catch (error) {
+                log.debug_error('WorkspaceSwitcherStyle: failed to remove blur effect', error);
+            }
             this._blurEffect = null;
         }
     }
@@ -346,7 +348,7 @@ export class WorkspaceSwitcherStyle {
             thumbnailsBox.queue_relayout?.();
             thumbnailsBox.get_parent()?.queue_relayout?.();
         } catch (e) {
-            log.warn(`WorkspaceSwitcherStyle: failed to set thumbnail scale: ${e}`);
+            log.warn_error('WorkspaceSwitcherStyle: failed to set thumbnail scale', e);
         }
     }
 
@@ -377,7 +379,9 @@ export class WorkspaceSwitcherStyle {
 
                 thumbnailsBox.queue_relayout?.();
             }
-        } catch (_) {}
+        } catch (error) {
+            log.debug_error('WorkspaceSwitcherStyle: failed to restore thumbnail scale', error);
+        }
         this._patchedThumbnailsBox = null;
         this._patchedUpdateMaxThumbnailScale = null;
         this._origUpdateMaxThumbnailScale = null;
@@ -479,7 +483,7 @@ export class WorkspaceSwitcherStyle {
 
             adjustment.value = childCenter - pageSize / 2;
         } catch (e) {
-            log.warn(`WorkspaceSwitcherStyle: _scrollToActiveWorkspace failed: ${e}`);
+            log.warn_error('WorkspaceSwitcherStyle: _scrollToActiveWorkspace failed', e);
         }
     }
 

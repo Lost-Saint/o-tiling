@@ -268,7 +268,8 @@ export class Config {
     static from_json(json: string): Config {
         try {
             return JSON.parse(json);
-        } catch (_error) {
+        } catch (error) {
+            log.warn_error('failed to parse config; using defaults', error);
             return new Config();
         }
     }
@@ -298,7 +299,7 @@ export class Config {
 
             return { tag: 0, value: conf };
         } catch (why) {
-            return { tag: 1, why: `Gio.File I/O error: ${why}` };
+            return { tag: 1, why: `Gio.File I/O error: ${log.format_error(why)}` };
         }
     }
 
@@ -313,12 +314,12 @@ export class Config {
                         const [, buffer] = obj.load_contents_finish(res);
                         resolve({ tag: 0, value: new TextDecoder().decode(buffer) });
                     } catch (e) {
-                        resolve({ tag: 1, why: `failed to read config: ${e}` });
+                        resolve({ tag: 1, why: `failed to read config: ${log.format_error(e)}` });
                     }
                 });
             });
         } catch (why) {
-            return { tag: 1, why: `failed to read o-tiling config: ${why}` };
+            return { tag: 1, why: `failed to read o-tiling config: ${log.format_error(why)}` };
         }
     }
 
@@ -331,7 +332,7 @@ export class Config {
 
             return { tag: 0, value: file.value };
         } catch (why) {
-            return { tag: 1, why: `failed to write to config: ${why}` };
+            return { tag: 1, why: `failed to write to config: ${log.format_error(why)}` };
         }
     }
 

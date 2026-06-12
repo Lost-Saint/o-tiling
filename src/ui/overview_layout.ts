@@ -124,7 +124,7 @@ export class OverviewLayoutManager {
             };
             proto._updateWindowPositions = this._patchedUpdateWindowPositions;
         } catch (e) {
-            log.warn(`OverviewLayoutManager: failed to enable: ${e}`);
+            log.warn_error('OverviewLayoutManager: failed to enable', e);
         }
     }
 

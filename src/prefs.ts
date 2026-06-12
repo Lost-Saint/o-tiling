@@ -337,7 +337,7 @@ export default class OTilingPreferences extends ExtensionPreferences {
                 colorButton.rgba = initialColor;
             }
         } catch (e) {
-            log.warn('Could not set initial color: ' + e);
+            log.warn_error('Could not set initial color', e);
         }
 
         colorButton.connect('notify::rgba', () => {
@@ -420,7 +420,7 @@ export default class OTilingPreferences extends ExtensionPreferences {
                 overlayColorButton.rgba = initialOverlayColor;
             }
         } catch (e) {
-            log.warn('Could not set initial overlay color: ' + e);
+            log.warn_error('Could not set initial overlay color', e);
         }
 
         const updateOverlaySensitivity = () => {

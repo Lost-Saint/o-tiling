@@ -4,6 +4,7 @@ import type { ShellWindow } from '../window/window.js';
 
 import * as Ecs from '../core/ecs.js';
 import * as a from '../core/arena.js';
+import * as log from '../utils/log.js';
 import * as utils from '../utils/utils.js';
 import { get_primary_monitor_index } from './fork.js';
 
@@ -136,7 +137,8 @@ export class Stack {
             // Accessing a property on a disposed GObject throws in GJS
             void this.widgets.tabs.visible;
             return false;
-        } catch (_) {
+        } catch (error) {
+            log.debug_error('stack tabs widget appears disposed', error);
             return true;
         }
     }
@@ -442,7 +444,9 @@ export class Stack {
         for (const b of this.buttons.values()) {
             try {
                 b.destroy();
-            } catch (_e) {}
+            } catch (error) {
+                log.debug_error('failed to destroy stack button', error);
+            }
         }
 
         if (this.widgets) {

@@ -4,6 +4,13 @@ import Gio from 'gi://Gio';
 const CONF_DIR: string = GLib.get_user_config_dir() + '/o-tiling';
 export const CONF_FILE: string = CONF_DIR + '/config.json';
 
+function format_error(error: unknown): string {
+    if (error instanceof globalThis.Error) {
+        return error.stack ?? `${error.name}: ${error.message}`;
+    }
+    return String(error);
+}
+
 export interface FloatRule {
     class?: string;
     title?: string;
@@ -228,7 +235,8 @@ export class Config {
     static from_json(json: string): Config {
         try {
             return JSON.parse(json);
-        } catch (_error) {
+        } catch (error) {
+            console.warn(`o-tiling: failed to parse config; using defaults: ${format_error(error)}`);
             return new Config();
         }
     }
@@ -263,7 +271,7 @@ export class Config {
 
             return { tag: 0, value: conf };
         } catch (why) {
-            return { tag: 1, why: `Gio.File I/O error: ${why}` };
+            return { tag: 1, why: `Gio.File I/O error: ${format_error(why)}` };
         }
     }
 
@@ -276,7 +284,7 @@ export class Config {
 
             return { tag: 0, value: new TextDecoder().decode(buffer) };
         } catch (why) {
-            return { tag: 1, why: `failed to read o-tiling config: ${why}` };
+            return { tag: 1, why: `failed to read o-tiling config: ${format_error(why)}` };
         }
     }
 
@@ -295,7 +303,7 @@ export class Config {
 
             return { tag: 0, value: file.value };
         } catch (why) {
-            return { tag: 1, why: `failed to write to config: ${why}` };
+            return { tag: 1, why: `failed to write to config: ${format_error(why)}` };
         }
     }
 

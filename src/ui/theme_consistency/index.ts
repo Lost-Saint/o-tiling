@@ -37,14 +37,18 @@ export class ThemeConsistencyManager {
             } else {
                 try {
                     this._file?.delete(null);
-                } catch (_) {}
+                } catch (error) {
+                    log.debug_error('ThemeConsistencyManager: failed to delete temporary CSS', error);
+                }
                 this._file = null;
             }
         } catch (e) {
-            log.error(`ThemeConsistencyManager: failed to inject CSS: ${e}`);
+            log.error_error('ThemeConsistencyManager: failed to inject CSS', e);
             try {
                 this._file?.delete(null);
-            } catch (_) {}
+            } catch (error) {
+                log.debug_error('ThemeConsistencyManager: failed to delete temporary CSS', error);
+            }
             this._file = null;
         }
     }
@@ -61,7 +65,9 @@ export class ThemeConsistencyManager {
                 theme.unload_stylesheet(this._file);
             }
             this._file.delete(null);
-        } catch (_) { /* best-effort */ }
+        } catch (error) {
+            log.debug_error('ThemeConsistencyManager: failed to remove session CSS', error);
+        }
 
         this._file = null;
     }

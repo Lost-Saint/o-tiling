@@ -10,7 +10,9 @@ function updateCssFile(path: string, newCss: string | null) {
     try {
         const [, bytes] = GLib.file_get_contents(path);
         content = new TextDecoder().decode(bytes);
-    } catch (_) {}
+    } catch (error) {
+        log.debug_error(`Could not read existing GTK CSS at ${path}`, error);
+    }
 
     const startIndex = content.indexOf(START_MARKER);
     const endIndex = content.indexOf(END_MARKER);
@@ -47,7 +49,7 @@ export function applyThemeConsistency(style: 'rounded' | 'sharp' = 'rounded') {
         updateCssFile(`${gtk4Dir}/gtk.css`, gtkCss);
         updateCssFile(`${gtk3Dir}/gtk.css`, gtkCss);
     } catch (e) {
-        log.warn('Could not apply GTK theme consistency: ' + e);
+        log.warn_error('Could not apply GTK theme consistency', e);
     }
 }
 
@@ -58,6 +60,6 @@ export function removeThemeConsistency() {
         updateCssFile(gtk4Css, null);
         updateCssFile(gtk3Css, null);
     } catch (e) {
-        log.warn('Could not remove GTK theme consistency: ' + e);
+        log.warn_error('Could not remove GTK theme consistency', e);
     }
 }
