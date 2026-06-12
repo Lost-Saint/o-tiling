@@ -6,7 +6,7 @@ import GLib from 'gi://GLib';
 import { ExtensionPreferences, gettext as _ } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 import * as log from './utils/log.js';
-import { applyThemeConsistency } from './ui/theme_consistency/apply.js';
+import { applyThemeConsistency, restoreGtkDefaults } from './ui/theme_consistency/apply.js';
 
 export default class OTilingPreferences extends ExtensionPreferences {
     async fillPreferencesWindow(window: Adw.PreferencesWindow) {
@@ -101,6 +101,8 @@ export default class OTilingPreferences extends ExtensionPreferences {
             // Apply GTK theme consistency immediately
             if (style !== 'default') {
                 applyThemeConsistency(style as 'rounded' | 'sharp');
+            } else {
+                restoreGtkDefaults();
             }
         });
 
@@ -133,7 +135,12 @@ export default class OTilingPreferences extends ExtensionPreferences {
         overviewGroup.add(switcherStyleRow);
         settings.bind('workspace-switcher-style', switcherStyleRow as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
-
+        const wsNumberIndicatorRow = new Adw.SwitchRow({
+            title: _('Workspace Number Indicator'),
+            subtitle: _('Show workspace number (e.g. "2 / 4") in the panel instead of the dot indicator'),
+        });
+        overviewGroup.add(wsNumberIndicatorRow);
+        settings.bind('workspace-number-indicator', wsNumberIndicatorRow as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
 
         // Panel Transparency Group
@@ -241,9 +248,9 @@ export default class OTilingPreferences extends ExtensionPreferences {
             settings.set_string('hint-color-rgba', rgba.to_string());
         });
 
-        // ── Active Window Tint Overlay (4 settings) ──────────────────────────
+        // ── Window Tint Overlay (4 settings) ──────────────────────────
         const auraOverlayGroup = new Adw.PreferencesGroup({
-            title: _('Active Window Tint Overlay'),
+            title: _('Window Tint Overlay'),
         });
         appearancePage.add(auraOverlayGroup);
 
@@ -255,13 +262,24 @@ export default class OTilingPreferences extends ExtensionPreferences {
         auraOverlayGroup.add(overlayEnabled);
         settings.bind('active-hint-overlay-enabled', overlayEnabled as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
-        // <2> Opacity slider (SpinRow 0–100%)
-        const overlayOpacity = new Adw.SpinRow({
+        // <2> Opacity slider (Scale 0–100%)
+        const overlayOpacityRow = new Adw.ActionRow({
             title: _('Overlay Opacity (%)'),
             subtitle: _('How opaque the tint overlay appears (0 = invisible, 100 = solid)'),
-            adjustment: new Gtk.Adjustment({ lower: 0, upper: 100, step_increment: 1 }),
         });
-        auraOverlayGroup.add(overlayOpacity);
+        auraOverlayGroup.add(overlayOpacityRow);
+
+        const overlayOpacity = new Gtk.Scale({
+            orientation: Gtk.Orientation.HORIZONTAL,
+            adjustment: new Gtk.Adjustment({ lower: 0, upper: 100, step_increment: 1, page_increment: 10 }),
+            hexpand: true,
+            valign: Gtk.Align.CENTER,
+            draw_value: true,
+            value_pos: Gtk.PositionType.RIGHT,
+        });
+        overlayOpacity.set_size_request(200, -1);
+        overlayOpacityRow.add_suffix(overlayOpacity);
+
         settings.bind('active-hint-overlay-opacity', overlayOpacity as any, 'value', Gio.SettingsBindFlags.DEFAULT);
 
         // <3> Color dialog — default = GNOME accent color, with custom color support
@@ -352,7 +370,7 @@ export default class OTilingPreferences extends ExtensionPreferences {
         // ── Sensitivity gating ──────────────────────────────────────────────
         const updateOverlaySensitivity = () => {
             const isEnabled = overlayEnabled.active;
-            overlayOpacity.sensitive = isEnabled;
+            overlayOpacityRow.sensitive = isEnabled;
             overlayColorRow.sensitive = isEnabled;
             overlayOnlyActive.sensitive = isEnabled;
             syncColorButtonSensitivity();

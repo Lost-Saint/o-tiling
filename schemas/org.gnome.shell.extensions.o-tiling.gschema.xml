@@ -42,6 +42,11 @@
             <summary>Apply custom styling to the workspace switcher bar (GNOME 50+ only)</summary>
         </key>
 
+        <key type="b" name="workspace-number-indicator">
+            <default>false</default>
+            <summary>Show a workspace number label (e.g. "2 / 4") in the panel instead of the dot indicator</summary>
+        </key>
+
         <key type="b" name="skip-overview">
             <default>false</default>
             <summary>Skip the activities overview on startup</summary>

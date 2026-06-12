@@ -31,11 +31,12 @@ import type { Entity } from './core/ecs.js';
 import type { ExtEvent } from './core/events.js';
 import { Rectangle } from './utils/rectangle.js';
 import type { Indicator } from './ui/panel_settings.js';
+import type { WorkspaceNumberIndicator } from './ui/panel_settings.js';
 import { WorkspaceSwitcherStyle, isGnome50 } from './ui/workspace_switcher_style.js';
 import { ThemeConsistencyManager } from './ui/theme_consistency/index.js';
 import { PanelTransparencyManager } from './ui/panel_transparency.js';
 import { OverviewLayoutManager } from './ui/overview_layout.js';
-import { applyThemeConsistency } from './ui/theme_consistency/apply.js';
+import { applyThemeConsistency, restoreGtkDefaults } from './ui/theme_consistency/apply.js';
 
 
 
@@ -363,6 +364,11 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.on_gap_top();
         });
         this._settings_signal_ids.push([this.settings.ext, id_panel_top_gap]);
+
+        const id_ws_num = this.settings.ext.connect('changed::workspace-number-indicator', () => {
+            _toggle_workspace_number_indicator(this.settings.workspace_number_indicator());
+        });
+        this._settings_signal_ids.push([this.settings.ext, id_ws_num]);
 
 
 
@@ -3114,6 +3120,8 @@ export class Ext extends Ecs.System<ExtEvent> {
         } else {
             this.theme_consistency_handler?.disable();
             this.theme_consistency_handler = null;
+            // Restore GTK gtk.css files to stock (remove the O-Tiling block).
+            restoreGtkDefaults();
         }
 
         if (save) {
@@ -3615,6 +3623,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
 export let ext: Ext | null = null;
 export let indicator: Indicator | null = null;
+export let workspace_number_indicator: WorkspaceNumberIndicator | null = null;
 
 declare global {
     var oTilingExtension: any;
@@ -3653,6 +3662,9 @@ export default class OTilingExtension extends Extension {
             currentPanel.addToStatusArea('o-tiling', indicator.button);
         }
 
+        // Workspace-number indicator in panel
+        _toggle_workspace_number_indicator(ext.settings.workspace_number_indicator());
+
         ext.keybindings.enable(ext.keybindings.global).enable(ext.keybindings.window_focus);
 
         if (ext.settings.tile_by_default()) {
@@ -3680,6 +3692,11 @@ export default class OTilingExtension extends Extension {
             indicator = null;
         }
 
+        if (workspace_number_indicator) {
+            workspace_number_indicator.destroy();
+            workspace_number_indicator = null;
+        }
+
         enable_window_attention_handler();
         Window.cleanup_main_loop_sources();
         scheduler.destroy();
@@ -3700,6 +3717,38 @@ function disable_window_attention_handler() {
     if (handler && handler._windowDemandsAttentionId) {
         (global as any).display.disconnect(handler._windowDemandsAttentionId);
         handler._windowDemandsAttentionId = null;
+    }
+}
+
+/**
+ * Creates or destroys the WorkspaceNumberIndicator based on the setting value.
+ * Also hides/shows GNOME's built-in workspace dot indicator for a clean look.
+ */
+function _toggle_workspace_number_indicator(enable: boolean): void {
+    const currentPanel = (Main as any).panel;
+    if (!currentPanel) return;
+
+    // Show/hide GNOME's built-in workspace indicator (the dot strip)
+    const builtinIndicator = currentPanel.statusArea?.['activities'] ??
+        currentPanel.statusArea?.['workspace-indicator'] ??
+        currentPanel._leftBox?.get_children()?.find((c: any) =>
+            c.style_class?.includes('workspace-indicator')
+        ) ?? null;
+
+    if (enable) {
+        if (!workspace_number_indicator) {
+            workspace_number_indicator = new PanelSettings.WorkspaceNumberIndicator(ext);
+            currentPanel.addToStatusArea('o-tiling-ws-number', workspace_number_indicator.button, 1, 'left');
+        }
+        // Hide the GNOME dot indicator if found
+        if (builtinIndicator) builtinIndicator.hide();
+    } else {
+        if (workspace_number_indicator) {
+            workspace_number_indicator.destroy();
+            workspace_number_indicator = null;
+        }
+        // Restore the GNOME dot indicator
+        if (builtinIndicator) builtinIndicator.show();
     }
 }
 
