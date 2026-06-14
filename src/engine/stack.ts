@@ -5,6 +5,7 @@ import type { ShellWindow } from '../window/window.js';
 import * as Ecs from '../core/ecs.js';
 import * as a from '../core/arena.js';
 import * as utils from '../utils/utils.js';
+import * as log from '../utils/log.js';
 import { get_primary_monitor_index } from './fork.js';
 
 const Arena = a.Arena;
@@ -130,11 +131,11 @@ export class Stack {
 
     widgets: null | StackWidgets = null;
 
-    /** Returns true if the tabs widget has been disposed by GNOME (e.g. during workspace reparenting). */
     private is_disposed(): boolean {
-        if (!this.widgets) return true;
+        if (!this.widgets || !this.widgets.tabs) return true;
         try {
-            // Accessing a property on a disposed GObject throws in GJS
+            // Accessing a property on a disposed GObject throws in GJS.
+            // This is the standard pattern to detect finalized GObjects.
             void this.widgets.tabs.visible;
             return false;
         } catch (_) {
@@ -440,9 +441,14 @@ export class Stack {
         }
 
         for (const b of this.buttons.values()) {
-            try {
-                b.destroy();
-            } catch (e) {}
+            if (b && typeof b.destroy === 'function') {
+                try {
+                    b.destroy();
+                } catch (e) {
+                    // TabButton might have already been destroyed during parent container destruction
+                    log.debug(`Failed to destroy tab button: ${e}`);
+                }
+            }
         }
 
         if (this.widgets) {

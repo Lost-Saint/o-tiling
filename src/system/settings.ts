@@ -21,15 +21,18 @@ const ACCENT_COLOR_MAP: Record<string, string> = {
 type Settings = Gio.Settings;
 
 function settings_new_id(schema_id: string): Settings | null {
-    try {
-        return new Gio.Settings({ schema_id });
-    } catch (why) {
-        if (schema_id !== 'org.gnome.shell.extensions.user-theme') {
-            // (global as any).log(`failed to get settings for ${schema_id}: ${why}`);
+    const defaultSource = Gio.SettingsSchemaSource.get_default();
+    if (defaultSource && defaultSource.lookup(schema_id, true)) {
+        try {
+            return new Gio.Settings({ schema_id });
+        } catch (why) {
+            if (schema_id !== 'org.gnome.shell.extensions.user-theme') {
+                // (global as any).log(`failed to get settings for ${schema_id}: ${why}`);
+            }
+            return null;
         }
-
-        return null;
     }
+    return null;
 }
 
 function settings_new_schema(schema: string): Settings {
@@ -142,12 +145,16 @@ export class ExtensionSettings {
     get_system_accent_color(): string {
         if (!this.int) return DEFAULT_RGBA_COLOR;
 
-        try {
-            const accent = this.int.get_string('accent-color');
-            return ACCENT_COLOR_MAP[accent] ?? DEFAULT_RGBA_COLOR;
-        } catch (e) {
-            return DEFAULT_RGBA_COLOR;
+        const keys = this.int.list_keys();
+        if (keys && keys.includes('accent-color')) {
+            try {
+                const accent = this.int.get_string('accent-color');
+                return ACCENT_COLOR_MAP[accent] ?? DEFAULT_RGBA_COLOR;
+            } catch (e) {
+                return DEFAULT_RGBA_COLOR;
+            }
         }
+        return DEFAULT_RGBA_COLOR;
     }
 
     hint_color_rgba() {

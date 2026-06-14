@@ -31,12 +31,24 @@ export class PanelTransparencyManager {
                 log.info('PanelTransparencyManager: panel CSS injected');
             } else {
                 log.warn('PanelTransparencyManager: no theme to inject into');
-                try { this._file?.delete(null); } catch (_) { }
+                if (this._file && this._file.query_exists(null)) {
+                    try {
+                        this._file.delete(null);
+                    } catch (err) {
+                        log.warn(`Failed to delete temporary panel CSS file: ${err}`);
+                    }
+                }
                 this._file = null;
             }
         } catch (e) {
             log.error(`PanelTransparencyManager: failed to inject CSS: ${e}`);
-            try { this._file?.delete(null); } catch (_) { }
+            if (this._file && this._file.query_exists(null)) {
+                try {
+                    this._file.delete(null);
+                } catch (err) {
+                    log.warn(`Failed to delete temporary panel CSS file: ${err}`);
+                }
+            }
             this._file = null;
         }
     }
@@ -44,14 +56,25 @@ export class PanelTransparencyManager {
     disable(): void {
         if (!this._file) return;
 
-        try {
-            const theme = St.ThemeContext
-                .get_for_stage((global as any).stage as Clutter.Stage)
-                .get_theme() as any;
+        const theme = St.ThemeContext
+            .get_for_stage((global as any).stage as Clutter.Stage)
+            .get_theme() as any;
 
-            if (theme) theme.unload_stylesheet(this._file);
-            this._file.delete(null);
-        } catch (_) { /* best-effort */ }
+        if (theme) {
+            try {
+                theme.unload_stylesheet(this._file);
+            } catch (e) {
+                log.warn(`Failed to unload panel stylesheet: ${e}`);
+            }
+        }
+
+        if (this._file.query_exists(null)) {
+            try {
+                this._file.delete(null);
+            } catch (e) {
+                log.warn(`Failed to delete panel stylesheet file: ${e}`);
+            }
+        }
 
         this._file = null;
         log.info('PanelTransparencyManager: panel CSS removed');

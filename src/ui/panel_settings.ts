@@ -1,6 +1,7 @@
 import { gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as Utils from '../utils/utils.js';
+import * as log from '../utils/log.js';
 
 import type { Ext } from '../extension.js';
 
@@ -573,8 +574,10 @@ export class WorkspaceNumberIndicator {
         }
         this._wsBtns = [];
 
+        const wm = (global as any).workspace_manager;
+        if (!wm || typeof wm.get_n_workspaces !== 'function') return;
+
         try {
-            const wm = (global as any).workspace_manager;
             const total: number = wm.get_n_workspaces();
             const current: number = wm.get_active_workspace_index();
             const hintColor: string = this._ext?.settings?.hint_color_rgba?.() ?? 'rgba(53, 132, 228, 1)';
@@ -595,21 +598,29 @@ export class WorkspaceNumberIndicator {
                     btn.style = `box-shadow: inset 0 0 0 1.5px ${hintColor}; color: ${hintColor};`;
                 }
                 btn.connect('clicked', () => {
-                    try {
-                        const ws = (global as any).workspace_manager.get_workspace_by_index(idx);
-                        if (ws) ws.activate((global as any).get_current_time?.() ?? 0);
-                    } catch (_) { }
+                    const ws = (global as any).workspace_manager?.get_workspace_by_index(idx);
+                    if (ws && typeof ws.activate === 'function') {
+                        try {
+                            ws.activate((global as any).get_current_time?.() ?? 0);
+                        } catch (e) {
+                            log.error(`WorkspaceNumberIndicator: Failed to activate workspace ${idx}: ${e}`);
+                        }
+                    }
                 });
                 this._box.add_child(btn);
                 this._wsBtns.push(btn);
             }
-        } catch (_) { }
+        } catch (e) {
+            log.error(`WorkspaceNumberIndicator rebuild failed: ${e}`);
+        }
     }
 
     /** Updates only button active-state styles (no rebuild needed). */
     private _update(): void {
+        const wm = (global as any).workspace_manager;
+        if (!wm || typeof wm.get_active_workspace_index !== 'function') return;
+
         try {
-            const wm = (global as any).workspace_manager;
             const current: number = wm.get_active_workspace_index();
             const hintColor: string = this._ext?.settings?.hint_color_rgba?.() ?? 'rgba(53, 132, 228, 1)';
             for (let i = 0; i < this._wsBtns.length; i++) {
@@ -622,22 +633,38 @@ export class WorkspaceNumberIndicator {
                     btn.style = '';
                 }
             }
-        } catch (_) { }
+        } catch (e) {
+            log.error(`WorkspaceNumberIndicator update failed: ${e}`);
+        }
     }
 
     destroy(): void {
         const wm = (global as any).workspace_manager;
-        if (this._wsChangedId !== null) {
-            try { wm.disconnect(this._wsChangedId); } catch (_) { }
-            this._wsChangedId = null;
-        }
-        if (this._wsAddedId !== null) {
-            try { wm.disconnect(this._wsAddedId); } catch (_) { }
-            this._wsAddedId = null;
-        }
-        if (this._wsRemovedId !== null) {
-            try { wm.disconnect(this._wsRemovedId); } catch (_) { }
-            this._wsRemovedId = null;
+        if (wm && typeof wm.disconnect === 'function') {
+            if (this._wsChangedId !== null) {
+                try {
+                    wm.disconnect(this._wsChangedId);
+                } catch (e) {
+                    log.warn(`WorkspaceNumberIndicator: Failed to disconnect wsChangedId: ${e}`);
+                }
+                this._wsChangedId = null;
+            }
+            if (this._wsAddedId !== null) {
+                try {
+                    wm.disconnect(this._wsAddedId);
+                } catch (e) {
+                    log.warn(`WorkspaceNumberIndicator: Failed to disconnect wsAddedId: ${e}`);
+                }
+                this._wsAddedId = null;
+            }
+            if (this._wsRemovedId !== null) {
+                try {
+                    wm.disconnect(this._wsRemovedId);
+                } catch (e) {
+                    log.warn(`WorkspaceNumberIndicator: Failed to disconnect wsRemovedId: ${e}`);
+                }
+                this._wsRemovedId = null;
+            }
         }
 
         for (const btn of this._wsBtns) btn.destroy();

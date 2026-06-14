@@ -196,7 +196,7 @@ Dragging a window to the center (middle 40% area) of another window triggers a d
 ### 5.12 Top Smart Gap (`src/extension.ts`)
 Provides a customizable `panel-top-gap` setting. When the panel is transparent (panel-transparency enabled and opacity is 0), the top side of the outer gap is replaced by the custom top gap value. This allows tiled windows to align closer to the top screen edge when the panel is invisible.
 
-### 5.13 EGO Compliance & Memory Management
+### 5.13 Compliance & Memory Management
 - **Redundant try-catch blocks** are forbidden. Always use direct type checks (`typeof`) for capability detection.
 - **Panel Hover Guard**: Focus changes to a panel actor (detected via `clutter_focus_is_shell_panel()`) do not trigger active hint border hide/show cycles, preventing flickering.
 - **Timeout Cleanup**: Timeout source IDs (like `show_border` callbacks) are tracked globally in `ACTIVE_HINT_SHOW_IDS` and explicitly removed on extension disable to avoid memory leaks.
@@ -252,7 +252,7 @@ Provides a customizable `panel-top-gap` setting. When the panel is transparent (
 ### Bug M — Redundant Compositor Commits in Mutter 18 / GNOME 50
 - **Fix:** Removed redundant `move_frame()` call following `move_resize_frame()` in window positioning path.
 
-### Bug N — EGO Reject: Redundant Try-Catch Blocks
+### Bug N — Redundant Try-Catch Blocks
 - **Fix:** Audited codebase and replaced empty/blind try-catch blocks with clean capability checks.
 
 ### Bug O — Floating Exception Class Name Matching

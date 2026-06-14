@@ -218,6 +218,7 @@ export class Config {
         try {
             return JSON.parse(json);
         } catch (error) {
+            console.error(`floating_exceptions/config: failed to parse config JSON: ${error}`);
             return new Config();
         }
     }
