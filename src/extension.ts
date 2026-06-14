@@ -3612,6 +3612,9 @@ export class Ext extends Ecs.System<ExtEvent> {
                         }
                     }
                     this.auto_tiler?.auto_tile(this, win, this.init);
+                    // Suppress the border until Mutter commits the post-tile
+                    // frame rect — prevents it drawing at the old/wrong position.
+                    win.mark_border_settling();
                     grab_focus();
                     actor.disconnect(id);
                 });

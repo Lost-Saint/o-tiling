@@ -155,6 +155,12 @@ export class ShellWindow {
 
     private _restack_id: number | null = null;
 
+    /** GLib source ID for the post-tile border-settle delay. While non-null,
+     *  show_border() is suppressed so the border doesn't snap to the
+     *  pre-tiling frame rect. Cleared (and border shown) once Mutter has
+     *  committed the new window geometry. */
+    private _border_settle_id: number | null = null;
+
     prev_rect: null | Rectangle = null;
 
     window_app: any;
@@ -522,6 +528,11 @@ export class ShellWindow {
     show_border() {
         if (!this.border) return;
 
+        // While the settle timer is active the window's frame rect hasn't been
+        // committed by Mutter yet.  Bail out — mark_border_settling() will call
+        // show_border() again once the geometry is final.
+        if (this._border_settle_id !== null) return;
+
         this.restack();
         this.update_border_style();
 
@@ -548,6 +559,31 @@ export class ShellWindow {
                 });
             }
         }
+    }
+
+    /**
+     * Called immediately after a new window is tiled. Hides the border and
+     * starts a short timer so that `show_border()` is deferred until Mutter
+     * has committed the post-tile frame rect.  This prevents the border from
+     * being drawn at the pre-tiling (wrong) window position.
+     */
+    mark_border_settling() {
+        // Cancel any previous settle timer.
+        if (this._border_settle_id !== null) {
+            GLib.source_remove(this._border_settle_id);
+            this._border_settle_id = null;
+        }
+
+        this.hide_border();
+
+        this._border_settle_id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 120, () => {
+            this._border_settle_id = null;
+            // Only show the border if this window is still the focused one.
+            if (this.ext.focus_window() === this) {
+                this.show_border();
+            }
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     same_workspace() {
@@ -809,6 +845,10 @@ export class ShellWindow {
         if (this._restack_id !== null) {
             utils.later_remove(this._restack_id);
             this._restack_id = null;
+        }
+        if (this._border_settle_id !== null) {
+            GLib.source_remove(this._border_settle_id);
+            this._border_settle_id = null;
         }
         if (this.border) {
             this.border.destroy();
