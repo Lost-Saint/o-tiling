@@ -374,7 +374,8 @@ jobs:
 
           EGO_BASE   = "https://extensions.gnome.org"
           LOGIN_URL  = f"{EGO_BASE}/api/v1/accounts/login/"
-          UPLOAD_URL = f"{EGO_BASE}/api/v1/extensions/upload/"
+          # Correct endpoint: POST /api/v1/extensions (no trailing slash, per API schema)
+          UPLOAD_URL = f"{EGO_BASE}/api/v1/extensions"
 
           username = os.environ["EGO_USERNAME"]
           password = os.environ["EGO_PASSWORD"]
@@ -383,8 +384,8 @@ jobs:
           session = requests.Session()
           session.headers.update({"User-Agent": "o-tiling-ci/1.0 (GitHub Actions)"})
 
-          # ── Step 1: Fetch login page to obtain CSRF token ──────────────────
-          print("→ Fetching EGO login page for CSRF token …")
+          # ── Step 1: Fetch CSRF token (set as cookie on any page) ───────────
+          print("→ Fetching EGO CSRF token …")
           resp = session.get(f"{EGO_BASE}/accounts/login/", timeout=30)
           resp.raise_for_status()
           csrf = session.cookies.get("csrftoken")
@@ -393,7 +394,7 @@ jobs:
               sys.exit(1)
           print(f"  CSRF token obtained.")
 
-          # ── Step 2: Authenticate ───────────────────────────────────────────
+          # ── Step 2: Authenticate → sets sessionid cookie ───────────────────
           print("→ Authenticating with extensions.gnome.org …")
           auth_resp = session.post(
               LOGIN_URL,
@@ -405,18 +406,26 @@ jobs:
               print(f"::error::EGO authentication failed (HTTP {auth_resp.status_code}).")
               print(auth_resp.text[:500])
               sys.exit(1)
+          if "sessionid" not in session.cookies:
+              print("::error::Login succeeded but no sessionid cookie received.")
+              sys.exit(1)
           print("  Authenticated successfully.")
 
-          # Refresh CSRF after login
+          # Refresh CSRF after login (Django rotates it post-login)
           csrf = session.cookies.get("csrftoken", csrf)
 
           # ── Step 3: Upload extension zip ───────────────────────────────────
-          print(f"→ Uploading {zip_path} …")
+          # Endpoint: POST /api/v1/extensions  (multipart/form-data)
+          # Schema fields: source (binary), shell_license_compliant (bool), tos_compliant (bool)
+          print(f"→ Uploading {zip_path} to {UPLOAD_URL} …")
           with open(zip_path, "rb") as f:
               upload_resp = session.post(
                   UPLOAD_URL,
                   files={"source": (os.path.basename(zip_path), f, "application/zip")},
-                  data={"shell_license_compliant": "true", "tos_compliant": "true"},
+                  data={
+                      "shell_license_compliant": "true",
+                      "tos_compliant": "true",
+                  },
                   headers={"X-CSRFToken": csrf, "Referer": EGO_BASE},
                   timeout=120,
               )
