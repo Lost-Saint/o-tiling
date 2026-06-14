@@ -23,7 +23,7 @@ O-Tiling is a heavily improved fork of [System76 Pop Shell](https://github.com/p
 Open a terminal and run:
 
 ```bash
-curl -L https://github.com/oliwebd/o-tiling/releases/download/v2.8.13/o-tiling@oliwebd.github.com-v2.8.13.zip \
+curl -L https://github.com/oliwebd/o-tiling/releases/download/v2.8.17/o-tiling@oliwebd.github.com-v2.8.17.zip \
   -o /tmp/o-tiling.zip \
   && gnome-extensions install --force /tmp/o-tiling.zip \
   && gnome-extensions enable o-tiling@oliwebd.github.com
@@ -35,11 +35,11 @@ Then **log out and log back in** to activate the extension (required on Wayland)
 
 ## 📦 Manual Install
 
-1. **Download** the latest zip from the [Releases page](https://github.com/oliwebd/o-tiling/releases/tag/v2.8.11)
+1. **Download** the latest zip from the [Releases page](https://github.com/oliwebd/o-tiling/releases/tag/v2.8.17)
 
 2. **Install** it:
    ```bash
-   gnome-extensions install --force ~/Downloads/o-tiling@oliwebd.github.com-v2.8.11.zip
+   gnome-extensions install --force ~/Downloads/o-tiling@oliwebd.github.com-v2.8.17.zip
    ```
 
 3. **Log out and log back in** (Wayland needs a session restart)
@@ -57,25 +57,36 @@ These features do **not** exist in the original Pop Shell:
 
 ### 🔵 Aura Focus Border
 
-A smooth animated border highlights your currently focused window. It picks up your GNOME system accent color automatically (Blue, Teal, Green, Red, Purple, etc.) or you can set a custom color. You can also control:
+A smooth animated border highlights your currently focused window. It picks up your GNOME system accent color automatically (Blue, Teal, Green, Red, Purple, etc.) or you can set a custom color. Features include:
 
-- **Border width** - how thick the border line is (1-10 px)
-- **Border radius** - how round the corners are (0-30 px)
-- **Outer glow** - a soft glow effect around the border, with its own opacity and custom color
-- **Window tint overlay** - a color tint applied over the focused window background, with adjustable opacity
-- **Custom overlay color** - override the tint color separately from the border color
-- **Apply tint to all windows** - instead of only the focused window, apply the tint overlay to every tiled window on the workspace at once
+- **Border width & radius** - control the thickness (1-10 px) and corner roundness (0-30 px) of the border.
+- **Outer glow** - a soft glow effect around the border with adjustable opacity and custom color support.
+- **Window tint overlay** - a color tint applied over tiled window backgrounds, with a dedicated master switch.
+- **Opacity control** - adjust the background tint opacity smoothly via a horizontal scale slider (0-100%).
+- **Custom overlay color** - easily override the tint color separately from the border color.
+- **Flexible tint targets** - choose to tint only the focused window or apply it to all tiled windows on the workspace.
+- **Flicker-free stability** - enhanced focus detection and guard clauses prevent visual flickering or redundant border updates during rapid window switching and mouse interactions.
 
 ### 🖼️ Workspace Switcher Styling (GNOME 48+)
 
 Replaces the default workspace thumbnail bar in the overview with a fully customized version:
 
-- **Auto-scaling thumbnails** - the thumbnail size is calculated automatically based on your screen width and how many workspaces you have open, so they always fit without overflowing
-- **Auto-scroll to active workspace** - the strip scrolls to keep the current workspace in view when you switch
-- **Rescales live** - when you add or remove a workspace, the thumbnails resize instantly
-- **Transparent background** - the thumbnail strip background is fully transparent so it blends with your wallpaper
-- **Accent color border** - the active workspace thumbnail gets a colored border using your GNOME accent color
-- **Rounded corners** - configurable corner radius on each workspace card
+- **Auto-scaling thumbnails** - the thumbnail size is calculated automatically based on your screen width and how many workspaces you have open, so they always fit without overflowing.
+- **Auto-scroll to active workspace** - the strip scrolls to keep the current workspace in view when you switch.
+- **Rescales live** - when you add or remove a workspace, the thumbnails resize instantly.
+- **Transparent background** - the thumbnail strip background is fully transparent so it blends with your wallpaper.
+- **Accent color border** - the active workspace thumbnail gets a colored border using your GNOME accent color.
+- **Rounded corners** - configurable corner radius on each workspace card.
+
+### 🔢 Interactive Panel Workspace Switcher
+
+An optional, highly interactive workspace switcher that replaces the default GNOME panel dots/indicators:
+
+- **Pill-shaped number buttons** - displays a clean, dedicated numbered button for each workspace.
+- **One-click navigation** - click any button to switch directly to that workspace.
+- **Dynamic active styling** - the button for the active workspace uses a subtle border ring and text matching your GNOME accent color.
+- **Overview toggle** - includes a pill-shaped button with a custom symbolic icon to easily toggle the Activities overview.
+- **Easy customization** - enable or disable it via the **Workspace Number Indicator** setting under the "Workspace Overview" section in the preferences window.
 
 ### 🚫 Skip Overview on Startup
 
@@ -129,7 +140,7 @@ Everything below is inherited from Pop Shell and improved:
 
 - **Auto-tiling engine** - Windows are arranged in a binary tree layout, per monitor and per workspace. The layout recalculates every time a window opens, closes, or moves.
 - **Stacking / Tabbed mode** - Stack multiple windows into one tile slot, with a tab bar to switch between them.
-- **Smart gaps** - Outer gaps disappear automatically when only one window is open.
+- **Smart gaps** - Outer gaps disappear automatically when only one window is open (fully functional even when the active hint Aura border is enabled).
 - **Multi-monitor support** - Fully supports multiple displays, hot-plugging, and workspaces-only-on-primary mode.
 - **Keyboard-first** - Move, resize, swap, and rotate tiles without touching your mouse.
 
@@ -201,6 +212,30 @@ make pack
 # Install locally
 make install
 ```
+
+---
+
+## 🚀 Creating a Release
+
+Releases are automatically built and published via GitHub Actions when a version tag is pushed.
+
+### Branch Rules
+- **Production Releases:** Must be tagged from the `main` or `master` branch.
+- **Pre-releases (RC / Beta):** Must be tagged from the `rc` branch.
+
+### How to Release
+1. Ensure the version in `package.json` and `metadata.json` matches and is updated.
+2. Commit and push your changes to the appropriate branch (`main`/`master` for production, `rc` for RC/Beta).
+3. Create and push a version tag:
+   ```bash
+   # For a production release (e.g., v2.9.0)
+   git tag v2.9.0
+   git push origin v2.9.0
+
+   # For a pre-release (e.g., v2.9.0-rc1 or v2.9.0-beta1)
+   git tag v2.9.0-beta1
+   git push origin v2.9.0-beta1
+   ```
 
 ---
 

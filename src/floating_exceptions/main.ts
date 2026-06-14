@@ -260,11 +260,15 @@ class App {
 }
 
 let UnixOutputStream: any;
-try {
-    const GioUnix = (await import('gi://GioUnix?version=2.0')).default;
-    UnixOutputStream = GioUnix.OutputStream;
-} catch (e) {
+if ('UnixOutputStream' in Gio) {
     UnixOutputStream = (Gio as any).UnixOutputStream;
+} else {
+    try {
+        const GioUnix = (await import('gi://GioUnix?version=2.0')).default;
+        UnixOutputStream = GioUnix.OutputStream;
+    } catch (e) {
+        console.error(`Failed to load UnixOutputStream: ${e}`);
+    }
 }
 
 /** We'll use stdout for printing events for the shell to handle */

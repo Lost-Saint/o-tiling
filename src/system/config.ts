@@ -271,6 +271,7 @@ export class Config {
         try {
             return JSON.parse(json);
         } catch (error) {
+            log.error(`failed to parse config JSON: ${error}`);
             return new Config();
         }
     }

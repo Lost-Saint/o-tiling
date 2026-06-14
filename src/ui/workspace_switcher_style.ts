@@ -143,19 +143,28 @@ export class WorkspaceSwitcherStyle {
         this._teardownAutoScroll();
         if (!this._file) return;
 
-        try {
-            const theme = St.ThemeContext.get_for_stage(
-                (global as any).stage as Clutter.Stage,
-            ).get_theme() as any;
+        const theme = St.ThemeContext.get_for_stage(
+            (global as any).stage as Clutter.Stage,
+        ).get_theme() as any;
 
-            if (theme) {
+        if (theme) {
+            try {
                 theme.unload_stylesheet(this._file);
-                this._removeBlur();
-                this._restoreThumbnailScale();
-                this._teardownSignals();
+            } catch (e) {
+                log.warn(`WorkspaceSwitcherStyle: failed to unload stylesheet: ${e}`);
             }
-            this._file.delete(null);
-        } catch (_) { /* best-effort */ }
+            this._removeBlur();
+            this._restoreThumbnailScale();
+            this._teardownSignals();
+        }
+
+        if (this._file.query_exists(null)) {
+            try {
+                this._file.delete(null);
+            } catch (e) {
+                log.warn(`WorkspaceSwitcherStyle: failed to delete stylesheet file: ${e}`);
+            }
+        }
 
         this._file = null;
     }
@@ -206,12 +215,14 @@ export class WorkspaceSwitcherStyle {
 
     private _removeBlur(): void {
         if (this._blurEffect) {
-            try {
-                const thumbnailsBox = this._getThumbnailsBox();
-                if (thumbnailsBox) {
+            const thumbnailsBox = this._getThumbnailsBox();
+            if (thumbnailsBox && typeof thumbnailsBox.remove_effect_by_name === 'function') {
+                try {
                     thumbnailsBox.remove_effect_by_name('o-tiling-blur');
+                } catch (e) {
+                    log.warn(`WorkspaceSwitcherStyle: failed to remove blur effect: ${e}`);
                 }
-            } catch (_) { }
+            }
             this._blurEffect = null;
         }
     }
@@ -332,9 +343,9 @@ export class WorkspaceSwitcherStyle {
     /** Restores the original _maxThumbnailScale on disable. */
     private _restoreThumbnailScale(): void {
         if (!isGnome50()) return;
-        try {
-            const thumbnailsBox = this._getThumbnailsBox();
-            if (thumbnailsBox) {
+        const thumbnailsBox = this._getThumbnailsBox();
+        if (thumbnailsBox) {
+            try {
                 if (this._origUpdateMaxThumbnailScale) {
                     thumbnailsBox._updateMaxThumbnailScale = this._origUpdateMaxThumbnailScale;
                     this._origUpdateMaxThumbnailScale = null;
@@ -347,11 +358,15 @@ export class WorkspaceSwitcherStyle {
 
                 // Restore alignment
                 thumbnailsBox.set_x_expand(true);
-                thumbnailsBox.set_x_align(Clutter.ActorAlign.FILL);
+                if (typeof thumbnailsBox.set_x_align === 'function') {
+                    thumbnailsBox.set_x_align(Clutter.ActorAlign.FILL);
+                }
 
                 thumbnailsBox.queue_relayout?.();
+            } catch (e) {
+                log.warn(`WorkspaceSwitcherStyle: failed to restore thumbnail scale: ${e}`);
             }
-        } catch (_) { }
+        }
         this._origMaxThumbnailScale = null;
         this._origMinThumbnailScale = null;
     }
@@ -437,20 +452,38 @@ export class WorkspaceSwitcherStyle {
     private _teardownAutoScroll(): void {
         const workspace_manager = (global as any).workspace_manager;
 
-        if (this._workspaceChangedId !== null) {
-            workspace_manager.disconnect(this._workspaceChangedId);
-            this._workspaceChangedId = null;
+        if (workspace_manager && typeof workspace_manager.disconnect === 'function') {
+            if (this._workspaceChangedId !== null) {
+                try {
+                    workspace_manager.disconnect(this._workspaceChangedId);
+                } catch (e) {
+                    log.warn(`WorkspaceSwitcherStyle: failed to disconnect workspaceChangedId: ${e}`);
+                }
+                this._workspaceChangedId = null;
+            }
+            if (this._workspaceAddedId !== null) {
+                try {
+                    workspace_manager.disconnect(this._workspaceAddedId);
+                } catch (e) {
+                    log.warn(`WorkspaceSwitcherStyle: failed to disconnect workspaceAddedId: ${e}`);
+                }
+                this._workspaceAddedId = null;
+            }
+            if (this._workspaceRemovedId !== null) {
+                try {
+                    workspace_manager.disconnect(this._workspaceRemovedId);
+                } catch (e) {
+                    log.warn(`WorkspaceSwitcherStyle: failed to disconnect workspaceRemovedId: ${e}`);
+                }
+                this._workspaceRemovedId = null;
+            }
         }
-        if (this._workspaceAddedId !== null) {
-            workspace_manager.disconnect(this._workspaceAddedId);
-            this._workspaceAddedId = null;
-        }
-        if (this._workspaceRemovedId !== null) {
-            workspace_manager.disconnect(this._workspaceRemovedId);
-            this._workspaceRemovedId = null;
-        }
-        if (this._overviewShowingId !== null) {
-            Main.overview.disconnect(this._overviewShowingId);
+        if (this._overviewShowingId !== null && Main.overview && typeof Main.overview.disconnect === 'function') {
+            try {
+                Main.overview.disconnect(this._overviewShowingId);
+            } catch (e) {
+                log.warn(`WorkspaceSwitcherStyle: failed to disconnect overviewShowingId: ${e}`);
+            }
             this._overviewShowingId = null;
         }
     }

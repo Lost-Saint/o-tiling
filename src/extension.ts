@@ -68,19 +68,21 @@ const {
 } = Main;
 
 function is_modal_blocking_focus(): boolean {
-    try {
-        // Public API: check if any modal dialog is currently pushed
+    // Public API: check if any modal dialog is currently pushed
+    if (Main && 'modalActorFocusStack' in Main) {
         const stack = (Main as any).modalActorFocusStack;
         if (Array.isArray(stack) && stack.length > 0) {
             const top_actor = stack[0]?.actor;
             return top_actor?.style_class !== 'switcher-popup';
         }
-    } catch (_) { }
+    }
     // Fallback: use pushModal count if available (GNOME 50 compatible)
-    try {
+    if (Main) {
         const count = (Main as any)._modalCount ?? (Main as any).modalCount ?? (Main as any).layoutManager?._modalDialogCount;
-        if (typeof count === 'number') return count > 0;
-    } catch (_) { }
+        if (typeof count === 'number') {
+            return count > 0;
+        }
+    }
     return false;
 }
 
@@ -465,17 +467,17 @@ export class Ext extends Ecs.System<ExtEvent> {
 
 
         if (this._resume_timeout) {
-            GLib.source_remove(this._resume_timeout);
+            utils.source_remove(this._resume_timeout);
             this._resume_timeout = null;
         }
 
         if (this._exception_select_timeout !== null) {
-            GLib.source_remove(this._exception_select_timeout);
+            utils.source_remove(this._exception_select_timeout);
             this._exception_select_timeout = null;
         }
 
         if (this._resume_timeout_source !== null) {
-            GLib.source_remove(this._resume_timeout_source);
+            utils.source_remove(this._resume_timeout_source);
             this._resume_timeout_source = null;
         }
 
@@ -488,7 +490,13 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         // Disconnect settings signals (EGO: all signals must be disconnected in disable)
         for (const [obj, id] of this._settings_signal_ids) {
-            try { obj.disconnect(id); } catch (_) { }
+            if (obj && typeof obj.disconnect === 'function' && id) {
+                try {
+                    obj.disconnect(id);
+                } catch (e) {
+                    log.warn(`Failed to disconnect settings signal: ${e}`);
+                }
+            }
         }
         this._settings_signal_ids = [];
 
@@ -533,11 +541,27 @@ export class Ext extends Ecs.System<ExtEvent> {
                 // Disconnect signals stored in window_signals and size_signals for THIS window
                 const win_sigs = this.window_signals.get(entity);
                 if (win_sigs) {
-                    for (const sig of win_sigs) try { win.meta.disconnect(sig); } catch (_) { }
+                    for (const sig of win_sigs) {
+                        if (win.meta && typeof win.meta.disconnect === 'function' && sig) {
+                            try {
+                                win.meta.disconnect(sig);
+                            } catch (e) {
+                                log.warn(`Failed to disconnect window signal: ${e}`);
+                            }
+                        }
+                    }
                 }
                 const size_sigs = this.size_signals.get(entity);
                 if (size_sigs) {
-                    for (const sig of size_sigs) try { win.meta.disconnect(sig); } catch (_) { }
+                    for (const sig of size_sigs) {
+                        if (win.meta && typeof win.meta.disconnect === 'function' && sig) {
+                            try {
+                                win.meta.disconnect(sig);
+                            } catch (e) {
+                                log.warn(`Failed to disconnect window size signal: ${e}`);
+                            }
+                        }
+                    }
                 }
 
                 win.destroy();
@@ -545,36 +569,36 @@ export class Ext extends Ecs.System<ExtEvent> {
         }
 
         if (this.suspend_timeout) {
-            GLib.source_remove(this.suspend_timeout);
+            utils.source_remove(this.suspend_timeout);
             this.suspend_timeout = null;
         }
 
 
         if (this.displays_updating) {
-            GLib.source_remove(this.displays_updating);
+            utils.source_remove(this.displays_updating);
             this.displays_updating = null;
         }
 
         if (this.workareas_update) {
-            GLib.source_remove(this.workareas_update);
+            utils.source_remove(this.workareas_update);
             this.workareas_update = null;
         }
 
         // Clean up restack timeout source
         if (this._restack_source !== null) {
-            GLib.source_remove(this._restack_source);
+            utils.source_remove(this._restack_source);
             this._restack_source = null;
         }
 
         // Clean up schedule_idle timeout sources
         for (const src of this._schedule_idle_sources) {
-            try { GLib.source_remove(src); } catch (_) { }
+            utils.source_remove(src);
         }
         this._schedule_idle_sources.clear();
 
         // Clean up pending size request timers
         for (const [, src] of this.size_requests) {
-            try { GLib.source_remove(src); } catch (_) { }
+            utils.source_remove(src);
         }
         this.size_requests.clear();
 
@@ -794,9 +818,7 @@ export class Ext extends Ecs.System<ExtEvent> {
             const old = this.size_requests.get(win.meta);
 
             if (old) {
-                try {
-                    GLib.source_remove(old);
-                } catch (_) { }
+                utils.source_remove(old);
             }
 
             const new_s = GLib.timeout_add(GLib.PRIORITY_LOW, 500, () => {
@@ -900,7 +922,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     exception_select() {
         if (this._exception_select_timeout !== null) {
-            GLib.source_remove(this._exception_select_timeout);
+            utils.source_remove(this._exception_select_timeout);
         }
         const id = GLib.timeout_add(GLib.PRIORITY_LOW, 500, () => {
             this.exception_selecting = true;
@@ -1196,7 +1218,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         const old_size_request = this.size_requests.get(window.meta);
         if (old_size_request) {
-            try { GLib.source_remove(old_size_request); } catch (_) { }
+            utils.source_remove(old_size_request);
             this.size_requests.delete(window.meta);
         }
 
@@ -1205,7 +1227,13 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         this.window_signals.take_with(win, (signals) => {
             for (const signal of signals) {
-                try { window.meta.disconnect(signal); } catch (_) { }
+                if (window.meta && typeof window.meta.disconnect === 'function' && signal) {
+                    try {
+                        window.meta.disconnect(signal);
+                    } catch (e) {
+                        log.warn(`Failed to disconnect window signal in untrack: ${e}`);
+                    }
+                }
             }
         });
 
@@ -2366,7 +2394,7 @@ export class Ext extends Ecs.System<ExtEvent> {
     restack() {
         // NOTE: Workaround for GNOME Shell showing our hidden windows on a workspace switch
         if (this._restack_source !== null) {
-            GLib.source_remove(this._restack_source);
+            utils.source_remove(this._restack_source);
         }
         let attempts = 0;
         const id = GLib.timeout_add(GLib.PRIORITY_LOW, 100, () => {
@@ -2711,18 +2739,18 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     suspend() {
         if (this.suspend_timeout) {
-            GLib.source_remove(this.suspend_timeout);
+            utils.source_remove(this.suspend_timeout);
             this.suspend_timeout = null;
         }
 
         // Cancel any pending resume to prevent race conditions
         if (this._resume_timeout) {
-            GLib.source_remove(this._resume_timeout);
+            utils.source_remove(this._resume_timeout);
             this._resume_timeout = null;
         }
 
         if (this._resume_timeout_source !== null) {
-            GLib.source_remove(this._resume_timeout_source);
+            utils.source_remove(this._resume_timeout_source);
             this._resume_timeout_source = null;
         }
 
@@ -2738,13 +2766,13 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     resume() {
         if (this.suspend_timeout) {
-            GLib.source_remove(this.suspend_timeout);
+            utils.source_remove(this.suspend_timeout);
             this.suspend_timeout = null;
         }
 
         // Debounce: clear any previous resume schedule.
         if (this._resume_timeout) {
-            GLib.source_remove(this._resume_timeout);
+            utils.source_remove(this._resume_timeout);
             this._resume_timeout = null;
         }
 
@@ -2913,11 +2941,27 @@ export class Ext extends Ecs.System<ExtEvent> {
                 // Disconnect signals stored in window_signals and size_signals for THIS window
                 const win_sigs = this.window_signals.get(entity);
                 if (win_sigs) {
-                    for (const sig of win_sigs) try { win.meta.disconnect(sig); } catch (_) { }
+                    for (const sig of win_sigs) {
+                        if (win.meta && typeof win.meta.disconnect === 'function' && sig) {
+                            try {
+                                win.meta.disconnect(sig);
+                            } catch (e) {
+                                log.warn(`Failed to disconnect window signal in soft disable: ${e}`);
+                            }
+                        }
+                    }
                 }
                 const size_sigs = this.size_signals.get(entity);
                 if (size_sigs) {
-                    for (const sig of size_sigs) try { win.meta.disconnect(sig); } catch (_) { }
+                    for (const sig of size_sigs) {
+                        if (win.meta && typeof win.meta.disconnect === 'function' && sig) {
+                            try {
+                                win.meta.disconnect(sig);
+                            } catch (e) {
+                                log.warn(`Failed to disconnect window size signal in soft disable: ${e}`);
+                            }
+                        }
+                    }
                 }
 
                 win.destroy();
@@ -2939,23 +2983,23 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         // 7. Clear pending timers/sources
         if (this._resume_timeout_source !== null) {
-            GLib.source_remove(this._resume_timeout_source);
+            utils.source_remove(this._resume_timeout_source);
             this._resume_timeout_source = null;
         }
         if (this.suspend_timeout) {
-            GLib.source_remove(this.suspend_timeout);
+            utils.source_remove(this.suspend_timeout);
             this.suspend_timeout = null;
         }
         if (this._restack_source !== null) {
-            GLib.source_remove(this._restack_source);
+            utils.source_remove(this._restack_source);
             this._restack_source = null;
         }
         for (const src of this._schedule_idle_sources) {
-            try { GLib.source_remove(src); } catch (_) { }
+            utils.source_remove(src);
         }
         this._schedule_idle_sources.clear();
         for (const [, src] of this.size_requests) {
-            try { GLib.source_remove(src); } catch (_) { }
+            utils.source_remove(src);
         }
         this.size_requests.clear();
 
@@ -3230,7 +3274,7 @@ export class Ext extends Ecs.System<ExtEvent> {
     unset_grab_op() {
         if (this.drag_signal !== null) {
             this.overlay.visible = false;
-            GLib.source_remove(this.drag_signal);
+            utils.source_remove(this.drag_signal);
             this.drag_signal = null;
         }
 
@@ -3286,7 +3330,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         if (!displays_ready() || !primary_display_ready(this)) {
             if (this.displays_updating !== null) return;
-            if (this.workareas_update !== null) GLib.source_remove(this.workareas_update);
+            if (this.workareas_update !== null) utils.source_remove(this.workareas_update);
 
             const id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
                 this.register_fn(() => {
@@ -3407,10 +3451,10 @@ export class Ext extends Ecs.System<ExtEvent> {
             return;
         }
 
-        if (this.displays_updating !== null) GLib.source_remove(this.displays_updating);
+        if (this.displays_updating !== null) utils.source_remove(this.displays_updating);
 
         if (this.workareas_update !== null) {
-            GLib.source_remove(this.workareas_update);
+            utils.source_remove(this.workareas_update);
             this.workareas_update = null;
         }
 

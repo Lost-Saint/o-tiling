@@ -49,8 +49,21 @@ export function read_to_string(path: string): Promise<result.Result<string, erro
     });
 }
 
-export function source_remove(id: SignalID): boolean {
-    return GLib.source_remove(id) as any;
+export function source_remove(id: number | null): boolean {
+    if (!id || id <= 0) return false;
+    const defaultContext = GLib.MainContext.default();
+    if (defaultContext && typeof defaultContext.find_source_by_id === 'function') {
+        if (defaultContext.find_source_by_id(id)) {
+            GLib.source_remove(id);
+            return true;
+        }
+    } else {
+        try {
+            GLib.source_remove(id);
+            return true;
+        } catch (_) {}
+    }
+    return false;
 }
 
 export function exists(path: string): boolean {
@@ -193,10 +206,14 @@ export function maximize(
         (window as any).set_maximize_flags(flags);
         (window as any).maximize();
     } else {
-        try {
-            (window as any).maximize(flags);
-        } catch {
+        if ((window as any).maximize.length === 0) {
             (window as any).maximize();
+        } else {
+            try {
+                (window as any).maximize(flags);
+            } catch (e) {
+                (window as any).maximize();
+            }
         }
     }
 }
@@ -209,10 +226,14 @@ export function unmaximize(
         (window as any).set_unmaximize_flags(flags);
         (window as any).unmaximize();
     } else {
-        try {
-            (window as any).unmaximize(flags);
-        } catch {
+        if ((window as any).unmaximize.length === 0) {
             (window as any).unmaximize();
+        } else {
+            try {
+                (window as any).unmaximize(flags);
+            } catch (e) {
+                (window as any).unmaximize();
+            }
         }
     }
 }

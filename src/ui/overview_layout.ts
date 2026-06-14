@@ -117,7 +117,9 @@ export class OverviewLayoutManager {
                     (WorkspaceLayout.prototype as any)._updateWindowPositions = this._origUpdateWindowPositions;
                     this._origUpdateWindowPositions = null;
                 }
-            }).catch(() => { /* best-effort cleanup */ });
+            }).catch((e) => {
+                log.warn(`OverviewLayoutManager: failed to restore original _updateWindowPositions: ${e}`);
+            });
         }
     }
 }
