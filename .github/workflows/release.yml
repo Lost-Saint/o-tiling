@@ -5,6 +5,7 @@ on:
     tags:
       - "v*.*.*"
       - "v*.*.*-rc*"
+      - "v*.*.*-beta*"
   pull_request:
     branches:
       - main
@@ -39,13 +40,13 @@ jobs:
           # Fetch origin to make sure remote branches are available
           git fetch origin
           
-          if [[ "${TAG_NAME}" =~ -rc ]]; then
-            # Release candidate tag must be on the rc branch
+          if [[ "${TAG_NAME}" =~ -rc ]] || [[ "${TAG_NAME}" =~ -beta ]]; then
+            # Pre-release tag must be on the rc branch
             if ! git branch -r --contains "${TAG_NAME}" | grep -q "origin/rc"; then
-              echo "::error::Release candidate tag ${TAG_NAME} must be pushed on the 'rc' branch."
+              echo "::error::Pre-release tag ${TAG_NAME} (rc/beta) must be pushed on the 'rc' branch."
               exit 1
             fi
-            echo "✓ RC tag ${TAG_NAME} is on the 'rc' branch"
+            echo "✓ Pre-release tag ${TAG_NAME} is on the 'rc' branch"
           else
             # Production tag must be on main or master branch
             if ! git branch -r --contains "${TAG_NAME}" | grep -E -q "origin/main|origin/master"; then
@@ -275,6 +276,8 @@ jobs:
           RC_NOTICE=""
           if [[ "${VERSION}" =~ -rc ]]; then
             RC_NOTICE="> [!WARNING]\n> This is a **Release Candidate** pre-release version. It is intended for testing and feedback. Please report any bugs or issues on GitHub.\n\n"
+          elif [[ "${VERSION}" =~ -beta ]]; then
+            RC_NOTICE="> [!WARNING]\n> This is a **Beta** pre-release version. It is intended for testing and feedback. Please report any bugs or issues on GitHub.\n\n"
           fi
           
           printf "%b" "${RC_NOTICE}" > release_notes.md
