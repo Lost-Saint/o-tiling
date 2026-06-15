@@ -325,48 +325,67 @@ jobs:
 
   # ── EGO upload (production tags only — no rc/beta) ───────────────────────
   ego-upload:
-    name: Upload to extensions.gnome.org
-    runs-on: ubuntu-latest
-    needs: release
-    if: |
-      startsWith(github.ref, 'refs/tags/v') &&
-      !contains(github.ref, '-rc') &&
-      !contains(github.ref, '-beta')
+   - name: Upload to extensions.gnome.org
+  env:
+    EGO_USERNAME: ${{ secrets.EGO_USERNAME }}
+    EGO_PASSWORD: ${{ secrets.EGO_PASSWORD }}
+    ZIP_PATH: ${{ steps.zip.outputs.ZIP_PATH }}
+  run: |
+    python3 - <<'PYEOF'
+    import os, sys, requests
 
-    steps:
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: extension
-          path: artifacts/
+    EGO_BASE   = "https://extensions.gnome.org"
+    LOGIN_URL  = f"{EGO_BASE}/api/v1/accounts/login/"
+    UPLOAD_URL = f"{EGO_BASE}/api/v1/extensions"
 
-      - name: Locate zip file
-        id: zip
-        run: |
-          ZIP_PATH=$(find artifacts/ -name "*.zip" | head -1)
-          if [ -z "${ZIP_PATH}" ]; then
-            echo "::error::No zip file found in artifacts/"
-            exit 1
-          fi
-          echo "ZIP_PATH=${ZIP_PATH}" >> $GITHUB_OUTPUT
-          echo "Uploading: ${ZIP_PATH} ($(du -sh "${ZIP_PATH}" | cut -f1))"
+    username = os.environ["EGO_USERNAME"]
+    password = os.environ["EGO_PASSWORD"]
+    zip_path = os.environ["ZIP_PATH"]
 
-      - name: Install gnome-shell (provides gnome-extensions CLI)
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends gnome-shell
+    session = requests.Session()
+    session.headers.update({"User-Agent": "o-tiling-ci/1.0 (GitHub Actions)"})
 
-      - name: Upload to EGO via gnome-extensions
-        env:
-          EGO_USERNAME: ${{ secrets.EGO_USERNAME }}
-          EGO_PASSWORD: ${{ secrets.EGO_PASSWORD }}
-          ZIP_PATH: ${{ steps.zip.outputs.ZIP_PATH }}
-        run: |
-          printf '%s' "${EGO_PASSWORD}" > /tmp/ego_password
-          chmod 600 /tmp/ego_password
-          gnome-extensions upload \
-            --accept-tos \
-            --user "${EGO_USERNAME}" \
-            --password-file /tmp/ego_password \
-            "${ZIP_PATH}"
-          rm -f /tmp/ego_password
+    print("→ Fetching CSRF token …")
+    resp = session.get(f"{EGO_BASE}/accounts/login/", timeout=30)
+    resp.raise_for_status()
+    csrf = session.cookies.get("csrftoken")
+    if not csrf:
+        print("::error::Could not retrieve CSRF token.")
+        sys.exit(1)
+
+    print("→ Authenticating …")
+    auth = session.post(
+        LOGIN_URL,
+        json={"login": username, "password": password},
+        headers={"X-CSRFToken": csrf, "Referer": f"{EGO_BASE}/accounts/login/"},
+        timeout=30,
+    )
+    if auth.status_code not in (200, 201) or "sessionid" not in session.cookies:
+        print(f"::error::Authentication failed (HTTP {auth.status_code}).")
+        sys.exit(1)
+    print("  Authenticated.")
+
+    csrf = session.cookies.get("csrftoken", csrf)
+
+    print(f"→ Uploading {zip_path} …")
+    with open(zip_path, "rb") as f:
+        up = session.post(
+            UPLOAD_URL,
+            files={"source": (os.path.basename(zip_path), f, "application/zip")},
+            data={"shell_license_compliant": "true", "tos_compliant": "true"},
+            headers={"X-CSRFToken": csrf, "Referer": EGO_BASE},
+            timeout=120,
+        )
+
+    print(f"  HTTP {up.status_code}")
+    try:
+        print(f"  Response: {up.json()}")
+    except Exception:
+        print(f"  Response: {up.text[:500]}")
+
+    if up.status_code in (200, 201):
+        print("✓ Uploaded and queued for review.")
+    else:
+        print(f"::error::Upload failed (HTTP {up.status_code}).")
+        sys.exit(1)
+    PYEOF
