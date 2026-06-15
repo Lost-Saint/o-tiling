@@ -36,19 +36,16 @@ jobs:
         run: |
           TAG_NAME="${GITHUB_REF#refs/tags/}"
           echo "Verifying branch containment for tag: ${TAG_NAME}"
-          
-          # Fetch origin to make sure remote branches are available
+
           git fetch origin
-          
+
           if [[ "${TAG_NAME}" =~ -rc ]] || [[ "${TAG_NAME}" =~ -beta ]]; then
-            # Pre-release tag must be on the rc branch
             if ! git branch -r --contains "${TAG_NAME}" | grep -q "origin/rc"; then
               echo "::error::Pre-release tag ${TAG_NAME} (rc/beta) must be pushed on the 'rc' branch."
               exit 1
             fi
             echo "✓ Pre-release tag ${TAG_NAME} is on the 'rc' branch"
           else
-            # Production tag must be on main or master branch
             if ! git branch -r --contains "${TAG_NAME}" | grep -E -q "origin/main|origin/master"; then
               echo "::error::Production release tag ${TAG_NAME} must be pushed on 'main' or 'master' branch."
               exit 1
@@ -62,8 +59,8 @@ jobs:
           META_VERSION=$(jq -r '.version' metadata.json)
           META_VERSION_NAME=$(jq -r '."version-name" // empty' metadata.json)
 
-          echo "package.json version : ${PKG_VERSION}"
-          echo "metadata.json version: ${META_VERSION}"
+          echo "package.json version      : ${PKG_VERSION}"
+          echo "metadata.json version     : ${META_VERSION}"
           echo "metadata.json version-name: ${META_VERSION_NAME}"
 
           if [ -n "${META_VERSION_NAME}" ]; then
@@ -152,8 +149,8 @@ jobs:
           echo "── Build contents ──"
           ls -lh dist/
           echo ""
-          test -f dist/extension.js  || (echo "::error::extension.js missing"  && exit 1)
-          test -f dist/prefs.js      || (echo "::error::prefs.js missing"      && exit 1)
+          test -f dist/extension.js || (echo "::error::extension.js missing" && exit 1)
+          test -f dist/prefs.js     || (echo "::error::prefs.js missing"     && exit 1)
           echo "✓ Basic build artifacts present"
 
       - name: Verify no gi://Gdk import in extension process files
@@ -272,16 +269,16 @@ jobs:
       - name: Build release notes
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          
+
           RC_NOTICE=""
           if [[ "${VERSION}" =~ -rc ]]; then
             RC_NOTICE="> [!WARNING]\n> This is a **Release Candidate** pre-release version. It is intended for testing and feedback. Please report any bugs or issues on GitHub.\n\n"
           elif [[ "${VERSION}" =~ -beta ]]; then
             RC_NOTICE="> [!WARNING]\n> This is a **Beta** pre-release version. It is intended for testing and feedback. Please report any bugs or issues on GitHub.\n\n"
           fi
-          
+
           printf "%b" "${RC_NOTICE}" > release_notes.md
-          
+
           cat >> release_notes.md <<EOF
           ## O-tiling v${VERSION}
 
@@ -297,7 +294,7 @@ jobs:
           >   && gnome-extensions install --force /tmp/o-tiling.zip \\
           >   && gnome-extensions enable ${UUID}
           > \`\`\`
-          > 
+          >
           > **📦 Manual Install:**
           > \`\`\`bash
           > gnome-extensions install --force ~/Downloads/${UUID}-v${VERSION}.zip
@@ -331,7 +328,6 @@ jobs:
     name: Upload to extensions.gnome.org
     runs-on: ubuntu-latest
     needs: release
-    # Only run on production version tags (no pre-release suffix)
     if: |
       startsWith(github.ref, 'refs/tags/v') &&
       !contains(github.ref, '-rc') &&
@@ -355,91 +351,22 @@ jobs:
           echo "ZIP_PATH=${ZIP_PATH}" >> $GITHUB_OUTPUT
           echo "Uploading: ${ZIP_PATH} ($(du -sh "${ZIP_PATH}" | cut -f1))"
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+      - name: Install gnome-shell (provides gnome-extensions CLI)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends gnome-shell
 
-      - name: Install requests
-        run: pip install --quiet requests
-
-      - name: Upload to EGO
+      - name: Upload to EGO via gnome-extensions
         env:
           EGO_USERNAME: ${{ secrets.EGO_USERNAME }}
           EGO_PASSWORD: ${{ secrets.EGO_PASSWORD }}
           ZIP_PATH: ${{ steps.zip.outputs.ZIP_PATH }}
         run: |
-          python3 - <<'PYEOF'
-          import os, sys, requests
-
-          EGO_BASE   = "https://extensions.gnome.org"
-          LOGIN_URL  = f"{EGO_BASE}/api/v1/accounts/login/"
-          # Correct endpoint: POST /api/v1/extensions (no trailing slash, per API schema)
-          UPLOAD_URL = f"{EGO_BASE}/api/v1/extensions"
-
-          username = os.environ["EGO_USERNAME"]
-          password = os.environ["EGO_PASSWORD"]
-          zip_path = os.environ["ZIP_PATH"]
-
-          session = requests.Session()
-          session.headers.update({"User-Agent": "o-tiling-ci/1.0 (GitHub Actions)"})
-
-          # ── Step 1: Fetch CSRF token (set as cookie on any page) ───────────
-          print("→ Fetching EGO CSRF token …")
-          resp = session.get(f"{EGO_BASE}/accounts/login/", timeout=30)
-          resp.raise_for_status()
-          csrf = session.cookies.get("csrftoken")
-          if not csrf:
-              print("::error::Could not retrieve CSRF token from EGO login page.")
-              sys.exit(1)
-          print(f"  CSRF token obtained.")
-
-          # ── Step 2: Authenticate → sets sessionid cookie ───────────────────
-          print("→ Authenticating with extensions.gnome.org …")
-          auth_resp = session.post(
-              LOGIN_URL,
-              json={"login": username, "password": password},
-              headers={"X-CSRFToken": csrf, "Referer": f"{EGO_BASE}/accounts/login/"},
-              timeout=30,
-          )
-          if auth_resp.status_code not in (200, 201):
-              print(f"::error::EGO authentication failed (HTTP {auth_resp.status_code}).")
-              print(auth_resp.text[:500])
-              sys.exit(1)
-          if "sessionid" not in session.cookies:
-              print("::error::Login succeeded but no sessionid cookie received.")
-              sys.exit(1)
-          print("  Authenticated successfully.")
-
-          # Refresh CSRF after login (Django rotates it post-login)
-          csrf = session.cookies.get("csrftoken", csrf)
-
-          # ── Step 3: Upload extension zip ───────────────────────────────────
-          # Endpoint: POST /api/v1/extensions  (multipart/form-data)
-          # Schema fields: source (binary), shell_license_compliant (bool), tos_compliant (bool)
-          print(f"→ Uploading {zip_path} to {UPLOAD_URL} …")
-          with open(zip_path, "rb") as f:
-              upload_resp = session.post(
-                  UPLOAD_URL,
-                  files={"source": (os.path.basename(zip_path), f, "application/zip")},
-                  data={
-                      "shell_license_compliant": "true",
-                      "tos_compliant": "true",
-                  },
-                  headers={"X-CSRFToken": csrf, "Referer": EGO_BASE},
-                  timeout=120,
-              )
-
-          print(f"  HTTP {upload_resp.status_code}")
-          try:
-              body = upload_resp.json()
-              print(f"  Response: {body}")
-          except Exception:
-              print(f"  Response: {upload_resp.text[:500]}")
-
-          if upload_resp.status_code in (200, 201):
-              print("✓ Extension uploaded to EGO and queued for review.")
-          else:
-              print(f"::error::EGO upload failed (HTTP {upload_resp.status_code}).")
-              sys.exit(1)
-          PYEOF
+          printf '%s' "${EGO_PASSWORD}" > /tmp/ego_password
+          chmod 600 /tmp/ego_password
+          gnome-extensions upload \
+            --accept-tos \
+            --user "${EGO_USERNAME}" \
+            --password-file /tmp/ego_password \
+            "${ZIP_PATH}"
+          rm -f /tmp/ego_password
