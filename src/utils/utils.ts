@@ -11,8 +11,7 @@ const { Ok, Err } = result;
 const { Error } = error;
 
 export function is_wayland(): boolean {
-    // GNOME 50 removed Meta.is_wayland_compositor() — use global.context first,
-    // fall back to the old Meta API, then fall back to environment detection.
+    // GNOME 50 removed Meta.is_wayland_compositor() - fallback chain: context -> Meta -> env
     if (typeof (global as any).context?.is_wayland_compositor === 'function') {
         return (global as any).context.is_wayland_compositor();
     }
@@ -268,15 +267,10 @@ export function set_alpha(color: string, alpha: number): string {
         return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     }
     
-    // If it's a named color or something we can't parse, we can't easily set alpha
-    // unless we use a temporary actor to parse it, which is overkill here.
-    // We'll return it as is, but log a warning if it's not a standard format.
+    // Named/unparseable colors are returned as-is (using a temp actor to parse alpha would be overkill).
     return color;
 }
-/**
- * Checks if a string is a valid color (hex, rgb, or rgba).
- * This avoids depending on Clutter.Color or Gdk.RGBA for basic validation.
- */
+/** Checks if a string is a valid color (hex, rgb, rgba) without depending on Clutter.Color or Gdk.RGBA. */
 export function isValidColor(color: string): boolean {
     if (!color) return false;
     
@@ -285,8 +279,7 @@ export function isValidColor(color: string): boolean {
         return true;
     }
     
-    // RGB/RGBA: rgb(255, 255, 255) or rgba(255, 255, 255, 1.0)
-    // We're being a bit lenient with the spaces and decimals
+    // RGB/RGBA: e.g. rgb(255, 255, 255) or rgba(255, 255, 255, 1.0) (lenient with spaces/decimals)
     if (/^rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(,\s*[\d.]+\s*)?\)$/i.test(color)) {
         return true;
     }
@@ -329,10 +322,7 @@ export function later_remove(id: number) {
     GLib.source_remove(id);
 }
 
-/**
- * Gets a safe timestamp for Mutter/X11 operations.
- * Prioritizes Clutter event time to avoid synchronous roundtrips.
- */
+/** Gets a safe timestamp for Mutter/X11 operations, prioritizing Clutter event time to avoid synchronous roundtrips. */
 export function get_current_time(): number {
     const time = Clutter.get_current_event_time();
     // 0 (CurrentTime) is safe; avoid get_current_time() — it's a blocking X11 roundtrip.
