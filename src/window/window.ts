@@ -155,10 +155,7 @@ export class ShellWindow {
 
     private _restack_id: number | null = null;
 
-    /** GLib source ID for the post-tile border-settle delay. While non-null,
-     *  show_border() is suppressed so the border doesn't snap to the
-     *  pre-tiling frame rect. Cleared (and border shown) once Mutter has
-     *  committed the new window geometry. */
+    /** GLib source ID for the post-tile border-settle delay; suppresses show_border() until Mutter commits the new frame rect. */
     private _border_settle_id: number | null = null;
 
     prev_rect: null | Rectangle = null;
@@ -272,11 +269,7 @@ export class ShellWindow {
         this.update_hint_colors();
     }
 
-    /**
-     * Adjust the colors for:
-     * - border hint
-     * - overlay
-     */
+    /** Refreshes border hint and overlay colors from current settings. */
     private update_hint_colors() {
         const settings = this.ext.settings;
         const color_value = settings.hint_color_rgba();
@@ -359,8 +352,7 @@ export class ShellWindow {
     }
 
     is_client_decorated(): boolean {
-        // On Wayland, we can check if the window is decorated by the shell.
-        // If it's not decorated and it's a normal window, it's CSD.
+        // Undecorated normal windows are CSD on Wayland.
         if (!this.meta.decorated && this.meta.window_type === Meta.WindowType.NORMAL) {
             return true;
         }
@@ -372,9 +364,7 @@ export class ShellWindow {
         return utils.is_maximized(this.meta);
     }
 
-    /**
-     * Window is maximized, 0 gapped or smart gapped
-     */
+    /** True when the window fills the screen (maximized, zero-gap, or smart-gapped). */
     is_max_screen(): boolean {
         return this.is_maximized() || this.ext.settings.gap_inner() === 0 || this.smart_gapped;
     }
@@ -528,9 +518,7 @@ export class ShellWindow {
     show_border() {
         if (!this.border) return;
 
-        // While the settle timer is active the window's frame rect hasn't been
-        // committed by Mutter yet.  Bail out — mark_border_settling() will call
-        // show_border() again once the geometry is final.
+        // Bail while the settle timer is active; mark_border_settling() will re-show once geometry is final.
         if (this._border_settle_id !== null) return;
 
         this.restack();
@@ -561,12 +549,7 @@ export class ShellWindow {
         }
     }
 
-    /**
-     * Called immediately after a new window is tiled. Hides the border and
-     * starts a short timer so that `show_border()` is deferred until Mutter
-     * has committed the post-tile frame rect.  This prevents the border from
-     * being drawn at the pre-tiling (wrong) window position.
-     */
+    /** Hides the border and defers show_border() by 120 ms so Mutter can commit the post-tile frame rect. */
     mark_border_settling() {
         // Cancel any previous settle timer.
         if (this._border_settle_id !== null) {
@@ -578,8 +561,8 @@ export class ShellWindow {
 
         this._border_settle_id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 120, () => {
             this._border_settle_id = null;
-            // Only show the border if this window is still the focused one.
-            if (this.ext.focus_window() === this) {
+            // Show only if the border/actor still exist and this window is still focused.
+            if (this.border && this.actor_exists() && this.ext.focus_window() === this) {
                 this.show_border();
             }
             return GLib.SOURCE_REMOVE;
@@ -678,6 +661,11 @@ export class ShellWindow {
     }
 
     hide_border() {
+        // Cancel the settle timer so it cannot re-show the border after an explicit hide.
+        if (this._border_settle_id !== null) {
+            GLib.source_remove(this._border_settle_id);
+            this._border_settle_id = null;
+        }
         const b = this.border;
         if (b) b.hide();
     }
@@ -686,7 +674,10 @@ export class ShellWindow {
         let { x, y, width, height } = this.meta.get_frame_rect();
 
         const border = this.border;
-        let borderSize = this.border_size;
+        // Read live from theme node to avoid cache staleness during rapid window_changed events.
+        let borderSize = (border?.get_stage())
+            ? border.get_theme_node().get_border_width(St.Side.TOP)
+            : this.border_size;
 
         if (border) {
             if (!(this.is_max_screen() || this.is_snap_edge())) {
@@ -742,9 +733,7 @@ export class ShellWindow {
         const overlay_enabled = settings.active_hint_overlay_enabled();
         const overlay_opacity = overlay_enabled ? settings.active_hint_overlay_opacity() / 100 : 0;
 
-        // When `active_hint_overlay_only_active()` is true (default), only the
-        // focused window gets the tint.  When false ("all windows"), every
-        // tiled window on the workspace gets it.
+        // true (default) = tint focused only; false = tint all tiled windows.
         const only_active = settings.active_hint_overlay_only_active();
 
         if (this.border) {
@@ -760,10 +749,7 @@ export class ShellWindow {
                 current_radius = Math.min(current_radius, 12);
             }
 
-            // Decide whether this window should show the tint.
-            // - overlay disabled:  never show
-            // - only_active mode:  show only when this window is focused
-            // - all-windows mode:  show on every tiled window (focused or not)
+            // show_tint: overlay enabled + not maximized + (focused-only mode requires focus)
             const show_tint = overlay_opacity > 0 && !is_maximized_os &&
                 (only_active ? is_focused : true);
 
@@ -805,19 +791,10 @@ export class ShellWindow {
     }
 
     private window_changed() {
-        // Guard 1: Skip border cycle if Clutter key-focus is on a shell panel/dock to avoid a cascading restack/layout grow loop.
-        if (clutter_focus_is_shell_panel()) return;
-
-        // Always keep the border geometry in sync with the window frame.
+        if (clutter_focus_is_shell_panel()) return; // skip if focus is on a shell panel/dock
         this.update_border_layout();
-
-        // Guard 2: Skip the full show_border_on_focused() pipeline if the window is not focused.
-        if (!this.meta.appears_focused) return;
-
-        // Guard 3: If this window already holds the active border, don't trigger a full border hide/show re-render cycle.
-        // This prevents the border from growing due to redundant restack operations when focus shifts temporarily.
-        if (this.ext._bordered_entity === this.entity) return;
-
+        if (!this.meta.appears_focused) return; // skip border pipeline if not focused
+        if (this.ext._bordered_entity === this.entity) return; // already owns the border, no re-render needed
         this.ext.show_border_on_focused();
     }
 
