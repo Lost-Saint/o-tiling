@@ -63,32 +63,25 @@ export function exists(path: string): boolean {
     return Gio.File.new_for_path(path).query_exists(null);
 }
 
-/**
- * Parse the current background color's darkness
- * https://stackoverflow.com/a/41491220 - the advanced solution
- * @param color - the RGBA or hex string value
- */
+/** Checks if a color (RGBA/hex) is dark using relative luminance (HSP/WCAG formula). */
 export function is_dark(color: string): boolean {
-    // 'rgba(251, 184, 108, 1)' - pop orange!
     let color_val = '';
     let r = 255;
     let g = 255;
     let b = 255;
 
-    // handle rgba(255,255,255,1.0) format
+    // Handle rgba(r,g,b,a) or rgb(r,g,b)
     if (color.indexOf('rgb') >= 0) {
-        // starts with parsed value from Gdk.RGBA
-        color = color.replace('rgba', 'rgb').replace('rgb(', '').replace(')', ''); // make it 255, 255, 255, 1
-        // log.debug(`util color: ${color}`);
+        color = color.replace('rgba', 'rgb').replace('rgb(', '').replace(')', '');
         const colors = color.split(',');
         r = parseInt(colors[0].trim());
         g = parseInt(colors[1].trim());
         b = parseInt(colors[2].trim());
     } else if (color.charAt(0) === '#') {
         color_val = color.substring(1, 7);
-        r = parseInt(color_val.substring(0, 2), 16); // hexToR
-        g = parseInt(color_val.substring(2, 4), 16); // hexToG
-        b = parseInt(color_val.substring(4, 6), 16); // hexToB
+        r = parseInt(color_val.substring(0, 2), 16);
+        g = parseInt(color_val.substring(2, 4), 16);
+        b = parseInt(color_val.substring(4, 6), 16);
     }
 
     const uicolors = [r / 255, g / 255, b / 255];
@@ -238,10 +231,7 @@ export function is_maximized(window: Meta.Window): boolean {
     return (window as any).maximized_horizontally || (window as any).maximized_vertically;
 }
 
-/**
- * Sets the alpha component of a color string (rgba or hex).
- * Returns the modified color string.
- */
+/** Sets the alpha component of a color string (rgba or hex). */
 export function set_alpha(color: string, alpha: number): string {
     if (!color) return `rgba(53, 132, 228, ${alpha})`;
 
@@ -287,9 +277,7 @@ export function isValidColor(color: string): boolean {
     return false;
 }
 
-/**
- * Schedules a callback to be executed later, handling GNOME 45+ API changes.
- */
+/** Schedules a callback to be executed later, handling GNOME 45+ API changes. */
 export function later_add(type: Meta.LaterType, action: () => boolean | number): number {
     const laters = (global as any).compositor?.get_laters?.();
     if (laters && typeof laters.add === 'function') {
@@ -305,9 +293,7 @@ export function later_add(type: Meta.LaterType, action: () => boolean | number):
     }) as any;
 }
 
-/**
- * Removes a scheduled callback, handling GNOME 45+ API changes.
- */
+/** Removes a scheduled callback, handling GNOME 45+ API changes. */
 export function later_remove(id: number) {
     if (!id) return;
     const laters = (global as any).compositor?.get_laters?.();
@@ -329,9 +315,7 @@ export function get_current_time(): number {
     return time;
 }
 
-/**
- * Safely activates a window using a non-blocking timestamp.
- */
+/** Safely activates a window using a non-blocking timestamp. */
 export function activate_window(window: Meta.Window, move_mouse: boolean = true) {
     if (!window || window.is_override_redirect()) return;
     
