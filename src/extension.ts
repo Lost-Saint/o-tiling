@@ -86,12 +86,7 @@ function is_modal_blocking_focus(): boolean {
     return false;
 }
 
-import {
-    // AppSwitcher,
-    // AppIcon,
-    WindowSwitcherPopup,
-} from 'resource:///org/gnome/shell/ui/altTab.js';
-// import { SwitcherList } from 'resource:///org/gnome/shell/ui/switcherPopup.js';
+import { WindowSwitcherPopup } from 'resource:///org/gnome/shell/ui/altTab.js';
 import { Workspace } from 'resource:///org/gnome/shell/ui/workspace.js';
 // @ts-ignore
 import { WorkspaceThumbnail } from 'resource:///org/gnome/shell/ui/workspaceThumbnail.js';
@@ -488,15 +483,8 @@ export class Ext extends Ecs.System<ExtEvent> {
         this.hide_all_borders();
         this.keybindings.disable(this.keybindings.global).disable(this.keybindings.window_focus);
 
-        // Disconnect settings signals (EGO: all signals must be disconnected in disable)
         for (const [obj, id] of this._settings_signal_ids) {
-            if (obj && typeof obj.disconnect === 'function' && id) {
-                try {
-                    obj.disconnect(id);
-                } catch (e) {
-                    log.warn(`Failed to disconnect settings signal: ${e}`);
-                }
-            }
+            obj.disconnect(id);
         }
         this._settings_signal_ids = [];
 
@@ -538,29 +526,16 @@ export class Ext extends Ecs.System<ExtEvent> {
         for (const entity of entities) {
             const win = this.windows.get(entity);
             if (win) {
-                // Disconnect signals stored in window_signals and size_signals for THIS window
                 const win_sigs = this.window_signals.get(entity);
                 if (win_sigs) {
                     for (const sig of win_sigs) {
-                        if (win.meta && typeof win.meta.disconnect === 'function' && sig) {
-                            try {
-                                win.meta.disconnect(sig);
-                            } catch (e) {
-                                log.warn(`Failed to disconnect window signal: ${e}`);
-                            }
-                        }
+                        if (sig) win.meta.disconnect(sig);
                     }
                 }
                 const size_sigs = this.size_signals.get(entity);
                 if (size_sigs) {
                     for (const sig of size_sigs) {
-                        if (win.meta && typeof win.meta.disconnect === 'function' && sig) {
-                            try {
-                                win.meta.disconnect(sig);
-                            } catch (e) {
-                                log.warn(`Failed to disconnect window size signal: ${e}`);
-                            }
-                        }
+                        if (sig) win.meta.disconnect(sig);
                     }
                 }
 
@@ -1386,12 +1361,25 @@ export class Ext extends Ecs.System<ExtEvent> {
         } else {
             const focus = this.focus_window();
 
-            // Guard against GNOME Shell panel focus loops and redundant border re-draws/flickering.
+            // Guard 1: focus is null and a panel/dock/popup actor holds Clutter key-focus
+            // (quick settings, calendar, notification centre, Dash-to-Dock) — preserve the
+            // existing border and do nothing.  The panel will dismiss and the window will
+            // regain focus naturally without us touching _bordered_entity.
             if (!focus && Window.clutter_focus_is_shell_panel()) {
                 return;
             }
 
+            // Guard 2: same window already owns the active border — skip the full
+            // hide_all_borders + show_border cycle entirely.
+            // This covers two sub-cases:
+            //   a) focus entity matches _bordered_entity (normal same-window check).
+            //   b) focus is non-null, pointer is on panel/dock, and a border is already
+            //      active — panel hover should never steal or re-render the border.
             if (focus && this._bordered_entity === focus.entity) {
+                return;
+            }
+            if (focus && Window.clutter_focus_is_shell_panel() &&
+                this._bordered_entity !== null) {
                 return;
             }
 
@@ -2611,6 +2599,11 @@ export class Ext extends Ecs.System<ExtEvent> {
                             }
                         }
                     } else if (this.auto_tiler) {
+                        // Skip refocusing if a panel popup (calendar/notifications) temporarily hijacks focus.
+                        if (Window.clutter_focus_is_shell_panel()) {
+                            log.debug(`focus-window null: shell-panel/popup actor holds Clutter focus — skipping refocus`);
+                            return;
+                        }
                         // Skip refocus if the bordered window still appears focused (transient null-focus, e.g. gap hover).
                         if (this._bordered_entity !== null) {
                             const _bw = this.windows.get(this._bordered_entity);
@@ -2938,29 +2931,16 @@ export class Ext extends Ecs.System<ExtEvent> {
         for (const entity of entities) {
             const win = this.windows.get(entity);
             if (win) {
-                // Disconnect signals stored in window_signals and size_signals for THIS window
                 const win_sigs = this.window_signals.get(entity);
                 if (win_sigs) {
                     for (const sig of win_sigs) {
-                        if (win.meta && typeof win.meta.disconnect === 'function' && sig) {
-                            try {
-                                win.meta.disconnect(sig);
-                            } catch (e) {
-                                log.warn(`Failed to disconnect window signal in soft disable: ${e}`);
-                            }
-                        }
+                        if (sig) win.meta.disconnect(sig);
                     }
                 }
                 const size_sigs = this.size_signals.get(entity);
                 if (size_sigs) {
                     for (const sig of size_sigs) {
-                        if (win.meta && typeof win.meta.disconnect === 'function' && sig) {
-                            try {
-                                win.meta.disconnect(sig);
-                            } catch (e) {
-                                log.warn(`Failed to disconnect window size signal in soft disable: ${e}`);
-                            }
-                        }
+                        if (sig) win.meta.disconnect(sig);
                     }
                 }
 

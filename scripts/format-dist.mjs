@@ -37,8 +37,8 @@ function formatSource(src) {
         }
 
         if (isTopLevelDecl || isJsDoc) {
-            // Only add blank line if previous non-blank line isn't already producing one
-            if (prev.trim() !== '' && !/^\/\*\*/.test(line) && !/^\/\//.test(line)) {
+            // Only add blank line if previous line isn't a comment
+            if (!/^\/\*\*/.test(line) && !/^\/\//.test(line)) {
                 out.push('');
             }
         }

@@ -577,92 +577,72 @@ export class WorkspaceNumberIndicator {
         const wm = (global as any).workspace_manager;
         if (!wm || typeof wm.get_n_workspaces !== 'function') return;
 
-        try {
-            const total: number = wm.get_n_workspaces();
-            const current: number = wm.get_active_workspace_index();
-            const hintColor: string = this._ext?.settings?.hint_color_rgba?.() ?? 'rgba(53, 132, 228, 1)';
+        const total: number = wm.get_n_workspaces();
+        const current: number = wm.get_active_workspace_index();
+        const hintColor: string = this._ext?.settings?.hint_color_rgba?.() ?? 'rgba(53, 132, 228, 1)';
 
-            for (let i = 0; i < total; i++) {
-                const idx = i; // capture for closure
-                const label = new St.Label({
-                    text: String(i + 1),
-                    y_align: Clutter.ActorAlign.CENTER,
-                });
-                const btn = new St.Button({
-                    style_class: 'o-tiling-ws-btn',
-                    child: label,
-                    y_align: Clutter.ActorAlign.CENTER,
-                });
-                if (idx === current) {
-                    btn.add_style_class_name('o-tiling-ws-btn-active');
-                    btn.style = `box-shadow: inset 0 0 0 1.5px ${hintColor}; color: ${hintColor};`;
-                }
-                btn.connect('clicked', () => {
-                    const ws = (global as any).workspace_manager?.get_workspace_by_index(idx);
-                    if (ws && typeof ws.activate === 'function') {
-                        try {
-                            ws.activate((global as any).get_current_time?.() ?? 0);
-                        } catch (e) {
-                            log.error(`WorkspaceNumberIndicator: Failed to activate workspace ${idx}: ${e}`);
-                        }
-                    }
-                });
-                this._box.add_child(btn);
-                this._wsBtns.push(btn);
+        for (let i = 0; i < total; i++) {
+            const idx = i; // capture for closure
+            const label = new St.Label({
+                text: String(i + 1),
+                y_align: Clutter.ActorAlign.CENTER,
+            });
+            const btn = new St.Button({
+                style_class: 'o-tiling-ws-btn',
+                child: label,
+                y_align: Clutter.ActorAlign.CENTER,
+            });
+            if (idx === current) {
+                btn.add_style_class_name('o-tiling-ws-btn-active');
+                btn.style = `box-shadow: inset 0 0 0 1.5px ${hintColor}; color: ${hintColor};`;
             }
-        } catch (e) {
-            log.error(`WorkspaceNumberIndicator rebuild failed: ${e}`);
+            btn.connect('clicked', () => {
+                const ws = (global as any).workspace_manager?.get_workspace_by_index(idx);
+                if (ws) {
+                    try {
+                        ws.activate((global as any).get_current_time?.() ?? 0);
+                    } catch (e) {
+                        log.error(`WorkspaceNumberIndicator: Failed to activate workspace ${idx}: ${e}`);
+                    }
+                }
+            });
+            this._box.add_child(btn);
+            this._wsBtns.push(btn);
         }
     }
 
     /** Updates only button active-state styles (no rebuild needed). */
     private _update(): void {
         const wm = (global as any).workspace_manager;
-        if (!wm || typeof wm.get_active_workspace_index !== 'function') return;
+        if (!wm) return;
 
-        try {
-            const current: number = wm.get_active_workspace_index();
-            const hintColor: string = this._ext?.settings?.hint_color_rgba?.() ?? 'rgba(53, 132, 228, 1)';
-            for (let i = 0; i < this._wsBtns.length; i++) {
-                const btn = this._wsBtns[i];
-                if (i === current) {
-                    btn.add_style_class_name('o-tiling-ws-btn-active');
-                    btn.style = `box-shadow: inset 0 0 0 1.5px ${hintColor}; color: ${hintColor};`;
-                } else {
-                    btn.remove_style_class_name('o-tiling-ws-btn-active');
-                    btn.style = '';
-                }
+        const current: number = wm.get_active_workspace_index();
+        const hintColor: string = this._ext?.settings?.hint_color_rgba?.() ?? 'rgba(53, 132, 228, 1)';
+        for (let i = 0; i < this._wsBtns.length; i++) {
+            const btn = this._wsBtns[i];
+            if (i === current) {
+                btn.add_style_class_name('o-tiling-ws-btn-active');
+                btn.style = `box-shadow: inset 0 0 0 1.5px ${hintColor}; color: ${hintColor};`;
+            } else {
+                btn.remove_style_class_name('o-tiling-ws-btn-active');
+                btn.style = '';
             }
-        } catch (e) {
-            log.error(`WorkspaceNumberIndicator update failed: ${e}`);
         }
     }
 
     destroy(): void {
         const wm = (global as any).workspace_manager;
-        if (wm && typeof wm.disconnect === 'function') {
+        if (wm) {
             if (this._wsChangedId !== null) {
-                try {
-                    wm.disconnect(this._wsChangedId);
-                } catch (e) {
-                    log.warn(`WorkspaceNumberIndicator: Failed to disconnect wsChangedId: ${e}`);
-                }
+                wm.disconnect(this._wsChangedId);
                 this._wsChangedId = null;
             }
             if (this._wsAddedId !== null) {
-                try {
-                    wm.disconnect(this._wsAddedId);
-                } catch (e) {
-                    log.warn(`WorkspaceNumberIndicator: Failed to disconnect wsAddedId: ${e}`);
-                }
+                wm.disconnect(this._wsAddedId);
                 this._wsAddedId = null;
             }
             if (this._wsRemovedId !== null) {
-                try {
-                    wm.disconnect(this._wsRemovedId);
-                } catch (e) {
-                    log.warn(`WorkspaceNumberIndicator: Failed to disconnect wsRemovedId: ${e}`);
-                }
+                wm.disconnect(this._wsRemovedId);
                 this._wsRemovedId = null;
             }
         }

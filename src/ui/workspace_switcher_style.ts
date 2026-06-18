@@ -92,7 +92,6 @@ function buildCss(accentColor: string): string {
 export class WorkspaceSwitcherStyle {
     private _file: Gio.File | null = null;
     private _accentColor: string;
-    private _blurEffect: any = null;
     private _origMaxThumbnailScale: number | null = null;
     private _origMinThumbnailScale: number | null = null;
     private _workspaceChangedId: number | null = null;
@@ -124,7 +123,6 @@ export class WorkspaceSwitcherStyle {
 
             if (theme) {
                 theme.load_stylesheet(this._file);
-                this._applyBlur();
                 this._applyThumbnailScale();
                 this._setupAutoScroll();
             } else {
@@ -153,7 +151,6 @@ export class WorkspaceSwitcherStyle {
             } catch (e) {
                 log.warn(`WorkspaceSwitcherStyle: failed to unload stylesheet: ${e}`);
             }
-            this._removeBlur();
             this._restoreThumbnailScale();
             this._teardownSignals();
         }
@@ -189,42 +186,6 @@ export class WorkspaceSwitcherStyle {
     /** True while the CSS is currently injected. */
     get isEnabled(): boolean {
         return this._file !== null;
-    }
-
-    private _applyBlur(): void {
-        // Disabled to keep the switcher fully transparent as requested.
-        /*
-        if (!isGnome50()) return;
-
-        try {
-            const thumbnailsBox = this._getThumbnailsBox();
-            if (thumbnailsBox && !this._blurEffect) {
-                this._blurEffect = new Shell.BlurEffect({
-                    brightness: 0.6,
-                    radius: 60,
-                    mode: Shell.BlurMode.BACKGROUND,
-                });
-                thumbnailsBox.add_effect_with_name('o-tiling-blur', this._blurEffect);
-            }
-        } catch (e) {
-            log.warn(`WorkspaceSwitcherStyle: failed to apply blur effect: ${e}`);
-        }
-        */
-    }
-
-
-    private _removeBlur(): void {
-        if (this._blurEffect) {
-            const thumbnailsBox = this._getThumbnailsBox();
-            if (thumbnailsBox && typeof thumbnailsBox.remove_effect_by_name === 'function') {
-                try {
-                    thumbnailsBox.remove_effect_by_name('o-tiling-blur');
-                } catch (e) {
-                    log.warn(`WorkspaceSwitcherStyle: failed to remove blur effect: ${e}`);
-                }
-            }
-            this._blurEffect = null;
-        }
     }
 
     private _getThumbnailsBox(): any {
@@ -452,38 +413,22 @@ export class WorkspaceSwitcherStyle {
     private _teardownAutoScroll(): void {
         const workspace_manager = (global as any).workspace_manager;
 
-        if (workspace_manager && typeof workspace_manager.disconnect === 'function') {
+        if (workspace_manager) {
             if (this._workspaceChangedId !== null) {
-                try {
-                    workspace_manager.disconnect(this._workspaceChangedId);
-                } catch (e) {
-                    log.warn(`WorkspaceSwitcherStyle: failed to disconnect workspaceChangedId: ${e}`);
-                }
+                workspace_manager.disconnect(this._workspaceChangedId);
                 this._workspaceChangedId = null;
             }
             if (this._workspaceAddedId !== null) {
-                try {
-                    workspace_manager.disconnect(this._workspaceAddedId);
-                } catch (e) {
-                    log.warn(`WorkspaceSwitcherStyle: failed to disconnect workspaceAddedId: ${e}`);
-                }
+                workspace_manager.disconnect(this._workspaceAddedId);
                 this._workspaceAddedId = null;
             }
             if (this._workspaceRemovedId !== null) {
-                try {
-                    workspace_manager.disconnect(this._workspaceRemovedId);
-                } catch (e) {
-                    log.warn(`WorkspaceSwitcherStyle: failed to disconnect workspaceRemovedId: ${e}`);
-                }
+                workspace_manager.disconnect(this._workspaceRemovedId);
                 this._workspaceRemovedId = null;
             }
         }
-        if (this._overviewShowingId !== null && Main.overview && typeof Main.overview.disconnect === 'function') {
-            try {
-                Main.overview.disconnect(this._overviewShowingId);
-            } catch (e) {
-                log.warn(`WorkspaceSwitcherStyle: failed to disconnect overviewShowingId: ${e}`);
-            }
+        if (this._overviewShowingId !== null) {
+            Main.overview.disconnect(this._overviewShowingId);
             this._overviewShowingId = null;
         }
     }

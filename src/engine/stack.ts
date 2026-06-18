@@ -20,7 +20,7 @@ const INACTIVE_TAB = 'o-tiling-tab o-tiling-tab-inactive';
 const URGENT_TAB = 'o-tiling-tab o-tiling-tab-urgent';
 const INACTIVE_TAB_STYLE = '#9B8E8A';
 
-export var TAB_HEIGHT: number = 38;
+export const TAB_HEIGHT: number = 38;
 
 interface Tab {
     active: boolean;
