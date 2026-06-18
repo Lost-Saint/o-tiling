@@ -86,12 +86,7 @@ function is_modal_blocking_focus(): boolean {
     return false;
 }
 
-import {
-    // AppSwitcher,
-    // AppIcon,
-    WindowSwitcherPopup,
-} from 'resource:///org/gnome/shell/ui/altTab.js';
-// import { SwitcherList } from 'resource:///org/gnome/shell/ui/switcherPopup.js';
+import { WindowSwitcherPopup } from 'resource:///org/gnome/shell/ui/altTab.js';
 import { Workspace } from 'resource:///org/gnome/shell/ui/workspace.js';
 // @ts-ignore
 import { WorkspaceThumbnail } from 'resource:///org/gnome/shell/ui/workspaceThumbnail.js';
@@ -488,15 +483,8 @@ export class Ext extends Ecs.System<ExtEvent> {
         this.hide_all_borders();
         this.keybindings.disable(this.keybindings.global).disable(this.keybindings.window_focus);
 
-        // Disconnect settings signals (EGO: all signals must be disconnected in disable)
         for (const [obj, id] of this._settings_signal_ids) {
-            if (obj && typeof obj.disconnect === 'function' && id) {
-                try {
-                    obj.disconnect(id);
-                } catch (e) {
-                    log.warn(`Failed to disconnect settings signal: ${e}`);
-                }
-            }
+            obj.disconnect(id);
         }
         this._settings_signal_ids = [];
 
@@ -538,29 +526,16 @@ export class Ext extends Ecs.System<ExtEvent> {
         for (const entity of entities) {
             const win = this.windows.get(entity);
             if (win) {
-                // Disconnect signals stored in window_signals and size_signals for THIS window
                 const win_sigs = this.window_signals.get(entity);
                 if (win_sigs) {
                     for (const sig of win_sigs) {
-                        if (win.meta && typeof win.meta.disconnect === 'function' && sig) {
-                            try {
-                                win.meta.disconnect(sig);
-                            } catch (e) {
-                                log.warn(`Failed to disconnect window signal: ${e}`);
-                            }
-                        }
+                        if (sig) win.meta.disconnect(sig);
                     }
                 }
                 const size_sigs = this.size_signals.get(entity);
                 if (size_sigs) {
                     for (const sig of size_sigs) {
-                        if (win.meta && typeof win.meta.disconnect === 'function' && sig) {
-                            try {
-                                win.meta.disconnect(sig);
-                            } catch (e) {
-                                log.warn(`Failed to disconnect window size signal: ${e}`);
-                            }
-                        }
+                        if (sig) win.meta.disconnect(sig);
                     }
                 }
 
@@ -2948,29 +2923,16 @@ export class Ext extends Ecs.System<ExtEvent> {
         for (const entity of entities) {
             const win = this.windows.get(entity);
             if (win) {
-                // Disconnect signals stored in window_signals and size_signals for THIS window
                 const win_sigs = this.window_signals.get(entity);
                 if (win_sigs) {
                     for (const sig of win_sigs) {
-                        if (win.meta && typeof win.meta.disconnect === 'function' && sig) {
-                            try {
-                                win.meta.disconnect(sig);
-                            } catch (e) {
-                                log.warn(`Failed to disconnect window signal in soft disable: ${e}`);
-                            }
-                        }
+                        if (sig) win.meta.disconnect(sig);
                     }
                 }
                 const size_sigs = this.size_signals.get(entity);
                 if (size_sigs) {
                     for (const sig of size_sigs) {
-                        if (win.meta && typeof win.meta.disconnect === 'function' && sig) {
-                            try {
-                                win.meta.disconnect(sig);
-                            } catch (e) {
-                                log.warn(`Failed to disconnect window size signal in soft disable: ${e}`);
-                            }
-                        }
+                        if (sig) win.meta.disconnect(sig);
                     }
                 }
 

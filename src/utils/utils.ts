@@ -315,25 +315,8 @@ export function get_current_time(): number {
     return time;
 }
 
-/** Safely activates a window using a non-blocking timestamp. */
-export function activate_window(window: Meta.Window, move_mouse: boolean = true) {
+/** Activates a window using a non-blocking event timestamp. */
+export function activate_window(window: Meta.Window) {
     if (!window || window.is_override_redirect()) return;
-    
-    try {
-        const time = get_current_time();
-        if (typeof (window as any).activate === 'function') {
-            (window as any).activate(time);
-        } else {
-            // Fallback for older Mutter or specific window types
-            window.foreach_transient((transient) => {
-                transient.activate(time);
-                return false;
-            });
-            window.activate(time);
-        }
-    } catch (e) {
-        // Log error but don't crash the shell
-        const log = (global as any).log;
-        if (log) log(`o-tiling: failed to activate window: ${e}`);
-    }
+    window.activate(get_current_time());
 }
