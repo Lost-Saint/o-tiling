@@ -10,7 +10,7 @@
     "lint": "eslint src",
     "type-check": "tsc --noEmit",
     "deploy": "pnpm run lint && pnpm run type-check && pnpm run build",
-    "debug": "bash scripts/debug.sh",
+    "lint:dist": "../GER/ego-lint ./dist",
     "shexli": "make shexli",
     "log": "journalctl -f -o cat /usr/bin/gnome-shell | grep o-tiling",
     "local-install": "make install"
