@@ -152,6 +152,7 @@ export class Ext extends Ecs.System<ExtEvent> {
     private _restack_source: number | null = null;
     private _schedule_idle_sources: Set<number> = new Set();
     private _settings_signal_ids: Array<[any, number]> = [];
+    private _log_level_cleanup: (() => void) | null = null;
 
 
     displays: [number, Map<number, Display>] = [0, new Map()]; // The known display configuration, for tracking monitor removals and changes
@@ -288,7 +289,7 @@ export class Ext extends Ecs.System<ExtEvent> {
                 log.error(`Failed to handle focus-change-on-pointer-rest: ${e}`);
             }
         }
-        log.init_log_level(this.settings.ext);
+        this._log_level_cleanup = log.init_log_level(this.settings.ext);
         this.overlay = new St.BoxLayout({
             style_class: "o-tiling-overlay",
             visible: false,
@@ -487,6 +488,11 @@ export class Ext extends Ecs.System<ExtEvent> {
             obj.disconnect(id);
         }
         this._settings_signal_ids = [];
+
+        if (this._log_level_cleanup) {
+            this._log_level_cleanup();
+            this._log_level_cleanup = null;
+        }
 
         if (this.auto_tiler) {
             this.auto_tiler.destroy(this);

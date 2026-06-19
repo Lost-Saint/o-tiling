@@ -9,12 +9,17 @@ export enum LOG_LEVELS {
 
 let _level = 0;
 
-export function init_log_level(settings: any) {
-    if (!settings) return;
+/** Initialises the log level from settings and returns a cleanup callback.
+ * The caller MUST invoke the returned function in disable()/destroy() to
+ * prevent a GSettings signal leak.
+ */
+export function init_log_level(settings: any): () => void {
+    if (!settings) return () => {};
     _level = settings.get_uint('log-level');
-    settings.connect('changed::log-level', () => {
+    const id = settings.connect('changed::log-level', () => {
         _level = settings.get_uint('log-level');
     });
+    return () => { if (id) settings.disconnect(id); };
 }
 
 /**
@@ -25,7 +30,7 @@ export function log_level() {
 }
 
 export function log(text: string) {
-    console.log('o-tiling: ' + text);
+    console.debug('o-tiling: ' + text);
 }
 
 export function error(text: string) {
