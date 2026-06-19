@@ -260,7 +260,7 @@ export function set_alpha(color: string, alpha: number): string {
     // Named/unparseable colors are returned as-is (using a temp actor to parse alpha would be overkill).
     return color;
 }
-/** Checks if a string is a valid color (hex, rgb, rgba) without depending on Clutter.Color or Gdk.RGBA. */
+/** Checks if a string is a valid color (hex, rgb, rgba) using regex — no GI bindings required. */
 export function isValidColor(color: string): boolean {
     if (!color) return false;
     

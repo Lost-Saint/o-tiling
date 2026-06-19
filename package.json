@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/package",
   "name": "o-tiling",
-  "version": "2.9.3",
+  "version": "2.9.4",
   "description": "Auto-tiling extension for GNOME Shell with 'Aura' focus border, customizable workspace overview styling, and theme consistency.",
   "author": "oliwebd",
   "type": "module",
@@ -10,7 +10,7 @@
     "lint": "eslint src",
     "type-check": "tsc --noEmit",
     "deploy": "pnpm run lint && pnpm run type-check && pnpm run build",
-    "debug": "bash scripts/debug.sh",
+    "lint:dist": "../GER/ego-lint ./dist",
     "shexli": "make shexli",
     "log": "journalctl -f -o cat /usr/bin/gnome-shell | grep o-tiling",
     "local-install": "make install"
