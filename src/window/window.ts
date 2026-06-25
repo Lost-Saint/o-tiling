@@ -851,7 +851,7 @@ export function activate(ext: Ext, move_mouse: boolean, win: Meta.Window) {
         scheduler.setForeground(win);
 
         win.unminimize();
-        workspace.activate_with_focus(win, utils.get_current_time());
+        workspace.activate_with_focus(win, Clutter.get_current_event_time());
         win.raise();
 
         const pointer_placement_permitted =
