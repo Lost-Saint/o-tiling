@@ -364,14 +364,7 @@ export class ShellWindow {
         return utils.is_maximized(this.meta);
     }
 
-    /** True when the window fills the screen (maximized, zero-gap, or smart-gapped). */
-    is_max_screen(): boolean {
-        return this.is_maximized() || this.ext.settings.gap_inner() === 0 || this.smart_gapped;
-    }
 
-    is_single_max_screen(): boolean {
-        return this.is_maximized() || this.smart_gapped;
-    }
 
     is_snap_edge(): boolean {
         return this.meta.maximized_vertically && !this.meta.maximized_horizontally;
@@ -531,7 +524,7 @@ export class ShellWindow {
                 this.actor_exists() &&
                 this.ext.focus_window() == this &&
                 !this.meta.is_fullscreen() &&
-                (!this.is_single_max_screen() || this.is_snap_edge()) &&
+                (!this.is_maximized() || this.is_snap_edge()) &&
                 !this.meta.minimized;
 
             if (permitted() && this.meta.appears_focused) {
@@ -588,7 +581,7 @@ export class ShellWindow {
         this.update_border_layout();
         if (
             this.meta.is_fullscreen() ||
-            (this.is_single_max_screen() && !this.is_snap_edge()) ||
+            (this.is_maximized() && !this.is_snap_edge()) ||
             this.meta.minimized
         ) {
             this.hide_border();
@@ -680,7 +673,7 @@ export class ShellWindow {
             : this.border_size;
 
         if (border) {
-            if (!(this.is_max_screen() || this.is_snap_edge())) {
+            if (!(this.is_maximized() || this.is_snap_edge())) {
                 border.remove_style_class_name('o-tiling-border-maximize');
             } else {
                 borderSize = 0;
