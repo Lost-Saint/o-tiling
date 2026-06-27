@@ -6,14 +6,14 @@ import * as log from '../utils/log.js';
 
 export class PanelTransparencyManager {
     private _file: Gio.File | null = null;
-    private _opacity: number;            // 0 = fully transparent, 100 = opaque
+    private _opacity: number; // 0 = fully transparent, 100 = opaque
 
     constructor(opacity: number = 0) {
         this._opacity = Math.max(0, Math.min(100, opacity));
     }
 
     enable(): void {
-        if (this._file) return;   // already enabled
+        if (this._file) return; // already enabled
 
         const css = this._buildCss();
         const path = `/tmp/o-tiling-panel-transparency-${GLib.get_monotonic_time()}.css`;

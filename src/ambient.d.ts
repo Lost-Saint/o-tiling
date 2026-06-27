@@ -1,7 +1,7 @@
-import "@girs/gjs";
-import "@girs/gjs/dom";
-import "@girs/gnome-shell/ambient";
-import "@girs/gnome-shell/extensions/global";
+import '@girs/gjs';
+import '@girs/gjs/dom';
+import '@girs/gnome-shell/ambient';
+import '@girs/gnome-shell/extensions/global';
 
 // ─── Global convenience types ──────────────────────────────────────────────
 declare global {
@@ -27,4 +27,3 @@ declare global {
     const imports: any;
     const ARGV: string[];
 }
-

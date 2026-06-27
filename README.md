@@ -148,17 +148,17 @@ Everything below is inherited from Pop Shell and improved:
 
 ## ⌨️ Default Keyboard Shortcuts
 
-| Action | Shortcut |
-|---|---|
+| Action                                | Shortcut                                          |
+| ------------------------------------- | ------------------------------------------------- |
 | Focus window left / right / up / down | `Super + Alt + Arrows` or `Super + H / J / K / L` |
-| Toggle auto-tiling on or off | `Super + T` |
-| Toggle floating (free) window | `Super + F` |
-| Enter adjustment mode | `Super + Enter` |
-| Toggle stacking mode | `Super + S` |
-| Move window to upper workspace | `Super + Shift + Up` |
-| Move window to lower workspace | `Super + Shift + Down` |
-| Move window to left monitor | `Super + Shift + Ctrl + Left` |
-| Move window to right monitor | `Super + Shift + Ctrl + Right` |
+| Toggle auto-tiling on or off          | `Super + T`                                       |
+| Toggle floating (free) window         | `Super + F`                                       |
+| Enter adjustment mode                 | `Super + Enter`                                   |
+| Toggle stacking mode                  | `Super + S`                                       |
+| Move window to upper workspace        | `Super + Shift + Up`                              |
+| Move window to lower workspace        | `Super + Shift + Down`                            |
+| Move window to left monitor           | `Super + Shift + Ctrl + Left`                     |
+| Move window to right monitor          | `Super + Shift + Ctrl + Right`                    |
 
 All shortcuts can be changed in the **Shortcuts** tab inside the extension preferences.
 
@@ -220,10 +220,12 @@ make install
 Releases are automatically built and published via GitHub Actions when a version tag is pushed.
 
 ### Branch Rules
+
 - **Production Releases:** Must be tagged from the `main` or `master` branch.
 - **Pre-releases (RC / Beta):** Must be tagged from the `rc` branch.
 
 ### How to Release
+
 1. Ensure the version in `package.json` and `metadata.json` matches and is updated.
 2. Commit and push your changes to the appropriate branch (`main`/`master` for production, `rc` for RC/Beta).
 3. Create and push a version tag:

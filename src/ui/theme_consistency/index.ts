@@ -15,7 +15,7 @@ export class ThemeConsistencyManager {
 
     enable(style: 'rounded' | 'sharp' = 'rounded'): void {
         if (this._file && this._currentStyle === style) return;
-        
+
         if (this._file) {
             this.disable();
         }

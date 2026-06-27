@@ -147,8 +147,9 @@ export class Tiler {
             changed.y < min_y ||
             // Prevent moving too far down
             changed.y + changed.height > max_y
-        )
+        ) {
             return this;
+        }
 
         overlay.x = changed.x;
         overlay.y = changed.y;
@@ -925,9 +926,9 @@ function move_window_or_monitor(
             if (!next_monitor || focus.meta.get_monitor() == next_window.meta.get_monitor()) return next_window;
 
             // If the next window is not contained within the next display, return the display.
-            return Rect.Rectangle.from_meta(next_monitor[1]).contains(next_window.rect())
-                ? next_window
-                : next_monitor[0];
+            return Rect.Rectangle.from_meta(next_monitor[1]).contains(next_window.rect()) ?
+                next_window :
+                next_monitor[0];
         }
 
         return next_window;
