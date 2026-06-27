@@ -7,12 +7,12 @@ SRC_TS  := $(shell find src -name '*.ts')
 .PHONY: all setup build lint install uninstall clean zip help pack
 
 # Default target
-all: $(DIST)/extension.js
+all: $(DIST)/extension.js schemas/gschemas.compiled
 
-node_modules/.pnpm-lock.yaml: package.json
+pnpm-lock.yaml: package.json
 	pnpm install
 
-$(DIST)/extension.js $(DIST)/prefs.js: node_modules/.pnpm-lock.yaml $(SRC_TS) tsconfig.json
+$(DIST)/extension.js $(DIST)/prefs.js: pnpm-lock.yaml $(SRC_TS) tsconfig.json
 	pnpm run build
 
 schemas/gschemas.compiled: schemas/org.gnome.shell.extensions.$(NAME).gschema.xml
