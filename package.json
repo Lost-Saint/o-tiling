@@ -19,18 +19,18 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@girs/gjs": "4.0.0-rc.13",
-    "@girs/gnome-shell": "^50.0.0",
-    "@types/node": "^25.6.2",
-    "@typescript-eslint/eslint-plugin": "^8.59.2",
-    "@typescript-eslint/parser": "^8.59.2",
-    "eslint": "^10.3.0",
-    "prettier": "^3.8.3",
-    "ts-morph": "^28.0.0",
+    "@girs/gjs": "4.0.4",
+    "@girs/gnome-shell": "^50.0.3",
+    "@types/node": "^26.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.62.0",
+    "@typescript-eslint/parser": "^8.62.0",
     "dprint": "^0.54.0",
+    "eslint": "^10.6.0",
+    "prettier": "^3.8.5",
+    "ts-morph": "^28.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.59.2"
+    "typescript-eslint": "^8.62.0"
   },
   "packageManager": "pnpm@11.8.0"
 }
