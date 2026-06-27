@@ -19,7 +19,7 @@ export enum Orientation {
 }
 
 export function nth_rev<T>(array: Array<T>, nth: number): T | null {
-    return array[array.length - nth - 1];
+    return array[array.length - nth - 1] ?? null;
 }
 
 export function ok<T, X>(input: T | null, func: (a: T) => X | null): X | null {
@@ -48,7 +48,7 @@ export function current_monitor(): Rectangle {
     const idx = (global as any).backend.get_current_logical_monitor()?.get_number() ?? 0;
     const mm = (global as any).backend.get_monitor_manager();
     const lm = mm ? mm.get_logical_monitors().find((m: any) => m.get_number() === idx) : null;
-    
+
     if (lm) {
         return new rectangle.Rectangle([lm.x, lm.y, lm.width, lm.height]);
     } else {

@@ -19,7 +19,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 const { OnceCell } = once_cell;
 
-export var window_tracker = Shell.WindowTracker.get_default();
+export const window_tracker = Shell.WindowTracker.get_default();
 
 /** Contains SourceID of an active hint operation. Used to clean up on extension disable. */
 let ACTIVE_HINT_SHOW_ID: number | null = null;
@@ -36,7 +36,7 @@ enum RESTACK_STATE {
     NORMAL,
 }
 
-enum RESTACK_SPEED {
+enum _RESTACK_SPEED {
     RAISED = 50,
     WORKSPACE_CHANGED = 100,
     NORMAL = 150,
@@ -78,7 +78,6 @@ function is_panel_actor(focused_actor: Clutter.Actor | null): boolean {
             style_class.includes('panel-corner') ||
             style_class.includes('panel-status-button') ||
             style_class.includes('activities') ||
-
             // ── System status / indicator area ─────────────────────────────────────
             style_class.includes('panel-status-indicators-box') ||
             style_class.includes('aggregate-menu') ||
@@ -89,14 +88,12 @@ function is_panel_actor(focused_actor: Clutter.Actor | null): boolean {
             name === 'quickSettingsBox' ||
             style_class.includes('clock-display') ||
             name === 'dateMenu' ||
-
             // ── Dock / Dash-to-Dock / Ubuntu dock ─────────────────────────────────
             style_class.includes('dash-item') ||
             style_class.includes('dash-container') ||
             style_class.includes('dashtodock') ||
             name === 'dashtodockContainer' ||
             name === 'dash' ||
-
             // ── Direct panel actor references ──────────────────────────────────────
             actor === (Main as any).panel ||
             actor === (Main as any).panel?.statusArea?.activities ||
@@ -124,7 +121,7 @@ export function clutter_focus_is_shell_panel(): boolean {
     if (!pointer) return false;
 
     const [x, y] = pointer;
-    const pointer_actor = stage.get_actor_at_pos?.(1 /* Clutter.PickMode.REACTIVE */, x, y) ?? null;
+    const pointer_actor = stage.get_actor_at_pos?.(1, /* Clutter.PickMode.REACTIVE */ x, y) ?? null;
     if (is_panel_actor(pointer_actor)) return true;
 
     return false;
@@ -199,8 +196,6 @@ export class ShellWindow {
         this.bind_window_events();
         this.bind_hint_events();
 
-
-
         this.hide_border();
         this.restack();
         this.update_border_layout();
@@ -244,7 +239,8 @@ export class ShellWindow {
         const settings = this.ext.settings;
         const change_id = settings.ext.connect('changed', (_, key) => {
             if (this.border) {
-                if (key === 'hint-color-rgba' ||
+                if (
+                    key === 'hint-color-rgba' ||
                     key === 'active-hint-overlay-enabled' ||
                     key === 'active-hint-overlay-color-rgba' ||
                     key === 'active-hint-border-radius' ||
@@ -278,17 +274,9 @@ export class ShellWindow {
 
         if (this.ext.overlay) {
             const orig_overlay = 'rgba(53, 132, 228, 0.3)';
-            let final_color = overlay_base;
-
-            if (overlay_color_val === 'auto') {
-                if (utils.is_dark(color_value)) {
-                    final_color = orig_overlay;
-                } else {
-                    final_color = utils.set_alpha(color_value, 0.3);
-                }
-            } else {
-                final_color = utils.set_alpha(overlay_base, 0.3);
-            }
+            const final_color = overlay_color_val === 'auto' ?
+                utils.is_dark(color_value) ? orig_overlay : utils.set_alpha(color_value, 0.3) :
+                utils.set_alpha(overlay_base, 0.3);
 
             const radius_value = settings.active_hint_border_radius();
             this.ext.overlay.set_style(`background: ${final_color}; border-radius: ${radius_value}px;`);
@@ -298,8 +286,8 @@ export class ShellWindow {
     }
 
     async cmdline(): Promise<string | null> {
-        let pid = this.meta.get_pid(),
-            out = null;
+        const pid = this.meta.get_pid();
+        let out = null;
         if (-1 === pid) return out;
 
         const path = '/proc/' + pid + '/cmdline';
@@ -309,7 +297,11 @@ export class ShellWindow {
         if (result.kind === 1) {
             out = result.value.trim();
         } else {
-            log.error(`failed to fetch cmdline: ${(result as any).value.format ? (result as any).value.format() : result.value}`);
+            log.error(
+                `failed to fetch cmdline: ${
+                    (result as any).value.format ? (result as any).value.format() : result.value
+                }`,
+            );
         }
 
         return out;
@@ -322,12 +314,12 @@ export class ShellWindow {
         }
     }
 
-    decoration_hide(ext: Ext): void {
+    decoration_hide(_ext: Ext): void {
         if (this.ignore_decoration()) return;
         this.was_hidden = true;
     }
 
-    decoration_show(ext: Ext): void {
+    decoration_show(_ext: Ext): void {
         if (!this.was_hidden) return;
     }
 
@@ -363,8 +355,6 @@ export class ShellWindow {
     is_maximized(): boolean {
         return utils.is_maximized(this.meta);
     }
-
-
 
     is_snap_edge(): boolean {
         return this.meta.maximized_vertically && !this.meta.maximized_horizontally;
@@ -563,10 +553,12 @@ export class ShellWindow {
         this._border_settle_id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 120, () => {
             this._border_settle_id = null;
             // Show only if the border/actor still exist and this window is still focused.
-            if (this.border && this.actor_exists() && this.ext.focus_window() === this &&
+            if (
+                this.border && this.actor_exists() && this.ext.focus_window() === this &&
                 !this.meta.is_fullscreen() &&
                 (!this.is_maximized() || this.is_snap_edge()) &&
-                !this.smart_gapped) {
+                !this.smart_gapped
+            ) {
                 this.show_border();
             }
             return GLib.SOURCE_REMOVE;
@@ -585,7 +577,6 @@ export class ShellWindow {
     same_monitor() {
         return this.meta.get_monitor() === ((global as any).backend.get_current_logical_monitor()?.get_number() ?? 0);
     }
-
 
     /** Sorts the window/always-top group with each window border based on the update state (NORMAL, RAISED, WORKSPACE_CHANGED). */
     restack(_updateState: RESTACK_STATE = RESTACK_STATE.NORMAL, immediate: boolean = false) {
@@ -610,7 +601,7 @@ export class ShellWindow {
             if (!this.actor_exists()) return GLib.SOURCE_REMOVE;
 
             const border = this.border;
-            const actor = (this.meta.get_compositor_private() as any);
+            const actor = this.meta.get_compositor_private() as any;
             if (!actor || !border) return GLib.SOURCE_REMOVE;
 
             const parent = actor.get_parent();
@@ -679,9 +670,9 @@ export class ShellWindow {
 
         const border = this.border;
         // Read live from theme node to avoid cache staleness during rapid window_changed events.
-        let borderSize = (border?.get_stage())
-            ? border.get_theme_node().get_border_width(St.Side.TOP)
-            : this.border_size;
+        let borderSize = (border?.get_stage()) ?
+            border.get_theme_node().get_border_width(St.Side.TOP) :
+            this.border_size;
 
         if (border) {
             if (!(this.is_maximized() || this.is_snap_edge())) {
@@ -715,7 +706,7 @@ export class ShellWindow {
             }
 
             if (dimensions) {
-                [x, y, width, height] = dimensions;
+                [x, y, width, height] = dimensions as [number, number, number, number];
 
                 const workspace = this.meta.get_workspace();
 
@@ -759,7 +750,8 @@ export class ShellWindow {
 
             if (is_focused) {
                 const total_radius = current_radius + width_value;
-                let style = `border-color: ${color_value}; border-radius: ${total_radius}px; border-width: ${width_value}px; outline: none; background-clip: padding-box; box-shadow: none;`;
+                let style =
+                    `border-color: ${color_value}; border-radius: ${total_radius}px; border-width: ${width_value}px; outline: none; background-clip: padding-box; box-shadow: none;`;
 
                 if (show_tint) {
                     const overlay_color = utils.set_alpha(overlay_base, overlay_opacity);
@@ -771,7 +763,8 @@ export class ShellWindow {
                 this.border.set_style(style);
             } else {
                 const total_radius = current_radius;
-                let style = `border-color: transparent; border-radius: ${total_radius}px; border-width: 0px; outline: none; background-clip: padding-box; box-shadow: none;`;
+                let style =
+                    `border-color: transparent; border-radius: ${total_radius}px; border-width: 0px; outline: none; background-clip: padding-box; box-shadow: none;`;
 
                 if (show_tint) {
                     const overlay_color = utils.set_alpha(overlay_base, overlay_opacity);
@@ -804,7 +797,7 @@ export class ShellWindow {
     private window_raised() {
         log.debug(`window_raised: ${this.meta.get_wm_class()}`);
         if (clutter_focus_is_shell_panel()) return; // skip if Clutter focus is on panel/dock
-        if (!this.meta.appears_focused) return;     // skip spurious raises after focus loss
+        if (!this.meta.appears_focused) return; // skip spurious raises after focus loss
         this.restack(RESTACK_STATE.RAISED, true);
         if (this.ext._bordered_entity === this.entity) return; // already owns the border
         this.ext.show_border_on_focused();
@@ -813,7 +806,6 @@ export class ShellWindow {
     private workspace_changed() {
         this.restack(RESTACK_STATE.WORKSPACE_CHANGED, true);
     }
-
 
     private is_browser(): boolean {
         const wm_class = this.meta.get_wm_class();
@@ -857,8 +849,7 @@ export function activate(ext: Ext, move_mouse: boolean, win: Meta.Window) {
         workspace.activate_with_focus(win, Clutter.get_current_event_time());
         win.raise();
 
-        const pointer_placement_permitted =
-            move_mouse &&
+        const pointer_placement_permitted = move_mouse &&
             !(Main as any).isModal &&
             !(Main as any).layoutManager?.modalDialogGroup?.get_children()?.length &&
             ext.settings.mouse_cursor_follows_active_window() &&

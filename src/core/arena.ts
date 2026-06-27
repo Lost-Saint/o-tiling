@@ -10,7 +10,7 @@ export class Arena<T> {
     }
 
     get(n: number): null | T {
-        return this.slots[n];
+        return this.slots[n] ?? null;
     }
 
     insert(v: T): number {
@@ -28,8 +28,8 @@ export class Arena<T> {
     }
 
     remove(n: number): null | T {
-        if (this.slots[n] === null) return null;
-        const v = this.slots[n];
+        const v = this.slots[n] ?? null;
+        if (v === null) return null;
         this.slots[n] = null;
         this.unused.push(n);
         return v;

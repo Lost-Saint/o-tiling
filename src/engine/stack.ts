@@ -13,7 +13,6 @@ import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 import Meta from 'gi://Meta';
-import Pango from 'gi://Pango';
 
 const ACTIVE_TAB = 'o-tiling-tab o-tiling-tab-active';
 const INACTIVE_TAB = 'o-tiling-tab o-tiling-tab-inactive';
@@ -202,7 +201,7 @@ export class Stack {
         this.bind_hint_events(tab);
         for (const t of this.tabs) this.change_tab_color(t);
         if (this.active_id !== -1 && this.tabs[this.active_id]) {
-            this.change_tab_color(this.tabs[this.active_id]);
+            this.change_tab_color(this.tabs[this.active_id]!);
         }
         this.watch_signals(comp, id, window);
         this.widgets.tabs.add_child(button);
@@ -217,6 +216,7 @@ export class Stack {
         }
 
         const c = this.tabs[this.active_id];
+        if (!c) return null;
 
         this.activate(c.entity);
         return c.entity;
@@ -270,10 +270,10 @@ export class Stack {
                 const button = this.buttons.get(component.button);
                 if (button) {
                     button.set_style_class_name(name);
-                    let tab_color = '';
+                    let tab_color;
                     if (component.active) {
-                        let settings = this.ext.settings;
-                        let color_value = settings.hint_color_rgba();
+                        const settings = this.ext.settings;
+                        const color_value = settings.hint_color_rgba();
                         tab_color = `${color_value}; color: ${utils.is_dark(color_value) ? 'white' : 'black'}`;
                     } else {
                         tab_color = `${INACTIVE_TAB_STYLE}`;
@@ -373,7 +373,7 @@ export class Stack {
         const settings = this.ext.settings;
         const button = this.buttons.get(tab.button);
         if (button) {
-            let tab_color = '';
+            let tab_color;
             if (Ecs.entity_eq(tab.entity, this.active)) {
                 const color_value = settings.hint_color_rgba();
                 tab_color = `background: ${color_value}; color: ${utils.is_dark(color_value) ? 'white' : 'black'}`;
@@ -413,10 +413,11 @@ export class Stack {
 
     /** Deactivate the signals belonging to an entity */
     deactivate(w: ShellWindow) {
-        for (const c of this.tabs)
+        for (const c of this.tabs) {
             if (Ecs.entity_eq(c.entity, w.entity)) {
                 this.tab_disconnect(c);
             }
+        }
 
         if (this.active_signals && Ecs.entity_eq(this.active, w.entity)) {
             this.active_disconnect();
@@ -463,7 +464,7 @@ export class Stack {
             if (Ecs.entity_eq(this.ext.grab_op.entity, this.active)) {
                 if (this.widgets) {
                     const parent = this.widgets.tabs.get_parent();
-                    const actor = (this.active_meta()?.get_compositor_private() as any);
+                    const actor = this.active_meta()?.get_compositor_private() as any;
                     if (actor && parent) {
                         parent.set_child_below_sibling(this.widgets.tabs, actor);
                     }
@@ -525,7 +526,7 @@ export class Stack {
         this.tabs.splice(idx, 1);
         for (const t of this.tabs) this.change_tab_color(t);
         if (this.active_id !== -1 && this.tabs[this.active_id]) {
-            this.change_tab_color(this.tabs[this.active_id]);
+            this.change_tab_color(this.tabs[this.active_id]!);
         }
     }
 
@@ -694,6 +695,7 @@ export class Stack {
         if (!widget) return;
 
         const c = this.tabs[comp];
+        if (!c) return;
 
         // Detach button signal if it's still attached
         if (c.button_signal) widget.disconnect(c.button_signal);
@@ -719,12 +721,12 @@ export class Stack {
         });
 
         // Detach signals if they're still attached
-        if (this.tabs[comp].signals) {
-            for (const c of this.tabs[comp].signals) window.meta.disconnect(c);
+        if (c.signals) {
+            for (const signal of c.signals) window.meta.disconnect(signal);
         }
 
         // Attach new signals
-        this.tabs[comp].signals = [
+        c.signals = [
             window.meta.connect('notify::title', () => {
                 this.window_exec(comp, entity, (window) => {
                     this.buttons.get(button)?.set_title(window.title());

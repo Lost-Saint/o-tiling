@@ -7,7 +7,7 @@ import Adw from 'gi://Adw?version=1';
 import GioUnix from 'gi://GioUnix?version=2.0';
 
 /** The directory that this script is executed from. */
-const SCRIPT_DIR = GLib.path_get_dirname(new Error().stack!.split(':')[0].slice(1));
+const _SCRIPT_DIR = GLib.path_get_dirname(new Error().stack!.split(':')[0]!.slice(1));
 
 import * as config from './config.js';
 
@@ -68,12 +68,13 @@ export class MainView implements View {
             subtitle: 'Updated based on validated user reports.',
             activatable: true,
         });
-        exceptions_row.add_suffix(new Gtk.Image({
-            icon_name: 'go-next-symbolic',
-            valign: Gtk.Align.CENTER,
-        }));
-        exceptions_row.connect('activated', () =>
-            this.callback({ tag: 1, view: ViewNum.Exceptions }));
+        exceptions_row.add_suffix(
+            new Gtk.Image({
+                icon_name: 'go-next-symbolic',
+                valign: Gtk.Align.CENTER,
+            }),
+        );
+        exceptions_row.connect('activated', () => this.callback({ tag: 1, view: ViewNum.Exceptions }));
 
         this.list = new Adw.PreferencesGroup({
             title: 'User Exceptions',
@@ -171,8 +172,8 @@ class App {
             transition_type: Gtk.StackTransitionType.SLIDE_LEFT_RIGHT,
         });
 
-        const main_page = stack.add_child(this.main_view.widget);
-        const exceptions_page = stack.add_child(this.exceptions_view.widget);
+        const _main_page = stack.add_child(this.main_view.widget);
+        const _exceptions_page = stack.add_child(this.exceptions_view.widget);
 
         const back = new Gtk.Button({
             icon_name: 'go-previous-symbolic',

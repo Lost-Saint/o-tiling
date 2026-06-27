@@ -2,9 +2,8 @@ import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import * as log from '../utils/log.js';
 
-
 const CONF_DIR: string = GLib.get_user_config_dir() + '/o-tiling';
-export let CONF_FILE: string = CONF_DIR + '/config.json';
+export const CONF_FILE: string = CONF_DIR + '/config.json';
 
 export interface FloatRule {
     class?: string;
@@ -80,8 +79,6 @@ export const SKIPTASKBAR_EXCEPTIONS: Array<WindowRule> = [
     { class: 'Com.github.amezin.ddterm' },
     { class: 'plank' },
 ];
-
-
 
 /** Compiled rule with pre-built RegExp for hot-path matching. */
 interface CompiledRule {
@@ -168,7 +165,9 @@ export class Config {
         const wmclass = meta_window.get_wm_class();
         const wmtitle = meta_window.get_title();
 
-        const isSkip = typeof meta_window.is_skip_taskbar === 'function' ? meta_window.is_skip_taskbar() : !!meta_window.skip_taskbar;
+        const isSkip = typeof meta_window.is_skip_taskbar === 'function' ?
+            meta_window.is_skip_taskbar() :
+            !!meta_window.skip_taskbar;
         if (!isSkip) return false;
 
         for (const rule of this._compiled_skip) {
@@ -200,7 +199,6 @@ export class Config {
         } else {
             log.error(`error loading conf: ${conf.why}`);
         }
-
 
         this._rebuild_caches();
     }
@@ -351,6 +349,9 @@ function set_to_json(_key: string, value: any) {
 }
 
 function swap_remove<T>(array: Array<T>, index: number): T | undefined {
-    array[index] = array[array.length - 1];
-    return array.pop();
+    const last = array.pop();
+    if (index < array.length && last !== undefined) {
+        array[index] = last;
+    }
+    return last;
 }

@@ -2,7 +2,6 @@ import Gtk from 'gi://Gtk';
 import Adw from 'gi://Adw';
 // Gdk dynamically imported
 import Gio from 'gi://Gio';
-import GLib from 'gi://GLib';
 import { ExtensionPreferences, gettext as _ } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 import * as log from './utils/log.js';
@@ -36,7 +35,6 @@ export default class OTilingPreferences extends ExtensionPreferences {
         });
         tilingGroup.add(tileByDefault);
         settings.bind('tile-by-default', tileByDefault as any, 'active', Gio.SettingsBindFlags.DEFAULT);
-
 
         const snapToGrid = new Adw.SwitchRow({
             title: _('Snap to Grid (Floating Mode)'),
@@ -140,8 +138,12 @@ export default class OTilingPreferences extends ExtensionPreferences {
             subtitle: _('Show workspace number (e.g. "2 / 4") in the panel instead of the dot indicator'),
         });
         overviewGroup.add(wsNumberIndicatorRow);
-        settings.bind('workspace-number-indicator', wsNumberIndicatorRow as any, 'active', Gio.SettingsBindFlags.DEFAULT);
-
+        settings.bind(
+            'workspace-number-indicator',
+            wsNumberIndicatorRow as any,
+            'active',
+            Gio.SettingsBindFlags.DEFAULT,
+        );
 
         // Panel Transparency Group
         const panelGroup = new Adw.PreferencesGroup({
@@ -166,7 +168,9 @@ export default class OTilingPreferences extends ExtensionPreferences {
 
         const panelTopGapRow = new Adw.SpinRow({
             title: _('Top Smart Gap'),
-            subtitle: _('Gap between the transparent panel and window top edge (replaces top outer gap when panel is fully transparent)'),
+            subtitle: _(
+                'Gap between the transparent panel and window top edge (replaces top outer gap when panel is fully transparent)',
+            ),
             adjustment: new Gtk.Adjustment({ lower: 0, upper: 100, step_increment: 1 }),
         });
         panelGroup.add(panelTopGapRow);
@@ -181,8 +185,6 @@ export default class OTilingPreferences extends ExtensionPreferences {
         panelOpacityRow.connect('notify::value', updatePanelTopGapVisibility);
         // Set initial state
         updatePanelTopGapVisibility();
-
-
 
         // Aura Master Group
         const auraMasterGroup = new Adw.PreferencesGroup({
@@ -319,9 +321,9 @@ export default class OTilingPreferences extends ExtensionPreferences {
         try {
             const initialOverlayColor = new Gdk.RGBA();
             // Fall back to hint-color-rgba which already resolves 'auto' → accent
-            const colorStringToParse = overlayIsCustom
-                ? currentOverlayVal
-                : settings.get_string('hint-color-rgba');
+            const colorStringToParse = overlayIsCustom ?
+                currentOverlayVal :
+                settings.get_string('hint-color-rgba');
             if (initialOverlayColor.parse(colorStringToParse)) {
                 overlayColorButton.rgba = initialOverlayColor;
             }
@@ -402,7 +404,12 @@ export default class OTilingPreferences extends ExtensionPreferences {
             subtitle: _('Automatically move the mouse pointer when focus changes'),
         });
         behaviorGroup.add(mouseFollows);
-        settings.bind('mouse-cursor-follows-active-window', mouseFollows as any, 'active', Gio.SettingsBindFlags.DEFAULT);
+        settings.bind(
+            'mouse-cursor-follows-active-window',
+            mouseFollows as any,
+            'active',
+            Gio.SettingsBindFlags.DEFAULT,
+        );
 
         const stackingWithMouse = new Adw.SwitchRow({
             title: _('Allow Stacking with Mouse'),

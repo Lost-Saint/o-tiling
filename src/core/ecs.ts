@@ -9,7 +9,7 @@
 /// - The first 32-bit integer is the index.
 /// - The second 32-bit integer is the generation.
 
-import { Executor } from '../system/executor.js';
+import type { Executor } from '../system/executor.js';
 
 export type Entity = [number, number];
 
@@ -79,14 +79,14 @@ export class Storage<T> {
     get(entity: Entity): T | null {
         const [id, gen] = entity;
         const val = this.store[id];
-        return val && val[0] == gen ? val[1] : null;
+        return val !== undefined && val !== null && val[0] == gen ? val[1] : null;
     }
 
     /// Fetches the component, and initializing it if it is missing
     get_or(entity: Entity, init: () => T): T {
         let value = this.get(entity);
 
-        if (!value) {
+        if (value === null) {
             value = init();
             this.insert(entity, value);
         }
@@ -115,7 +115,7 @@ export class Storage<T> {
     /// Removes the component for this entity, if it exists
     remove(entity: Entity): T | null {
         const comp = this.get(entity);
-        if (comp) {
+        if (comp !== null) {
             this.store[entity[0]] = null;
         }
         return comp;
@@ -129,13 +129,13 @@ export class Storage<T> {
      */
     take_with<X>(entity: Entity, func: (component: T) => X): X | null {
         const component = this.remove(entity);
-        return component ? func(component) : null;
+        return component !== null ? func(component) : null;
     }
 
     /// Apply a function to the component when it exists
     with<X>(entity: Entity, func: (component: T) => X): X | null {
         const component = this.get(entity);
-        return component ? func(component) : null;
+        return component !== null ? func(component) : null;
     }
 }
 
@@ -195,21 +195,21 @@ export class World {
     ///
     /// Find the first available slot, and increment the generation.
     create_entity(): Entity {
-        const slot = this.free_slots.size > 0
-            ? this.free_slots.values().next().value
-            : undefined;
+        const slot = this.free_slots.size > 0 ?
+            this.free_slots.values().next().value :
+            undefined;
 
         if (slot !== undefined) {
             this.free_slots.delete(slot);
-            var entity = this.entities_[slot];
+            const entity = this.entities_[slot]!;
             entity[1] += 1;
+            return entity;
         } else {
-            var entity = entity_new(this.capacity, 0);
+            const entity = entity_new(this.capacity, 0);
             this.entities_.push(entity);
             this.tags_.push(new Set());
+            return entity;
         }
-
-        return entity;
     }
 
     /// Deletes an entity from the world
@@ -258,14 +258,16 @@ export class World {
 }
 
 function swap_remove<T>(array: Array<T>, index: number): T | undefined {
-    array[index] = array[array.length - 1];
-    return array.pop();
+    const last = array.pop();
+    if (index < array.length && last !== undefined) {
+        array[index] = last;
+    }
+    return last;
 }
 
 /** A system registers events, and handles their execution.
  *
  * An executor must be provided for registering events onto.
- *
  */
 export class System<T> extends World {
     #executor: Executor<T>;

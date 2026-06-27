@@ -54,7 +54,6 @@ export function exists(path: string): boolean {
 
 /** Checks if a color (RGBA/hex) is dark using relative luminance (HSP/WCAG formula). */
 export function is_dark(color: string): boolean {
-    let color_val = '';
     let r = 255;
     let g = 255;
     let b = 255;
@@ -63,11 +62,11 @@ export function is_dark(color: string): boolean {
     if (color.indexOf('rgb') >= 0) {
         color = color.replace('rgba', 'rgb').replace('rgb(', '').replace(')', '');
         const colors = color.split(',');
-        r = parseInt(colors[0].trim());
-        g = parseInt(colors[1].trim());
-        b = parseInt(colors[2].trim());
+        r = parseInt(colors[0]?.trim() ?? '255');
+        g = parseInt(colors[1]?.trim() ?? '255');
+        b = parseInt(colors[2]?.trim() ?? '255');
     } else if (color.charAt(0) === '#') {
-        color_val = color.substring(1, 7);
+        const color_val = color.substring(1, 7);
         r = parseInt(color_val.substring(0, 2), 16);
         g = parseInt(color_val.substring(2, 4), 16);
         b = parseInt(color_val.substring(4, 6), 16);
@@ -80,7 +79,7 @@ export function is_dark(color: string): boolean {
         }
         return Math.pow((col + 0.055) / 1.055, 2.4);
     });
-    const L = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    const L = 0.2126 * c[0]! + 0.7152 * c[1]! + 0.0722 * c[2]!;
     return L <= 0.179;
 }
 
@@ -106,7 +105,7 @@ export function async_process(argv: Array<string>, input = null, cancellable: nu
                 const bytes = proc.communicate_utf8_finish(res)[1];
                 resolve(bytes.toString());
             } catch (e) {
-                reject(e);
+                reject(e instanceof globalThis.Error ? e : new globalThis.Error(String(e)));
             }
         });
     });
@@ -172,7 +171,6 @@ export function map_eq<K, V>(map1: Map<K, V>, map2: Map<K, V>) {
     return true;
 }
 
-
 // GNOME 48+: maximize/unmaximize always act on both axes.
 export function maximize(window: Meta.Window) {
     window.maximize();
@@ -199,9 +197,9 @@ export function set_alpha(color: string, alpha: number): string {
             b = 255;
         const color_val = color.substring(1);
         if (color_val.length === 3) {
-            r = parseInt(color_val[0] + color_val[0], 16);
-            g = parseInt(color_val[1] + color_val[1], 16);
-            b = parseInt(color_val[2] + color_val[2], 16);
+            r = parseInt(color_val.charAt(0) + color_val.charAt(0), 16);
+            g = parseInt(color_val.charAt(1) + color_val.charAt(1), 16);
+            b = parseInt(color_val.charAt(2) + color_val.charAt(2), 16);
         } else if (color_val.length >= 6) {
             r = parseInt(color_val.substring(0, 2), 16);
             g = parseInt(color_val.substring(2, 4), 16);
@@ -209,7 +207,7 @@ export function set_alpha(color: string, alpha: number): string {
         }
         return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     }
-    
+
     // Named/unparseable colors are returned as-is (using a temp actor to parse alpha would be overkill).
     return color;
 }

@@ -2,7 +2,7 @@ import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 
 const CONF_DIR: string = GLib.get_user_config_dir() + '/o-tiling';
-export let CONF_FILE: string = CONF_DIR + '/config.json';
+export const CONF_FILE: string = CONF_DIR + '/config.json';
 
 export interface FloatRule {
     class?: string;
@@ -119,8 +119,8 @@ export class Config {
     }
 
     skiptaskbar_shall_hide(meta_window: any) {
-        let wmclass = meta_window.get_wm_class();
-        let wmtitle = meta_window.get_title();
+        const wmclass = meta_window.get_wm_class();
+        const wmtitle = meta_window.get_title();
 
         if (!meta_window.is_skip_taskbar()) return false;
 
@@ -147,7 +147,7 @@ export class Config {
         const conf = Config.from_config();
 
         if (conf.tag === 0) {
-            let c = conf.value;
+            const c = conf.value;
             this.float = c.float;
             this.log_on_focus = c.log_on_focus;
         } else {
@@ -198,7 +198,7 @@ export class Config {
 
     remove_user_exception(wmclass: string | undefined, wmtitle: string | undefined) {
         let index = 0;
-        let found = new Array();
+        const found = [];
         for (const value of this.float.values()) {
             if (value.class === wmclass && value.title === wmtitle) {
                 found.push(index);
@@ -226,7 +226,7 @@ export class Config {
     private static from_config(): Result<Config> {
         const stream = Config.read();
         if (stream.tag === 1) return stream;
-        let value = Config.from_json(stream.value);
+        const value = Config.from_json(stream.value);
         return { tag: 0, value };
     }
 
@@ -291,6 +291,9 @@ function set_to_json(_key: string, value: any) {
 }
 
 function swap_remove<T>(array: Array<T>, index: number): T | undefined {
-    array[index] = array[array.length - 1];
-    return array.pop();
+    const last = array.pop();
+    if (index < array.length && last !== undefined) {
+        array[index] = last;
+    }
+    return last;
 }

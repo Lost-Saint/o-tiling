@@ -1,7 +1,5 @@
 import { gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import * as Utils from '../utils/utils.js';
-import * as log from '../utils/log.js';
 
 import type { Ext } from '../extension.js';
 
@@ -16,15 +14,9 @@ import {
     PopupSeparatorMenuItem,
 } from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import { Button } from 'resource:///org/gnome/shell/ui/panelMenu.js';
-import GObject from 'gi://GObject';
-import GLib from 'gi://GLib';
-
 
 import { get_current_path } from '../utils/paths.js';
-import { isGnome50 } from './workspace_switcher_style.js';
 import { apply_preset, PresetType } from '../engine/presets.js';
-
-
 
 export class Indicator {
     button: any;
@@ -34,7 +26,6 @@ export class Indicator {
     toggle_workspace_tiled: any;
     toggle_left_pin: any;
     presets_item: any;
-
 
     toggle_active: any;
     toggle_debug: any;
@@ -110,10 +101,6 @@ export class Indicator {
         );
         bm.addMenuItem(this.toggle_active);
 
-
-
-
-
         bm.addMenuItem(new PopupSeparatorMenuItem());
 
         // ── Numeric Settings ────────────────────────────────────
@@ -143,8 +130,6 @@ export class Indicator {
             (value) => ext.settings.set_active_hint_border_width(value),
         ));
 
-
-
         bm.addMenuItem(new PopupSeparatorMenuItem());
 
         // ── Actions ─────────────────────────────────────────────
@@ -164,7 +149,6 @@ export class Indicator {
 
         this.toggle_tiled = tiled(ext);
         bm.addMenuItem(this.toggle_tiled);
-
     }
 
     update_workspace_tiling_state() {
@@ -180,8 +164,6 @@ export class Indicator {
             if (this.toggle_workspace_tiled.updateIcon) {
                 this.toggle_workspace_tiled.updateIcon(tiled);
             }
-
-
 
             if (this.toggle_left_pin) {
                 let is_pinned = false;
@@ -199,7 +181,7 @@ export class Indicator {
             if (this.presets_item) {
                 if (ext.auto_tiler) {
                     const workspace_windows = Array.from(ext.windows.values()).filter(
-                        w => w.known_workspace === workspace && ext.auto_tiler!.attached.contains(w.entity)
+                        w => w.known_workspace === workspace && ext.auto_tiler!.attached.contains(w.entity),
                     );
                     const enabled = workspace_windows.length >= 2 && workspace_windows.length <= 6;
                     this.presets_item.setSensitive(enabled);
@@ -235,11 +217,9 @@ function settings_button(menu: any): any {
     const icon = new St.Icon({
         icon_name: 'preferences-system-symbolic',
         icon_size: 16,
-        style_class: 'popup-menu-icon'
+        style_class: 'popup-menu-icon',
     });
     item.insert_child_at_index(icon, 0);
-
-
 
     item.connect('activate', () => {
         const ext = (globalThis as any).oTilingExtension;
@@ -258,7 +238,7 @@ function floating_window_exceptions(ext: Ext, menu: any): any {
     const icon = new St.Icon({
         icon_name: 'go-next-symbolic',
         icon_size: 16,
-        style_class: 'popup-menu-icon'
+        style_class: 'popup-menu-icon',
     });
 
     item.insert_child_at_index(icon, 0);
@@ -272,12 +252,9 @@ function floating_window_exceptions(ext: Ext, menu: any): any {
     return item;
 }
 
-
-
-
 function number_entry(
     label_text: string,
-    options: { value: number; min: number; max: number; reset_value?: number },
+    options: { value: number; min: number; max: number; reset_value?: number; },
     icon_name: string | null,
     callback: (a: number) => void,
 ): any {
@@ -289,7 +266,7 @@ function number_entry(
         const icon = new St.Icon({
             icon_name: icon_name,
             icon_size: 16,
-            style_class: 'popup-menu-icon'
+            style_class: 'popup-menu-icon',
         });
         item.add_child(icon);
     }
@@ -349,19 +326,18 @@ function number_entry(
     return item;
 }
 
-
 function toggle(
     desc: string,
     active: boolean,
-    icon_names: string | { on: string; off: string } | null,
+    icon_names: string | { on: string; off: string; } | null,
     callback: (state: boolean) => void,
 ): any {
     const item = new PopupSwitchMenuItem(desc, active);
 
     if (icon_names) {
-        const icon_name = typeof icon_names === 'string'
-            ? icon_names
-            : (active ? icon_names.on : icon_names.off);
+        const icon_name = typeof icon_names === 'string' ?
+            icon_names :
+            (active ? icon_names.on : icon_names.off);
 
         const icon = new St.Icon({
             icon_name: icon_name,
@@ -397,14 +373,15 @@ function tiled(ext: Ext): any {
         isOn,
         'view-grid-symbolic',
         (shouldEnable) => {
-            if (ext._indicator_updating)
+            if (ext._indicator_updating) {
                 return;
+            }
             if (shouldEnable) {
                 ext.ext_soft_enable();
             } else {
                 ext.ext_soft_disable();
             }
-        }
+        },
     );
 }
 
@@ -415,7 +392,7 @@ function workspace_tiled(ext: Ext): any {
         { on: 'view-grid-symbolic', off: 'view-list-symbolic' },
         (shouldTile) => {
             ext.workspace_tiling_set(ext.active_workspace(), shouldTile);
-        }
+        },
     );
 }
 
@@ -447,7 +424,7 @@ function lock_master_window(ext: Ext): any {
                     }
                 }
             }
-        }
+        },
     );
 }
 
@@ -490,7 +467,6 @@ function presets_row(ext: Ext): any {
     item.add_child(row);
     return item;
 }
-
 
 // ── WorkspaceNumberIndicator ──────────────────────────────────────────────────
 // A panel bar with: [overview btn] [1] [2] [3] … per workspace.
@@ -545,8 +521,8 @@ export class WorkspaceNumberIndicator {
         // Signal connections
         const wm = (global as any).workspace_manager;
         wm.connectObject('active-workspace-changed', () => this._update(), this);
-        wm.connectObject('workspace-added',          () => this._rebuild(), this);
-        wm.connectObject('workspace-removed',        () => this._rebuild(), this);
+        wm.connectObject('workspace-added', () => this._rebuild(), this);
+        wm.connectObject('workspace-removed', () => this._rebuild(), this);
 
         this._rebuild();
     }
@@ -597,6 +573,7 @@ export class WorkspaceNumberIndicator {
         const hintColor: string = this._ext.settings.hint_color_rgba();
         for (let i = 0; i < this._wsBtns.length; i++) {
             const btn = this._wsBtns[i];
+            if (!btn) continue;
             if (i === current) {
                 btn.add_style_class_name('o-tiling-ws-btn-active');
                 btn.style = `box-shadow: inset 0 0 0 1.5px ${hintColor}; color: ${hintColor};`;
