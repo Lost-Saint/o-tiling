@@ -6,11 +6,13 @@
   "author": "oliwebd",
   "type": "module",
   "scripts": {
-    "build": "tsc && prettier --write 'dist/**/*.js' && node scripts/format-dist.mjs",
+    "build": "tsc && dprint fmt --no-gitignore 'dist/**/*.js' && node scripts/format-dist.mjs",
+    "format": "dprint fmt",
+    "format:check": "dprint check",
     "lint": "eslint src",
     "type-check": "tsc --noEmit",
     "deploy": "pnpm run lint && pnpm run type-check && pnpm run build",
-    "lint:dist": "../GER/ego-lint ./dist",
+    "debug": "bash scripts/debug.sh",
     "shexli": "make shexli",
     "log": "journalctl -f -o cat /usr/bin/gnome-shell | grep o-tiling",
     "local-install": "make install"
@@ -25,9 +27,10 @@
     "eslint": "^10.3.0",
     "prettier": "^3.8.3",
     "ts-morph": "^28.0.0",
+    "dprint": "^0.54.0",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.2"
   },
-  "packageManager": "pnpm@11.5.1+sha512.93f7b57422ea7068257235b4c16eb60762eb68e1dc23723199cc739043ea9be2c4143274a399d8c6defa2b1176226d9ca1c4b63482d6200c1a8fbaa78c1d1485"
+  "packageManager": "pnpm@11.8.0"
 }

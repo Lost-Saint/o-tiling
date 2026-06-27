@@ -1,0 +1,46 @@
+{
+  "$schema": "https://dprint.dev/schemas/v0.json",
+  "lineWidth": 120,
+  "indentWidth": 4,
+  "useTabs": false,
+  "newLineKind": "lf",
+  "includes": [
+    "*.{js,mjs,cjs,json,jsonc,md}",
+    ".github/**/*.{json,jsonc,md}",
+    "dist/**/*.js",
+    "scripts/**/*.{js,mjs,cjs}",
+    "src/**/*.{ts,tsx,js,jsx}"
+  ],
+  "excludes": [
+    "**/node_modules",
+    "**/venv",
+    "**/*.zip",
+    "pnpm-lock.yaml",
+    "schemas/gschemas.compiled"
+  ],
+  "typescript": {
+    "quoteStyle": "alwaysSingle",
+    "jsx.quoteStyle": "preferSingle",
+    "semiColons": "always",
+    "module.sortImportDeclarations": "maintain",
+    "importDeclaration.sortNamedImports": "maintain",
+    "exportDeclaration.sortNamedExports": "maintain",
+    "binaryExpression.operatorPosition": "sameLine",
+    "conditionalExpression.operatorPosition": "sameLine",
+    "conditionalType.operatorPosition": "sameLine"
+  },
+  "json": {
+    "indentWidth": 4,
+    "trailingCommas": "never"
+  },
+  "markdown": {
+    "textWrap": "maintain",
+    "emphasisKind": "asterisks",
+    "strongKind": "asterisks"
+  },
+  "plugins": [
+    "https://plugins.dprint.dev/typescript-0.96.1.wasm",
+    "https://plugins.dprint.dev/json-0.21.3.wasm",
+    "https://plugins.dprint.dev/markdown-0.22.1.wasm"
+  ]
+}
