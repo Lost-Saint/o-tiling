@@ -290,7 +290,7 @@ export class ShellWindow {
         let out = null;
         if (-1 === pid) return out;
 
-        const path = '/proc/' + pid + '/cmdline';
+        const path = `/proc/${String(pid)}/cmdline`;
         if (!utils.exists(path)) return out;
 
         const result = await utils.read_to_string(path);

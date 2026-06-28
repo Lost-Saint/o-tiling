@@ -3755,7 +3755,7 @@ function load_theme(): any {
 
         return STYLESHEET_PATH;
     } catch (e) {
-        log.error('failed to load stylesheet: ' + e);
+        log.error(`failed to load stylesheet: ${String(e)}`);
         return null;
     }
 }

@@ -620,15 +620,11 @@ export class Forest extends Ecs.World {
     resize(ext: Ext, fork_e: Entity, fork_c: Fork.Fork, win_e: Entity, movement: movement.Movement, crect: Rectangle) {
         const is_left = fork_c.left.is_window(win_e) || fork_c.left.is_in_stack(win_e);
 
-        ((movement & Movement.SHRINK) != 0 ? this.shrink_sibling : this.grow_sibling).call(
-            this,
-            ext,
-            fork_e,
-            fork_c,
-            is_left,
-            movement,
-            crect,
-        );
+        if ((movement & Movement.SHRINK) != 0) {
+            this.shrink_sibling(ext, fork_e, fork_c, is_left, movement, crect);
+        } else {
+            this.grow_sibling(ext, fork_e, fork_c, is_left, movement, crect);
+        }
     }
 
     /** Higher order function which forwards record events to our record method. */
@@ -929,7 +925,7 @@ export class Forest extends Ecs.World {
 
         fmt += ' '.repeat((1 + scope) * 2) + `workspace: (${fork.workspace}),\n`;
         fmt += ' '.repeat((1 + scope) * 2) + 'left: ' + this.display_branch(ext, fork.left, scope) + ',\n';
-        fmt += ' '.repeat((1 + scope) * 2) + 'parent: ' + this.parents.get(fork.entity) + ',\n';
+        fmt += ' '.repeat((1 + scope) * 2) + `parent: ${this.parents.get(fork.entity)},\n`;
 
         if (fork.right) {
             fmt += ' '.repeat((1 + scope) * 2) + 'right: ' + this.display_branch(ext, fork.right, scope) + ',\n';

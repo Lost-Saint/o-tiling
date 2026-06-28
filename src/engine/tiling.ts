@@ -619,7 +619,7 @@ export class Tiler {
             0,
             0,
             Direction.Left,
-            move_window_or_monitor(ext, ext.focus_selector.left, Meta.DisplayDirection.LEFT),
+            move_window_or_monitor(ext, (e, w) => ext.focus_selector.left(e, w), Meta.DisplayDirection.LEFT),
         );
     }
 
@@ -632,7 +632,7 @@ export class Tiler {
             0,
             0,
             Direction.Down,
-            move_window_or_monitor(ext, ext.focus_selector.down, Meta.DisplayDirection.DOWN),
+            move_window_or_monitor(ext, (e, w) => ext.focus_selector.down(e, w), Meta.DisplayDirection.DOWN),
         );
     }
 
@@ -645,7 +645,7 @@ export class Tiler {
             0,
             0,
             Direction.Up,
-            move_window_or_monitor(ext, ext.focus_selector.up, Meta.DisplayDirection.UP),
+            move_window_or_monitor(ext, (e, w) => ext.focus_selector.up(e, w), Meta.DisplayDirection.UP),
         );
     }
 
@@ -658,7 +658,7 @@ export class Tiler {
             0,
             0,
             Direction.Right,
-            move_window_or_monitor(ext, ext.focus_selector.right, Meta.DisplayDirection.RIGHT),
+            move_window_or_monitor(ext, (e, w) => ext.focus_selector.right(e, w), Meta.DisplayDirection.RIGHT),
         );
     }
 

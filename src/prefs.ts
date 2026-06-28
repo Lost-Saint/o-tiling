@@ -242,7 +242,7 @@ export default class OTilingPreferences extends ExtensionPreferences {
                 colorButton.rgba = initialColor;
             }
         } catch (e) {
-            log.warn('Could not set initial color: ' + e);
+            log.warn(`Could not set initial color: ${String(e)}`);
         }
 
         colorButton.connect('notify::rgba', () => {
@@ -328,7 +328,7 @@ export default class OTilingPreferences extends ExtensionPreferences {
                 overlayColorButton.rgba = initialOverlayColor;
             }
         } catch (e) {
-            log.warn('Could not set initial overlay color: ' + e);
+            log.warn(`Could not set initial overlay color: ${String(e)}`);
         }
 
         // Color button is only actionable when custom mode is on

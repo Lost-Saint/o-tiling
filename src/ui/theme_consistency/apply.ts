@@ -40,7 +40,7 @@ export function restoreGtkDefaults(): void {
         removeCssBlock(`${home}/.config/gtk-3.0/gtk.css`);
         log.info('ThemeConsistency: GTK css block removed — theme restored to default');
     } catch (e) {
-        log.warn('Could not restore GTK default theme: ' + e);
+        log.warn(`Could not restore GTK default theme: ${String(e)}`);
     }
 }
 
@@ -87,6 +87,6 @@ export function applyThemeConsistency(style: 'rounded' | 'sharp' = 'rounded') {
         updateCssFile(`${gtk4Dir}/gtk.css`, gtkCss);
         updateCssFile(`${gtk3Dir}/gtk.css`, gtkCss);
     } catch (e) {
-        log.warn('Could not apply GTK theme consistency: ' + e);
+        log.warn(`Could not apply GTK theme consistency: ${String(e)}`);
     }
 }
