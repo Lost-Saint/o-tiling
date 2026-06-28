@@ -130,6 +130,8 @@ export class Ext extends Ecs.System<ExtEvent> {
     private _schedule_idle_sources: Set<number> = new Set();
     private _settings_signal_ids: Array<[any, number]> = [];
     private _log_level_cleanup: (() => void) | null = null;
+    private _actor_signal_ids: Map<string, Array<[Clutter.Actor, SignalID]>> = new Map();
+    private _migration_executors: Array<{ stop(): void; }> = [];
 
     displays: [number, Map<number, Display>] = [0, new Map()]; // The known display configuration, for tracking monitor removals and changes
 
@@ -223,6 +225,7 @@ export class Ext extends Ecs.System<ExtEvent> {
     _bordered_entity: Entity | null = null;
     private _border_cleanup_pending: boolean = false;
     private _original_focus_change_on_pointer_rest: boolean | null = null;
+    private _focus_change_on_pointer_rest_changed: boolean = false;
     private _destroyed: boolean = false;
     private _startup_complete_id: number = 0;
     executor: Executor.GLibExecutor<ExtEvent>;
@@ -254,6 +257,10 @@ export class Ext extends Ecs.System<ExtEvent> {
                     if (original) {
                         this._original_focus_change_on_pointer_rest = true;
                         this.settings.set_focus_change_on_pointer_rest(false);
+                        const id = this.settings.mutter.connect('changed::focus-change-on-pointer-rest', () => {
+                            this._focus_change_on_pointer_rest_changed = true;
+                        });
+                        this._settings_signal_ids.push([this.settings.mutter, id]);
                         log.info(
                             'Auto-disabled Mutter focus-change-on-pointer-rest to prevent Wayland compositor crashes',
                         );
@@ -418,15 +425,22 @@ export class Ext extends Ecs.System<ExtEvent> {
         this.executor.stop();
         this._destroyed = true;
 
-        if (this._original_focus_change_on_pointer_rest !== null && this.settings.mutter) {
+        if (
+            this._original_focus_change_on_pointer_rest !== null &&
+            !this._focus_change_on_pointer_rest_changed &&
+            this.settings.mutter
+        ) {
             try {
-                this.settings.set_focus_change_on_pointer_rest(this._original_focus_change_on_pointer_rest);
-                log.info('Restored Mutter focus-change-on-pointer-rest setting');
+                if (!this.settings.focus_change_on_pointer_rest()) {
+                    this.settings.set_focus_change_on_pointer_rest(this._original_focus_change_on_pointer_rest);
+                    log.info('Restored Mutter focus-change-on-pointer-rest setting');
+                }
             } catch (e) {
                 log.error(`Failed to restore focus-change-on-pointer-rest: ${e}`);
             }
-            this._original_focus_change_on_pointer_rest = null;
         }
+        this._original_focus_change_on_pointer_rest = null;
+        this._focus_change_on_pointer_rest_changed = false;
 
         for (const key of Object.keys(this._timeouts)) {
             const id = this._timeouts[key];
@@ -447,6 +461,12 @@ export class Ext extends Ecs.System<ExtEvent> {
             obj.disconnect(id);
         }
         this._settings_signal_ids = [];
+
+        this._disconnect_all_actor_signals();
+
+        for (const executor of this._migration_executors.splice(0)) {
+            executor.stop();
+        }
 
         if (this._log_level_cleanup) {
             this._log_level_cleanup();
@@ -482,6 +502,8 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.window_buttons_manager.disable();
             this.window_buttons_manager = null;
         }
+
+        unload_theme();
 
         const entities = Array.from(this.windows.iter()).map(([e]) => e);
         for (const entity of entities) {
@@ -730,6 +752,81 @@ export class Ext extends Ecs.System<ExtEvent> {
         return this.connect_meta(win, signal, () => {
             if (!this.contains_tag(win.entity, Tags.Blocked)) func();
         });
+    }
+
+    private _entity_key(entity: Entity): string {
+        return `${entity[0]}:${entity[1]}`;
+    }
+
+    private _connect_actor_signal(
+        entity: Entity,
+        actor: Clutter.Actor,
+        signal: string,
+        callback: (...args: any[]) => boolean | void,
+    ): SignalID {
+        const id = actor.connect(signal, callback);
+        const key = this._entity_key(entity);
+        const entries = this._actor_signal_ids.get(key);
+        if (entries) {
+            entries.push([actor, id]);
+        } else {
+            this._actor_signal_ids.set(key, [[actor, id]]);
+        }
+        return id;
+    }
+
+    private _forget_actor_signal(entity: Entity, actor: Clutter.Actor, id: SignalID): void {
+        const key = this._entity_key(entity);
+        const entries = this._actor_signal_ids.get(key);
+        if (!entries) return;
+
+        const next = entries.filter(([a, signal]) => a !== actor || signal !== id);
+        if (next.length === 0) {
+            this._actor_signal_ids.delete(key);
+        } else {
+            this._actor_signal_ids.set(key, next);
+        }
+    }
+
+    private _forget_actor_signals(entity: Entity, actor: Clutter.Actor): void {
+        const key = this._entity_key(entity);
+        const entries = this._actor_signal_ids.get(key);
+        if (!entries) return;
+
+        const next = entries.filter(([a]) => a !== actor);
+        if (next.length === 0) {
+            this._actor_signal_ids.delete(key);
+        } else {
+            this._actor_signal_ids.set(key, next);
+        }
+    }
+
+    private _disconnect_actor_signals(entity: Entity): void {
+        const key = this._entity_key(entity);
+        const entries = this._actor_signal_ids.get(key);
+        if (!entries) return;
+
+        for (const [actor, id] of entries) {
+            try {
+                actor.disconnect(id);
+            } catch (e) {
+                log.debug(`Failed to disconnect actor signal: ${e}`);
+            }
+        }
+        this._actor_signal_ids.delete(key);
+    }
+
+    private _disconnect_all_actor_signals(): void {
+        for (const entries of this._actor_signal_ids.values()) {
+            for (const [actor, id] of entries) {
+                try {
+                    actor.disconnect(id);
+                } catch (e) {
+                    log.debug(`Failed to disconnect actor signal: ${e}`);
+                }
+            }
+        }
+        this._actor_signal_ids.clear();
     }
 
     connect_window(win: Window.ShellWindow) {
@@ -1134,6 +1231,8 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         const window = this.windows.get(win);
         if (!window) return;
+
+        this._disconnect_actor_signals(win);
 
         const old_size_request = this.size_requests.get(window.meta);
         if (old_size_request) {
@@ -2144,8 +2243,9 @@ export class Ext extends Ecs.System<ExtEvent> {
         if (win) {
             const entity = win.entity;
 
-            actor.connect('destroy', () => {
-                this.on_destroy(entity);
+            this._connect_actor_signal(entity, actor, 'destroy', () => {
+                this._forget_actor_signals(entity, actor);
+                if (!this._destroyed) this.on_destroy(entity);
 
                 return false;
             });
@@ -3296,9 +3396,17 @@ export class Ext extends Ecs.System<ExtEvent> {
         const apply_migrations = (assigned_monitors: Set<number>) => {
             if (!migrations) return;
 
-            new exec.OnceExecutor<Migration, Migration[]>(migrations).start(
+            const executor = new exec.OnceExecutor<Migration, Migration[]>(migrations);
+            this._migration_executors.push(executor);
+            executor.start(
                 500,
                 ([fork, new_monitor, workspace, find_workspace]) => {
+                    if (this._destroyed || !this.auto_tiler) {
+                        const idx = this._migration_executors.indexOf(executor);
+                        if (idx !== -1) this._migration_executors.splice(idx, 1);
+                        return GLib.SOURCE_REMOVE;
+                    }
+
                     let new_workspace;
 
                     if (find_workspace) {
@@ -3317,7 +3425,11 @@ export class Ext extends Ecs.System<ExtEvent> {
 
                     return true;
                 },
-                () => update_tiling(),
+                () => {
+                    const idx = this._migration_executors.indexOf(executor);
+                    if (idx !== -1) this._migration_executors.splice(idx, 1);
+                    if (!this._destroyed) update_tiling();
+                },
             );
         };
 
@@ -3479,7 +3591,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         // If not found, create a new entity with a ShellWindow component.
         if (!entity) {
-            const actor = meta.get_compositor_private();
+            const actor = meta.get_compositor_private() as Clutter.Actor | null;
             if (!actor) return null;
 
             let window_app: any, name: string;
@@ -3523,9 +3635,10 @@ export class Ext extends Ecs.System<ExtEvent> {
                 this.auto_tiler && !win.meta.minimized && win.is_tilable(this) &&
                 this.is_workspace_tiled(win.workspace_id())
             ) {
-                const id = actor.connect('first-frame', () => {
+                const id = this._connect_actor_signal(entity, actor, 'first-frame', () => {
+                    this._forget_actor_signal(entity, actor, id);
                     // Recover prev_focused from workspace_active if empty before tiling.
-                    if (this.auto_tiler && !this.previously_focused(win)) {
+                    if (!this._destroyed && this.auto_tiler && !this.previously_focused(win)) {
                         const ws_id = win.workspace_id();
                         const entity = this.workspace_active.get(ws_id);
                         if (entity && !Ecs.entity_eq(entity, win.entity)) {
@@ -3541,12 +3654,18 @@ export class Ext extends Ecs.System<ExtEvent> {
                             }
                         }
                     }
+                    if (this._destroyed) return false;
                     this.auto_tiler?.auto_tile(this, win, this.init);
                     // Suppress the border until Mutter commits the post-tile
                     // frame rect — prevents it drawing at the old/wrong position.
                     win.mark_border_settling();
                     grab_focus();
-                    actor.disconnect(id);
+                    try {
+                        actor.disconnect(id);
+                    } catch (e) {
+                        log.debug(`Failed to disconnect first-frame signal: ${e}`);
+                    }
+                    return false;
                 });
             } else {
                 grab_focus();
@@ -3757,6 +3876,16 @@ function load_theme(): any {
     } catch (e) {
         log.error(`failed to load stylesheet: ${String(e)}`);
         return null;
+    }
+}
+
+function unload_theme(): void {
+    try {
+        const theme_context = St.ThemeContext.get_for_stage((global as any).stage as any);
+        const theme: any = theme_context.get_theme();
+        if (theme) theme.unload_stylesheet(STYLESHEET);
+    } catch (e) {
+        log.error(`failed to unload stylesheet: ${String(e)}`);
     }
 }
 

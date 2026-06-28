@@ -8,6 +8,8 @@ import * as log from '../utils/log.js';
 export class OverviewLayoutManager {
     private _ext: Ext;
     private _origUpdateWindowPositions: any = null;
+    private _patchedUpdateWindowPositions: any = null;
+    private _patchedProto: any = null;
     private _enabled: boolean = false;
 
     constructor(ext: Ext) {
@@ -25,12 +27,16 @@ export class OverviewLayoutManager {
 
             const proto = WorkspaceLayout.prototype as any;
             if (this._origUpdateWindowPositions) return;
+            if (typeof proto._updateWindowPositions !== 'function') {
+                log.warn('OverviewLayoutManager: WorkspaceLayout._updateWindowPositions is not available');
+                return;
+            }
 
             this._origUpdateWindowPositions = proto._updateWindowPositions;
 
             const ext = this._ext;
             const originalUpdateWindowPositions = this._origUpdateWindowPositions;
-            proto._updateWindowPositions = function(this: any, ...args: any[]) {
+            this._patchedUpdateWindowPositions = function(this: any, ...args: any[]) {
                 // Always call original logic first to handle non-tiled windows
                 // and maintain internal Shell state.
                 originalUpdateWindowPositions.apply(this, args);
@@ -105,6 +111,8 @@ export class OverviewLayoutManager {
                     }
                 }
             };
+            proto._updateWindowPositions = this._patchedUpdateWindowPositions;
+            this._patchedProto = proto;
         } catch (e) {
             log.warn(`OverviewLayoutManager: failed to enable: ${e}`);
         }
@@ -112,15 +120,16 @@ export class OverviewLayoutManager {
 
     disable(): void {
         this._enabled = false;
-        if (this._origUpdateWindowPositions) {
-            (import('resource:///org/gnome/shell/ui/workspace.js') as Promise<any>).then(({ WorkspaceLayout }) => {
-                if (WorkspaceLayout) {
-                    (WorkspaceLayout.prototype as any)._updateWindowPositions = this._origUpdateWindowPositions;
-                    this._origUpdateWindowPositions = null;
-                }
-            }).catch((e) => {
-                log.warn(`OverviewLayoutManager: failed to restore original _updateWindowPositions: ${e}`);
-            });
+        if (!this._origUpdateWindowPositions || !this._patchedProto) return;
+
+        if (this._patchedProto._updateWindowPositions === this._patchedUpdateWindowPositions) {
+            this._patchedProto._updateWindowPositions = this._origUpdateWindowPositions;
+        } else {
+            log.warn('OverviewLayoutManager: _updateWindowPositions changed before disable; not overwriting it');
         }
+
+        this._origUpdateWindowPositions = null;
+        this._patchedUpdateWindowPositions = null;
+        this._patchedProto = null;
     }
 }

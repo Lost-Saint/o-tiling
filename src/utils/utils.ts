@@ -7,8 +7,11 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import Meta from 'gi://Meta';
+import { PACKAGE_VERSION } from 'resource:///org/gnome/shell/misc/config.js';
 const { Ok, Err } = result;
 const { Error } = error;
+
+const SHELL_MAJOR = parseInt(PACKAGE_VERSION.split('.')[0] ?? '0', 10);
 
 export function is_wayland(): boolean {
     // GNOME 48+ runs exclusively as a Wayland compositor; XDG_SESSION_TYPE is
@@ -175,13 +178,20 @@ export function map_eq<K, V>(map1: Map<K, V>, map2: Map<K, V>) {
     return true;
 }
 
-// GNOME 48+: maximize/unmaximize always act on both axes.
 export function maximize(window: Meta.Window) {
-    window.maximize();
+    if (SHELL_MAJOR >= 49) {
+        window.maximize();
+    } else {
+        (window as any).maximize(Meta.MaximizeFlags.BOTH);
+    }
 }
 
 export function unmaximize(window: Meta.Window) {
-    window.unmaximize();
+    if (SHELL_MAJOR >= 49) {
+        window.unmaximize();
+    } else {
+        (window as any).unmaximize(Meta.MaximizeFlags.BOTH);
+    }
 }
 
 export function is_maximized(window: Meta.Window): boolean {
