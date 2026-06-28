@@ -1,6 +1,6 @@
-import * as lib from '../utils/lib.js';
-import St from 'gi://St';
 import Clutter from 'gi://Clutter';
+import St from 'gi://St';
+import * as lib from '../utils/lib.js';
 
 import * as ModalDialog from 'resource:///org/gnome/shell/ui/modalDialog.js';
 

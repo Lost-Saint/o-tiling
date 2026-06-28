@@ -1,23 +1,23 @@
 import * as arena from '../core/arena.js';
 import * as Ecs from '../core/ecs.js';
+import * as geom from '../utils/geom.js';
 import * as Lib from '../utils/lib.js';
 import * as log from '../utils/log.js';
-import * as movement from '../window/movement.js';
 import * as Rect from '../utils/rectangle.js';
-import * as Node from './node.js';
-import * as Fork from './fork.js';
 import * as utils from '../utils/utils.js';
-import * as geom from '../utils/geom.js';
+import * as movement from '../window/movement.js';
+import * as Fork from './fork.js';
+import * as Node from './node.js';
 
 import type { Entity } from '../core/ecs.js';
+import type { Ext } from '../extension.js';
 import type { Rectangle } from '../utils/rectangle.js';
 import type { ShellWindow } from '../window/window.js';
-import type { Ext } from '../extension.js';
 import { Stack } from './stack.js';
 
 const { Arena } = arena;
-import Meta from 'gi://Meta';
 import GLib from 'gi://GLib';
+import Meta from 'gi://Meta';
 const { Movement } = movement;
 
 const { DOWN, UP, LEFT, RIGHT } = Movement;
@@ -416,10 +416,11 @@ export class Forest extends Ecs.World {
                     case 1:
                         this.reassign_children_to_parent(fork_entity, (fork.right.inner as Node.NodeFork).entity, fork);
                         break;
-                    default:
+                    default: {
                         const detached = fork.right;
                         fork.left = detached;
                         fork.right = null;
+                    }
                 }
             } else {
                 this.delete_entity(fork_entity);
@@ -900,15 +901,17 @@ export class Forest extends Ecs.World {
 
     private display_branch(ext: Ext, branch: Node.Node, scope: number): string {
         switch (branch.inner.kind) {
-            case 1:
+            case 1: {
                 const fork = this.forks.get(branch.inner.entity);
                 return fork ? this.display_fork(ext, branch.inner.entity, fork, scope + 1) : 'Missing Fork';
-            case 2:
+            }
+            case 2: {
                 const window = ext.windows.get(branch.inner.entity);
                 return `Window(${branch.inner.entity}) (${window ? window.rect().fmt() : 'unknown area'}; parent: ${
                     ext.auto_tiler?.attached.get(branch.inner.entity)
                 })`;
-            case 3:
+            }
+            case 3: {
                 let fmt = 'Stack(';
 
                 for (const entity of branch.inner.entities) {
@@ -917,6 +920,7 @@ export class Forest extends Ecs.World {
                 }
 
                 return fmt + ')';
+            }
         }
     }
 

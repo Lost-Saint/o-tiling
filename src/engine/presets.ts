@@ -1,9 +1,9 @@
-import type { Ext } from '../extension.js';
 import type { Entity } from '../core/ecs.js';
+import type { Ext } from '../extension.js';
+import * as Lib from '../utils/lib.js';
+import { Rectangle } from '../utils/rectangle.js';
 import { Fork } from './fork.js';
 import * as Node from './node.js';
-import { Rectangle } from '../utils/rectangle.js';
-import * as Lib from '../utils/lib.js';
 
 export enum PresetType {
     COLUMNS = 'columns',
@@ -17,7 +17,7 @@ export function apply_preset(ext: Ext, preset: PresetType, workspace: number, mo
 
     // Get all windows currently tiled on this workspace
     const ws_windows = Array.from(ext.windows.values()).filter(
-        w => w.known_workspace === workspace && ext.auto_tiler!.attached.contains(w.entity),
+        (w) => w.known_workspace === workspace && ext.auto_tiler!.attached.contains(w.entity),
     );
 
     if (ws_windows.length < 2) return;
@@ -39,7 +39,7 @@ export function apply_preset(ext: Ext, preset: PresetType, workspace: number, mo
     area.width -= ext.gap_outer * 2;
     area.height -= ext.gap_outer + ext.gap_top;
 
-    const entities = ws_windows.map(w => w.entity);
+    const entities = ws_windows.map((w) => w.entity);
 
     // 2. Build the preset tree topology
     const [toplevel_entity, toplevel_fork] = build_topology(forest, preset, entities, area, workspace, monitor);

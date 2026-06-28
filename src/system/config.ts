@@ -1,5 +1,5 @@
-import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 import * as log from '../utils/log.js';
 
 const CONF_DIR: string = GLib.get_user_config_dir() + '/o-tiling';
@@ -88,7 +88,7 @@ interface CompiledRule {
 }
 
 function compile_rules(rules: Array<FloatRule | WindowRule>): CompiledRule[] {
-    return rules.map(rule => ({
+    return rules.map((rule) => ({
         classRe: rule.class ? new RegExp(rule.class, 'i') : null,
         titleRe: rule.title ? new RegExp(rule.title, 'i') : null,
         disabled: rule.disabled,

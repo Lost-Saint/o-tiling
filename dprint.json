@@ -7,7 +7,6 @@
     "includes": [
         "*.{js,mjs,cjs,json,jsonc,md}",
         ".github/**/*.{json,jsonc,md}",
-        "dist/**/*.js",
         "scripts/**/*.{js,mjs,cjs}",
         "src/**/*.{ts,tsx,js,jsx}"
     ],
@@ -20,12 +19,10 @@
         "quoteStyle": "alwaysSingle",
         "jsx.quoteStyle": "preferSingle",
         "semiColons": "always",
-        "module.sortImportDeclarations": "maintain",
-        "importDeclaration.sortNamedImports": "maintain",
-        "exportDeclaration.sortNamedExports": "maintain",
-        "binaryExpression.operatorPosition": "sameLine",
-        "conditionalExpression.operatorPosition": "sameLine",
-        "conditionalType.operatorPosition": "sameLine"
+        "trailingCommas": "onlyMultiLine",
+        "operatorPosition": "sameLine",
+        "arrowFunction.useParentheses": "force",
+        "enumDeclaration.memberSpacing": "newLine"
     },
     "json": {
         "indentWidth": 4,

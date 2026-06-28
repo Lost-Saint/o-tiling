@@ -1,10 +1,10 @@
 #!/usr/bin/gjs --module
 
+import Adw from 'gi://Adw?version=1';
 import Gio from 'gi://Gio';
+import GioUnix from 'gi://GioUnix?version=2.0';
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
-import Adw from 'gi://Adw?version=1';
-import GioUnix from 'gi://GioUnix?version=2.0';
 
 /** The directory that this script is executed from. */
 const _SCRIPT_DIR = GLib.path_get_dirname(new Error().stack!.split(':')[0]!.slice(1));

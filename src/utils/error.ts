@@ -14,11 +14,9 @@ export class Error {
     }
 
     *chain(): IterableIterator<Error> {
-        let current: Error | null = this;
-
-        while (current != null) {
-            yield current;
-            current = current.cause;
+        yield this;
+        if (this.cause !== null) {
+            yield* this.cause.chain();
         }
     }
 

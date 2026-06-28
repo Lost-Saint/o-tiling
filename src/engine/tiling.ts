@@ -1,20 +1,20 @@
-import * as GrabOp from '../window/grab_op.js';
+import * as exec from '../system/executor.js';
+import * as geom from '../utils/geom.js';
 import * as Lib from '../utils/lib.js';
 import * as Log from '../utils/log.js';
-import * as Node from './node.js';
 import * as Rect from '../utils/rectangle.js';
 import * as Tags from '../utils/tags.js';
-import * as window from '../window/window.js';
-import * as geom from '../utils/geom.js';
-import * as exec from '../system/executor.js';
 import * as utils from '../utils/utils.js';
+import * as GrabOp from '../window/grab_op.js';
+import * as window from '../window/window.js';
+import * as Node from './node.js';
 
 import type { Entity } from '../core/ecs.js';
-import type { Rectangle } from '../utils/rectangle.js';
 import type { Ext } from '../extension.js';
-import type { NodeStack } from './node.js';
+import type { Rectangle } from '../utils/rectangle.js';
 import { AutoTiler } from './auto_tiler.js';
 import { Fork } from './fork.js';
+import type { NodeStack } from './node.js';
 
 import Meta from 'gi://Meta';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';

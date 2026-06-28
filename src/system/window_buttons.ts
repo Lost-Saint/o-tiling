@@ -65,8 +65,8 @@ export class WindowButtonsManager {
 
         // ↓ FIXED: check whether buttons are currently on the LEFT, not just
         //   whether the right side has *any* content (e.g. "appmenu").
-        const leftHasButtons = (left ?? '').split(',').some(s => BTN.includes(s.trim()));
-        const rightHasButtons = (right ?? '').split(',').some(s => BTN.includes(s.trim()));
+        const leftHasButtons = (left ?? '').split(',').some((s) => BTN.includes(s.trim()));
+        const rightHasButtons = (right ?? '').split(',').some((s) => BTN.includes(s.trim()));
 
         // If buttons are currently on the left, keep them left.
         // If on the right (or not present yet), default to right.
@@ -75,8 +75,8 @@ export class WindowButtonsManager {
              :
             rightHasButtons; // honour current placement
 
-        const BtnRight = (right ?? '').split(',').filter(s => !BTN.includes(s.trim()));
-        const BtnLeft = (left ?? '').split(',').filter(s => !BTN.includes(s.trim()));
+        const BtnRight = (right ?? '').split(',').filter((s) => !BTN.includes(s.trim()));
+        const BtnLeft = (left ?? '').split(',').filter((s) => !BTN.includes(s.trim()));
 
         if (show_min_max) {
             if (isRight) {

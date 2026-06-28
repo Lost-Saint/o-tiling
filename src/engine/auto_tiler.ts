@@ -1,19 +1,19 @@
 import * as ecs from '../core/ecs.js';
+import * as geom from '../utils/geom.js';
 import * as lib from '../utils/lib.js';
 import * as log from '../utils/log.js';
-import * as node from './node.js';
 import * as result from '../utils/result.js';
+import * as node from './node.js';
 import * as stack from './stack.js';
-import * as geom from '../utils/geom.js';
 import * as tiling from './tiling.js';
 
 import type { Entity } from '../core/ecs.js';
 import type { Ext } from '../extension.js';
-import type { Forest, MoveBy, MoveByCursor } from './forest.js';
-import type { Fork } from './fork.js';
 import type { Rectangle } from '../utils/rectangle.js';
 import type { Result } from '../utils/result.js';
 import type { ShellWindow } from '../window/window.js';
+import type { Forest, MoveBy, MoveByCursor } from './forest.js';
+import type { Fork } from './fork.js';
 
 const { Stack } = stack;
 const { Ok, Err, ERR } = result;
@@ -182,14 +182,14 @@ export class AutoTiler {
 
             // Collect all tiled windows on this workspace
             const ws_windows = Array.from(ext.windows.values()).filter(
-                w => w.known_workspace === id[1] && this.attached.contains(w.entity),
+                (w) => w.known_workspace === id[1] && this.attached.contains(w.entity),
             );
 
             if (ws_windows.length > 0) {
                 // Check if all windows are of identical size
                 const first = ws_windows[0]!;
                 const first_size = first.rect().width * first.rect().height;
-                const uniform_sizes = ws_windows.every(w => (w.rect().width * w.rect().height) === first_size);
+                const uniform_sizes = ws_windows.every((w) => (w.rect().width * w.rect().height) === first_size);
 
                 const focus = ext.focus_window();
                 if (

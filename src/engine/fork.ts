@@ -1,14 +1,14 @@
-import type { Forest } from './forest.js';
 import type { Entity } from '../core/ecs.js';
 import type { Ext } from '../extension.js';
 import type { Rectangle } from '../utils/rectangle.js';
+import type { Forest } from './forest.js';
 import type { Node } from './node.js';
 
 import * as Ecs from '../core/ecs.js';
 import * as Lib from '../utils/lib.js';
-import * as node from './node.js';
 import * as Rect from '../utils/rectangle.js';
 import { ShellWindow } from '../window/window.js';
+import * as node from './node.js';
 
 export function get_primary_monitor_index(): number {
     return (global as any).display.get_primary_monitor();
@@ -165,7 +165,7 @@ export class Fork {
             case 1:
                 check_right();
                 break;
-            case 2:
+            case 2: {
                 const inner = this.left.inner;
                 if (Ecs.entity_eq(inner.entity, a.entity)) {
                     closure = () => {
@@ -176,7 +176,8 @@ export class Fork {
                 }
 
                 break;
-            case 3:
+            }
+            case 3: {
                 const inner_s = this.left.inner as node.NodeStack;
                 const idx = node.stack_find(inner_s, a.entity);
                 if (idx !== null) {
@@ -188,6 +189,7 @@ export class Fork {
                 } else {
                     check_right();
                 }
+            }
         }
 
         return closure;
@@ -305,14 +307,15 @@ export class Fork {
 
             for (const child of forest.iter(this.entity)) {
                 switch (child.inner.kind) {
-                    case 1:
+                    case 1: {
                         const cfork = forest.forks.get(child.inner.entity);
                         if (!cfork) continue;
                         cfork.workspace = workspace;
                         cfork.monitor = monitor;
                         cfork.on_primary_display = primary;
                         break;
-                    case 2:
+                    }
+                    case 2: {
                         const window = ext.windows.get(child.inner.entity);
                         if (window) {
                             ext.size_signals_block(window);
@@ -323,6 +326,7 @@ export class Fork {
                             blocked.push(window);
                         }
                         break;
+                    }
                     case 3:
                         for (const entity of child.inner.entities) {
                             const stack = ext.auto_tiler.forest.stacks.get(child.inner.idx);

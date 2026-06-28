@@ -1,7 +1,7 @@
-import St from 'gi://St';
+import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
-import Clutter from 'gi://Clutter';
+import St from 'gi://St';
 import * as log from '../utils/log.js';
 
 export class PanelTransparencyManager {

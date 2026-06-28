@@ -7,16 +7,16 @@ import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import St from 'gi://St';
 
+import { Button } from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import {
     PopupBaseMenuItem,
     PopupMenuItem,
-    PopupSwitchMenuItem,
     PopupSeparatorMenuItem,
+    PopupSwitchMenuItem,
 } from 'resource:///org/gnome/shell/ui/popupMenu.js';
-import { Button } from 'resource:///org/gnome/shell/ui/panelMenu.js';
 
-import { get_current_path } from '../utils/paths.js';
 import { apply_preset, PresetType } from '../engine/presets.js';
+import { get_current_path } from '../utils/paths.js';
 
 export class Indicator {
     button: any;
@@ -181,7 +181,7 @@ export class Indicator {
             if (this.presets_item) {
                 if (ext.auto_tiler) {
                     const workspace_windows = Array.from(ext.windows.values()).filter(
-                        w => w.known_workspace === workspace && ext.auto_tiler!.attached.contains(w.entity),
+                        (w) => w.known_workspace === workspace && ext.auto_tiler!.attached.contains(w.entity),
                     );
                     const enabled = workspace_windows.length >= 2 && workspace_windows.length <= 6;
                     this.presets_item.setSensitive(enabled);

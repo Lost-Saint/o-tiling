@@ -1,7 +1,7 @@
-import * as Ecs from '../core/ecs.js';
-import * as utils from '../utils/utils.js';
 import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
+import * as Ecs from '../core/ecs.js';
+import * as utils from '../utils/utils.js';
 
 export interface Executor<T> {
     wake<S extends Ecs.System<T>>(system: S, event: T): void;

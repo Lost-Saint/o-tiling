@@ -1,5 +1,5 @@
-import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 
 const CONF_DIR: string = GLib.get_user_config_dir() + '/o-tiling';
 export const CONF_FILE: string = CONF_DIR + '/config.json';

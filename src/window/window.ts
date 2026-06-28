@@ -1,20 +1,20 @@
+import type { Entity } from '../core/ecs.js';
+import type { Ext } from '../extension.js';
+import * as scheduler from '../system/scheduler.js';
 import * as lib from '../utils/lib.js';
 import * as log from '../utils/log.js';
 import * as once_cell from '../utils/once_cell.js';
 import * as Rect from '../utils/rectangle.js';
+import type { Rectangle } from '../utils/rectangle.js';
 import * as Tags from '../utils/tags.js';
 import * as utils from '../utils/utils.js';
-import type { Entity } from '../core/ecs.js';
-import type { Ext } from '../extension.js';
-import type { Rectangle } from '../utils/rectangle.js';
-import * as scheduler from '../system/scheduler.js';
 import * as focus from './focus.js';
 
-import Meta from 'gi://Meta';
 import Clutter from 'gi://Clutter';
+import GLib from 'gi://GLib';
+import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
-import GLib from 'gi://GLib';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 const { OnceCell } = once_cell;

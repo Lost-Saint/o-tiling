@@ -1,41 +1,41 @@
-import * as Config from './system/config.js';
-import * as Forest from './engine/forest.js';
 import * as Ecs from './core/ecs.js';
 import * as Events from './core/events.js';
-import * as Focus from './window/focus.js';
-import * as Geom from './utils/geom.js';
-import * as GrabOp from './window/grab_op.js';
+import * as auto_tiler from './engine/auto_tiler.js';
+import * as Forest from './engine/forest.js';
+import * as node from './engine/node.js';
+import * as Tiling from './engine/tiling.js';
+import * as Config from './system/config.js';
+import * as Executor from './system/executor.js';
 import * as Keybindings from './system/keybindings.js';
+import * as Settings from './system/settings.js';
+import * as add_exception from './ui/dialog_add_exception.js';
+import * as PanelSettings from './ui/panel_settings.js';
+import * as Geom from './utils/geom.js';
 import * as Lib from './utils/lib.js';
 import * as log from './utils/log.js';
-import * as PanelSettings from './ui/panel_settings.js';
 import * as Rect from './utils/rectangle.js';
-import * as Settings from './system/settings.js';
-import * as Tiling from './engine/tiling.js';
-import * as Window from './window/window.js';
-import * as auto_tiler from './engine/auto_tiler.js';
-import * as node from './engine/node.js';
 import * as utils from './utils/utils.js';
-import * as add_exception from './ui/dialog_add_exception.js';
-import * as Executor from './system/executor.js';
+import * as Focus from './window/focus.js';
+import * as GrabOp from './window/grab_op.js';
+import * as Window from './window/window.js';
 const exec = Executor;
-import * as movement from './window/movement.js';
 import * as stack from './engine/stack.js';
 import { WindowButtonsManager } from './system/window_buttons.js';
+import * as movement from './window/movement.js';
 
-import * as dbus_service from './system/dbus_service.js';
-import * as scheduler from './system/scheduler.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import type { Entity } from './core/ecs.js';
 import type { ExtEvent } from './core/events.js';
-import { Rectangle } from './utils/rectangle.js';
+import * as dbus_service from './system/dbus_service.js';
+import * as scheduler from './system/scheduler.js';
+import { OverviewLayoutManager } from './ui/overview_layout.js';
 import type { Indicator } from './ui/panel_settings.js';
 import type { WorkspaceNumberIndicator } from './ui/panel_settings.js';
-import { WorkspaceSwitcherStyle, isGnome50 } from './ui/workspace_switcher_style.js';
-import { ThemeConsistencyManager } from './ui/theme_consistency/index.js';
 import { PanelTransparencyManager } from './ui/panel_transparency.js';
-import { OverviewLayoutManager } from './ui/overview_layout.js';
 import { applyThemeConsistency, restoreGtkDefaults } from './ui/theme_consistency/apply.js';
+import { ThemeConsistencyManager } from './ui/theme_consistency/index.js';
+import { isGnome50, WorkspaceSwitcherStyle } from './ui/workspace_switcher_style.js';
+import { Rectangle } from './utils/rectangle.js';
 
 import { Fork } from './engine/fork.js';
 
@@ -45,13 +45,13 @@ const wom = (global as any).workspace_manager;
 
 const Movement = movement.Movement;
 
-import GLib from 'gi://GLib';
-import Gio from 'gi://Gio';
-import St from 'gi://St';
-import Shell from 'gi://Shell';
-import Meta from 'gi://Meta';
-import GObject from 'gi://GObject';
 import Clutter from 'gi://Clutter';
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
+import GObject from 'gi://GObject';
+import Meta from 'gi://Meta';
+import Shell from 'gi://Shell';
+import St from 'gi://St';
 // Mtk is available in GNOME 45+; all our supported versions (46-50) have it
 import Mtk from 'gi://Mtk';
 const { GlobalEvent, WindowEvent } = Events;
@@ -70,11 +70,11 @@ const {
 } = Main;
 
 import { WindowSwitcherPopup } from 'resource:///org/gnome/shell/ui/altTab.js';
+import { WindowPreview } from 'resource:///org/gnome/shell/ui/windowPreview.js';
 import { Workspace } from 'resource:///org/gnome/shell/ui/workspace.js';
 import { WorkspaceThumbnail } from 'resource:///org/gnome/shell/ui/workspaceThumbnail.js';
-import { WindowPreview } from 'resource:///org/gnome/shell/ui/windowPreview.js';
-import * as Tags from './utils/tags.js';
 import { get_current_path } from './utils/paths.js';
+import * as Tags from './utils/tags.js';
 
 const STYLESHEET_PATH = stylesheet_path('stylesheet');
 const STYLESHEET = Gio.File.new_for_path(STYLESHEET_PATH);
@@ -544,7 +544,7 @@ export class Ext extends Ecs.System<ExtEvent> {
                 break;
 
             /** Window Event */
-            case 2:
+            case 2: {
                 const win = event.window;
 
                 /** Validate that the window's actor still exists. */
@@ -625,14 +625,16 @@ export class Ext extends Ecs.System<ExtEvent> {
                 }
 
                 break;
+            }
 
             /** Window Create Event */
-            case 3:
+            case 3: {
                 const actor = event.window.get_compositor_private() as Clutter.Actor;
                 if (!actor) return;
 
                 this.on_window_create(event.window, actor);
                 break;
+            }
 
             /** Stateless global events */
             case 4:
@@ -3739,10 +3741,10 @@ function stylesheet_path(name: string) {
 }
 
 // Supplements the loaded theme with the extension's theme.
-function load_theme(): string | any {
+function load_theme(): any {
     try {
         const theme_context = St.ThemeContext.get_for_stage((global as any).stage as any);
-        const existing_theme: null | any = theme_context.get_theme();
+        const existing_theme: any = theme_context.get_theme();
 
         // get_theme() returns null if no custom theme — use new St.Theme()
         const theme = existing_theme ?? new St.Theme({});

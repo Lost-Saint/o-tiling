@@ -1,12 +1,12 @@
-import * as result from './result.js';
 import * as error from './error.js';
 import * as log from './log.js';
+import * as result from './result.js';
 
+import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
-import Meta from 'gi://Meta';
 import GObject from 'gi://GObject';
-import Clutter from 'gi://Clutter';
+import Meta from 'gi://Meta';
 const { Ok, Err } = result;
 const { Error } = error;
 
@@ -84,7 +84,11 @@ export function is_dark(color: string): boolean {
 }
 
 /** Utility function for running a process in the background and fetching its standard output as a string. */
-export function async_process(argv: Array<string>, input = null, cancellable: null | any = null): Promise<string> {
+export function async_process(
+    argv: Array<string>,
+    input = null,
+    cancellable: Gio.Cancellable | null = null,
+): Promise<string> {
     let flags = Gio.SubprocessFlags.STDOUT_PIPE;
 
     if (input !== null) flags |= Gio.SubprocessFlags.STDIN_PIPE;

@@ -2,17 +2,17 @@ import type { Entity } from '../core/ecs.js';
 import type { Ext } from '../extension.js';
 import type { ShellWindow } from '../window/window.js';
 
-import * as Ecs from '../core/ecs.js';
 import * as a from '../core/arena.js';
-import * as utils from '../utils/utils.js';
+import * as Ecs from '../core/ecs.js';
 import * as log from '../utils/log.js';
+import * as utils from '../utils/utils.js';
 import { get_primary_monitor_index } from './fork.js';
 
 const Arena = a.Arena;
 import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
-import St from 'gi://St';
 import Meta from 'gi://Meta';
+import St from 'gi://St';
 
 const ACTIVE_TAB = 'o-tiling-tab o-tiling-tab-active';
 const INACTIVE_TAB = 'o-tiling-tab o-tiling-tab-inactive';

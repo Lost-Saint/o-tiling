@@ -1,12 +1,12 @@
 import * as Ecs from '../core/ecs.js';
 
-import type { Forest } from './forest.js';
 import type { Entity } from '../core/ecs.js';
 import type { Ext } from '../extension.js';
 import type { Rectangle } from '../utils/rectangle.js';
+import { ShellWindow } from '../window/window.js';
+import type { Forest } from './forest.js';
 import type { Stack } from './stack.js';
 import { TAB_HEIGHT } from './stack.js';
-import { ShellWindow } from '../window/window.js';
 
 /** A node is either a fork a window */
 export enum NodeKind {
@@ -215,19 +215,20 @@ export class Node {
     ) {
         switch (this.inner.kind) {
             // Fork
-            case 1:
+            case 1: {
                 const fork = tiler.forks.get(this.inner.entity);
                 if (fork && typeof record === 'function') {
                     fork.measure(tiler, ext, area, record);
                 }
 
                 break;
+            }
             // Window
             case 2:
                 record(this.inner.entity, parent, area.clone());
                 break;
             // Stack
-            case 3:
+            case 3: {
                 const tab_height = TAB_HEIGHT * ext.dpi;
 
                 this.inner.rect = area.clone();
@@ -241,6 +242,7 @@ export class Node {
                 if (ext.auto_tiler) {
                     ext.auto_tiler.forest.stack_updates.push([this.inner, parent]);
                 }
+            }
         }
     }
 }

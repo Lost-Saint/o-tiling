@@ -1,5 +1,5 @@
-import type { Ext } from '../extension.js';
 import Meta from 'gi://Meta';
+import type { Ext } from '../extension.js';
 
 export enum Side {
     LEFT,

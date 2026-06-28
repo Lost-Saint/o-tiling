@@ -3,9 +3,9 @@ import * as rectangle from './rectangle.js';
 
 import type { Rectangle } from './rectangle.js';
 
+import Clutter from 'gi://Clutter';
 import Meta from 'gi://Meta';
 import St from 'gi://St';
-import Clutter from 'gi://Clutter';
 
 export interface SizeHint {
     minimum: [number, number];

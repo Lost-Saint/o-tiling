@@ -1,5 +1,5 @@
-import * as log from '../utils/log.js';
 import type { Ext } from '../extension.js';
+import * as log from '../utils/log.js';
 
 /**
  * Manages the layout of window previews in the overview to match the tiled desktop layout.
@@ -28,14 +28,15 @@ export class OverviewLayoutManager {
 
             this._origUpdateWindowPositions = proto._updateWindowPositions;
 
-            const self = this;
+            const ext = this._ext;
+            const originalUpdateWindowPositions = this._origUpdateWindowPositions;
             proto._updateWindowPositions = function(this: any, ...args: any[]) {
                 // Always call original logic first to handle non-tiled windows
                 // and maintain internal Shell state.
-                self._origUpdateWindowPositions.apply(this, args);
+                originalUpdateWindowPositions.apply(this, args);
 
                 // If extension is soft-disabled or auto-tiling is globally off, we don't override.
-                if (self._ext._ext_soft_disabled) return;
+                if (ext._ext_soft_disabled) return;
 
                 const previews = this._windowPreviews || [];
                 if (previews.length === 0) return;
@@ -45,7 +46,7 @@ export class OverviewLayoutManager {
 
                 // monitorIndex is a property of the Workspace actor in GNOME 40+
                 const monitorIndex = container.monitorIndex;
-                const monitorArea = self._ext.monitor_area(monitorIndex);
+                const monitorArea = ext.monitor_area(monitorIndex);
                 if (!monitorArea) return;
 
                 const containerWidth = container.width;
@@ -63,10 +64,10 @@ export class OverviewLayoutManager {
                     if (!metaWin) continue;
 
                     // Only override for windows managed by O-Tiling that are currently tiled
-                    const winEntity = self._ext.window_entity(metaWin);
+                    const winEntity = ext.window_entity(metaWin);
                     if (!winEntity) continue;
 
-                    const isTiled = self._ext.auto_tiler?.attached.contains(winEntity);
+                    const isTiled = ext.auto_tiler?.attached.contains(winEntity);
                     if (!isTiled) continue;
 
                     // Get actual desktop frame rect

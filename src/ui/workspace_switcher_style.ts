@@ -1,11 +1,11 @@
-import St from 'gi://St';
+import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
-import Clutter from 'gi://Clutter';
+import St from 'gi://St';
 import { PACKAGE_VERSION } from 'resource:///org/gnome/shell/misc/config.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import * as Utils from '../utils/utils.js';
 import * as log from '../utils/log.js';
+import * as Utils from '../utils/utils.js';
 
 // ── Version gate ─────────────────────────────────────────────────────────────
 
@@ -232,13 +232,14 @@ export class WorkspaceSwitcherStyle {
                 log.debug('WorkspaceSwitcherStyle: patching ThumbnailsBox._updateMaxThumbnailScale');
                 this._origUpdateMaxThumbnailScale = thumbnailsBox._updateMaxThumbnailScale;
 
-                const self = this;
+                const getPreferredScale = this._getPreferredScale.bind(this);
+                const originalUpdateMaxThumbnailScale = this._origUpdateMaxThumbnailScale;
                 thumbnailsBox._updateMaxThumbnailScale = function(this: any, ...args: any[]) {
                     // Call original to let Shell do its thing (calculating its own internal _maxThumbnailScale)
-                    self._origUpdateMaxThumbnailScale.apply(this, args);
+                    originalUpdateMaxThumbnailScale.apply(this, args);
 
                     // Then override with our preferred scale
-                    const scale = self._getPreferredScale();
+                    const scale = getPreferredScale();
                     this._maxThumbnailScale = scale;
                     this._minThumbnailScale = scale;
 

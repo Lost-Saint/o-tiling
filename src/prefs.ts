@@ -1,11 +1,11 @@
-import Gtk from 'gi://Gtk';
 import Adw from 'gi://Adw';
+import Gtk from 'gi://Gtk';
 // Gdk dynamically imported
 import Gio from 'gi://Gio';
 import { ExtensionPreferences, gettext as _ } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
-import * as log from './utils/log.js';
 import { applyThemeConsistency, restoreGtkDefaults } from './ui/theme_consistency/apply.js';
+import * as log from './utils/log.js';
 
 export default class OTilingPreferences extends ExtensionPreferences {
     async fillPreferencesWindow(window: Adw.PreferencesWindow) {
@@ -531,7 +531,7 @@ export default class OTilingPreferences extends ExtensionPreferences {
 
         resetButton.connect('clicked', () => {
             const keys = settings.list_keys();
-            keys.forEach(key => settings.reset(key));
+            keys.forEach((key) => settings.reset(key));
 
             // Manual overrides from original indicator logic
             settings.set_uint('gap-inner', 4);
@@ -554,7 +554,7 @@ export default class OTilingPreferences extends ExtensionPreferences {
         // Update settings when text changes
         row.connect('notify::text', () => {
             const text = row.text;
-            const values = text.split(',').map(s => s.trim()).filter(s => s.length > 0);
+            const values = text.split(',').map((s) => s.trim()).filter((s) => s.length > 0);
             settings.set_strv(key, values);
         });
     }
