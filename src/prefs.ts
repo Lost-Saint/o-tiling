@@ -142,6 +142,19 @@ export default class OTilingPreferences extends ExtensionPreferences {
         overviewGroup.add(wsNumberIndicatorRow);
         settings.bind('workspace-number-indicator', wsNumberIndicatorRow as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
+        // Workspace Animation Style
+        const wsAnimRow = new Adw.ComboRow({
+            title: _('Workspace Switch Animation'),
+            subtitle: _('Wallpaper stays fixed; only windows animate. "Swing" mimics Hyprland elastic slide.'),
+            model: Gtk.StringList.new(['None (default GNOME)', 'Slide', 'Swing (Hyprland-style)']),
+        });
+        overviewGroup.add(wsAnimRow);
+        // Map setting value to combo index: 0=none, 1=slide, 2=swing
+        const wsAnimValues: string[] = ['none', 'slide', 'swing'];
+        wsAnimRow.set_selected(Math.max(0, wsAnimValues.indexOf(settings.get_string('workspace-animation-style'))));
+        wsAnimRow.connect('notify::selected', () => {
+            settings.set_string('workspace-animation-style', wsAnimValues[wsAnimRow.selected] ?? 'none');
+        });
 
         // Panel Transparency Group
         const panelGroup = new Adw.PreferencesGroup({

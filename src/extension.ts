@@ -33,6 +33,8 @@ import { Rectangle } from './utils/rectangle.js';
 import type { Indicator } from './ui/panel_settings.js';
 import type { WorkspaceNumberIndicator } from './ui/panel_settings.js';
 import { WorkspaceSwitcherStyle, isGnome50 } from './ui/workspace_switcher_style.js';
+import { WorkspaceAnimationManager } from './ui/workspace_animation.js';
+import type { AnimationStyle } from './ui/workspace_animation.js';
 import { ThemeConsistencyManager } from './ui/theme_consistency/index.js';
 import { PanelTransparencyManager } from './ui/panel_transparency.js';
 import { OverviewLayoutManager } from './ui/overview_layout.js';
@@ -213,6 +215,7 @@ export class Ext extends Ecs.System<ExtEvent> {
     auto_tiler: auto_tiler.AutoTiler | null = null; // Manages automatic tiling behaviors in the shell
 
     workspace_switcher_style_handler: WorkspaceSwitcherStyle | null = null; // Optional workspace-switcher re-style (GNOME 50+ only)
+    workspace_animation_handler: WorkspaceAnimationManager | null = null; // Optional static-wallpaper + window-swing animation
 
     focus_selector: Focus.FocusSelector = new Focus.FocusSelector(); // Performs focus selections
 
@@ -351,11 +354,15 @@ export class Ext extends Ecs.System<ExtEvent> {
         });
         this._settings_signal_ids.push([this.settings.ext, id_ws_num]);
 
-
+        // Workspace animation style — static wallpaper + window swing
+        const id_ws_anim = this.settings.ext.connect('changed::workspace-animation-style', () => {
+            this.toggle_workspace_animation(this.settings.workspace_animation_style() as AnimationStyle);
+        });
+        this._settings_signal_ids.push([this.settings.ext, id_ws_anim]);
 
         // Initial application
         this.toggle_workspace_switcher_style(this.settings.workspace_switcher_style(), false);
-
+        this.toggle_workspace_animation(this.settings.workspace_animation_style() as AnimationStyle, false);
         this.toggle_theme_consistency(this.settings.theme_consistency_style(), false);
         this.toggle_panel_transparency(this.settings.panel_transparency(), false);
 
@@ -477,6 +484,11 @@ export class Ext extends Ecs.System<ExtEvent> {
         if (this.workspace_switcher_style_handler) {
             this.workspace_switcher_style_handler.disable();
             this.workspace_switcher_style_handler = null;
+        }
+
+        if (this.workspace_animation_handler) {
+            this.workspace_animation_handler.disable();
+            this.workspace_animation_handler = null;
         }
 
         if (this.theme_consistency_handler) {
@@ -3096,6 +3108,25 @@ export class Ext extends Ecs.System<ExtEvent> {
     }
 
 
+
+    /** Enables / updates the workspace animation style (static wallpaper + window swing). */
+    toggle_workspace_animation(style: AnimationStyle, save: boolean = true) {
+        if (style === 'none') {
+            this.workspace_animation_handler?.disable();
+            this.workspace_animation_handler = null;
+        } else {
+            if (!this.workspace_animation_handler) {
+                this.workspace_animation_handler = new WorkspaceAnimationManager(style);
+                this.workspace_animation_handler.enable();
+            } else {
+                this.workspace_animation_handler.setStyle(style);
+            }
+        }
+
+        if (save) {
+            this.settings.set_workspace_animation_style(style);
+        }
+    }
 
     toggle_theme_consistency(style: string, save: boolean = true) {
         if (style !== 'default') {
