@@ -53,6 +53,16 @@
             <summary>Workspace switch animation style: 'none' (default GNOME), 'slide' (windows slide, wallpaper static), 'swing' (Hyprland-style overshoot, wallpaper static)</summary>
         </key>
 
+        <key type="s" name="window-animation-style">
+            <default>'default'</default>
+            <summary>Window open/close/move/resize animation style: 'default' (native GNOME), 'hyprland' (bouncy overshoot, Hyprland/niri-like), 'none' (instant)</summary>
+        </key>
+
+        <key type="i" name="window-animation-duration">
+            <default>200</default>
+            <summary>Duration in milliseconds for window animations when style is not 'none'</summary>
+        </key>
+
         <key type="b" name="skip-overview">
             <default>false</default>
             <summary>Skip the activities overview on startup</summary>

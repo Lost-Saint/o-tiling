@@ -89,6 +89,8 @@ const ACTIVE_HINT_OVERLAY_ALL_WINDOWS = 'active-hint-overlay-all-windows';
 const WORKSPACE_SWITCHER_STYLE = 'workspace-switcher-style';
 const WORKSPACE_NUMBER_INDICATOR = 'workspace-number-indicator';
 const WORKSPACE_ANIMATION_STYLE = 'workspace-animation-style';
+const WINDOW_ANIMATION_STYLE = 'window-animation-style';
+const WINDOW_ANIMATION_DURATION = 'window-animation-duration';
 
 const THEME_CONSISTENCY_STYLE = 'theme-consistency-style';
 const SKIP_OVERVIEW = 'skip-overview';
@@ -285,6 +287,14 @@ export class ExtensionSettings {
         return this.ext.get_string(WORKSPACE_ANIMATION_STYLE) ?? 'none';
     }
 
+    window_animation_style(): string {
+        return this.ext.get_string(WINDOW_ANIMATION_STYLE) ?? 'default';
+    }
+
+    window_animation_duration(): number {
+        return this.ext.get_int(WINDOW_ANIMATION_DURATION);
+    }
+
 
 
 
@@ -449,6 +459,14 @@ export class ExtensionSettings {
 
     set_workspace_animation_style(style: string) {
         this.ext.set_string(WORKSPACE_ANIMATION_STYLE, style);
+    }
+
+    set_window_animation_style(style: string) {
+        this.ext.set_string(WINDOW_ANIMATION_STYLE, style);
+    }
+
+    set_window_animation_duration(ms: number) {
+        this.ext.set_int(WINDOW_ANIMATION_DURATION, ms);
     }
 
 

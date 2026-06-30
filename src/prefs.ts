@@ -156,6 +156,18 @@ export default class OTilingPreferences extends ExtensionPreferences {
             settings.set_string('workspace-animation-style', wsAnimValues[wsAnimRow.selected] ?? 'none');
         });
 
+        const winAnimRow = new Adw.ComboRow({
+            title: _('Window Animations'),
+            subtitle: _('Open/close/move/resize animation style. "Hyprland" adds bouncy overshoot like Hyprland/niri.'),
+            model: Gtk.StringList.new(['Default (native GNOME)', 'Hyprland-style (bouncy)', 'None (instant)']),
+        });
+        overviewGroup.add(winAnimRow);
+        const winAnimValues: string[] = ['default', 'hyprland', 'none'];
+        winAnimRow.set_selected(Math.max(0, winAnimValues.indexOf(settings.get_string('window-animation-style'))));
+        winAnimRow.connect('notify::selected', () => {
+            settings.set_string('window-animation-style', winAnimValues[winAnimRow.selected] ?? 'default');
+        });
+
         // Panel Transparency Group
         const panelGroup = new Adw.PreferencesGroup({
             title: _('Panel'),

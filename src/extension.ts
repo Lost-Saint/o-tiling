@@ -35,6 +35,8 @@ import type { WorkspaceNumberIndicator } from './ui/panel_settings.js';
 import { WorkspaceSwitcherStyle, isGnome50 } from './ui/workspace_switcher_style.js';
 import { WorkspaceAnimationManager } from './ui/workspace_animation.js';
 import type { AnimationStyle } from './ui/workspace_animation.js';
+import { WindowAnimationManager } from './ui/window_animation.js';
+import type { WindowAnimationStyle } from './ui/window_animation.js';
 import { ThemeConsistencyManager } from './ui/theme_consistency/index.js';
 import { PanelTransparencyManager } from './ui/panel_transparency.js';
 import { OverviewLayoutManager } from './ui/overview_layout.js';
@@ -113,7 +115,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     // State
 
-    animate_windows: boolean = true; // Animate window movements
+
 
     button: any = null;
     button_gio_icon_auto_on: any = null;
@@ -216,6 +218,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     workspace_switcher_style_handler: WorkspaceSwitcherStyle | null = null; // Optional workspace-switcher re-style (GNOME 50+ only)
     workspace_animation_handler: WorkspaceAnimationManager | null = null; // Optional static-wallpaper + window-swing animation
+    window_animation_handler: WindowAnimationManager = new WindowAnimationManager();
 
     focus_selector: Focus.FocusSelector = new Focus.FocusSelector(); // Performs focus selections
 
@@ -360,9 +363,19 @@ export class Ext extends Ecs.System<ExtEvent> {
         });
         this._settings_signal_ids.push([this.settings.ext, id_ws_anim]);
 
+        const id_win_anim = this.settings.ext.connect('changed::window-animation-style', () => {
+            this.toggle_window_animation(this.settings.window_animation_style() as WindowAnimationStyle);
+        });
+        this._settings_signal_ids.push([this.settings.ext, id_win_anim]);
+
         // Initial application
         this.toggle_workspace_switcher_style(this.settings.workspace_switcher_style(), false);
         this.toggle_workspace_animation(this.settings.workspace_animation_style() as AnimationStyle, false);
+        this.window_animation_handler = new WindowAnimationManager(
+            this.settings.window_animation_style() as WindowAnimationStyle,
+            this.settings.window_animation_duration(),
+        );
+        this.window_animation_handler.enable();
         this.toggle_theme_consistency(this.settings.theme_consistency_style(), false);
         this.toggle_panel_transparency(this.settings.panel_transparency(), false);
 
@@ -491,6 +504,8 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.workspace_animation_handler = null;
         }
 
+        this.window_animation_handler.disable();
+
         if (this.theme_consistency_handler) {
             this.theme_consistency_handler.disable();
             this.theme_consistency_handler = null;
@@ -590,12 +605,11 @@ export class Ext extends Ecs.System<ExtEvent> {
                         return;
                     }
 
-                    (actor as any).remove_all_transitions();
                     const { x, y, width, height } = movement;
 
-                    // On GNOME 50/Mutter 18, move_resize_frame handles both position and size atomically
-                    // The additional move_frame call would cause redundant compositor commits
-                    window.meta.move_resize_frame(true, x, y, width, height);
+                    this.window_animation_handler.applyMove(actor as any, x, y, width, height, () =>
+                        window.meta.move_resize_frame(true, x, y, width, height),
+                    );
 
                     this.monitors.insert(window.entity, [win.meta.get_monitor(), win.workspace_id()]);
 
@@ -3117,6 +3131,14 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         if (save) {
             this.settings.set_workspace_animation_style(style);
+        }
+    }
+
+    toggle_window_animation(style: WindowAnimationStyle, save: boolean = true) {
+        this.window_animation_handler.setStyle(style);
+
+        if (save) {
+            this.settings.set_window_animation_style(style);
         }
     }
 
