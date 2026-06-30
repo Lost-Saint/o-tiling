@@ -37,7 +37,6 @@ export class Indicator {
 
 
     toggle_active: any;
-    toggle_debug: any;
     border_radius: any;
 
     entry_gaps: any;
@@ -151,15 +150,6 @@ export class Indicator {
         bm.addMenuItem(settings_button(bm));
         bm.addMenuItem(floating_window_exceptions(ext, bm));
 
-        // ── Debug Mode ──────────────────────────────────────────
-        this.toggle_debug = toggle(
-            _('Debug Mode'),
-            ext.settings.log_level() === 4,
-            'utilities-terminal-symbolic',
-            (state) => ext.settings.set_log_level(state ? 4 : 0),
-        );
-        bm.addMenuItem(this.toggle_debug);
-
         bm.addMenuItem(new PopupSeparatorMenuItem());
 
         this.toggle_tiled = tiled(ext);
@@ -207,11 +197,6 @@ export class Indicator {
                     this.presets_item.setSensitive(false);
                 }
             }
-
-            if (this.toggle_debug) {
-                this.toggle_debug.setToggleState(ext.settings.log_level() === 4);
-            }
-
             // Update panel icon to reflect current workspace tiling state
             if (ext.auto_tiler && tiled) {
                 this.button.icon.gicon = ext.button_gio_icon_auto_on;

@@ -436,6 +436,24 @@ export default class OTilingPreferences extends ExtensionPreferences {
         behaviorGroup.add(stackingWithMouse);
         settings.bind('stacking-with-mouse', stackingWithMouse as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
+        const debugMode = new Adw.SwitchRow({
+            title: _('Debug Mode'),
+            subtitle: _('Enable detailed logging for debugging purposes'),
+        });
+        behaviorGroup.add(debugMode);
+        
+        debugMode.active = settings.get_uint('log-level') === 4;
+        debugMode.connect('notify::active', () => {
+            settings.set_uint('log-level', debugMode.active ? 4 : 0);
+        });
+        settings.connect('changed::log-level', () => {
+            const isDebug = settings.get_uint('log-level') === 4;
+            if (debugMode.active !== isDebug) {
+                debugMode.active = isDebug;
+            }
+        });
+
+
         // Gaps Group
         const gapsGroup = new Adw.PreferencesGroup({
             title: _('Gaps'),
