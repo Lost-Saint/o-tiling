@@ -368,6 +368,11 @@ export class Ext extends Ecs.System<ExtEvent> {
         });
         this._settings_signal_ids.push([this.settings.ext, id_win_anim]);
 
+        const id_win_anim_dur = this.settings.ext.connect('changed::window-animation-duration', () => {
+            this.window_animation_handler.setDuration(this.settings.window_animation_duration());
+        });
+        this._settings_signal_ids.push([this.settings.ext, id_win_anim_dur]);
+
         // Initial application
         this.toggle_workspace_switcher_style(this.settings.workspace_switcher_style(), false);
         this.toggle_workspace_animation(this.settings.workspace_animation_style() as AnimationStyle, false);

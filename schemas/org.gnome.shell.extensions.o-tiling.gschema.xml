@@ -55,12 +55,12 @@
 
         <key type="s" name="window-animation-style">
             <default>'default'</default>
-            <summary>Window open/close/move/resize animation style: 'default' (native GNOME), 'hyprland' (bouncy overshoot, Hyprland/niri-like), 'none' (instant)</summary>
+            <summary>Window open/close/move/resize animation style: 'default' (native GNOME), 'hyprland' (bouncy overshoot, Hyprland/niri-like), 'glide' (smooth slide in/out)</summary>
         </key>
 
         <key type="i" name="window-animation-duration">
             <default>200</default>
-            <summary>Duration in milliseconds for window animations when style is not 'none'</summary>
+            <summary>Duration in milliseconds for window animations</summary>
         </key>
 
         <key type="b" name="skip-overview">
