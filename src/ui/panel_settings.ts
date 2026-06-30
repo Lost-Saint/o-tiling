@@ -523,13 +523,11 @@ export class WorkspaceNumberIndicator {
         this.button.add_child(this._box);
 
         // Overview toggle button — same pill style as workspace number buttons
-        const _ovIconPath = `${get_current_path()}/icons/o-tiling-ws-overview-symbolic.svg`;
-        const _ovGicon = Gio.icon_new_for_string(_ovIconPath);
         this._ovBtn = new St.Button({
             style_class: 'o-tiling-ws-overview-btn',
-            child: new St.Icon({
-                gicon: _ovGicon,
-                icon_size: 12,
+            child: new St.Label({
+                text: '...',
+                y_align: Clutter.ActorAlign.CENTER,
             }),
             y_align: Clutter.ActorAlign.CENTER,
         });
