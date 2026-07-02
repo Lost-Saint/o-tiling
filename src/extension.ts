@@ -718,7 +718,7 @@ export class Ext extends Ecs.System<ExtEvent> {
     }
 
     active_monitor(): number {
-        return (global as any).backend.get_current_logical_monitor()?.get_number() ?? 0;
+        return Lib.active_monitor_index();
     }
 
     active_window_list(): Array<Window.ShellWindow> {

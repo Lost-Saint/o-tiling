@@ -583,7 +583,7 @@ export class ShellWindow {
     }
 
     same_monitor() {
-        return this.meta.get_monitor() === ((global as any).backend.get_current_logical_monitor()?.get_number() ?? 0);
+        return this.meta.get_monitor() === lib.active_monitor_index();
     }
 
 
@@ -875,7 +875,7 @@ export function activate(ext: Ext, move_mouse: boolean, win: Meta.Window) {
 
 function pointer_in_work_area(): boolean {
     const cursor = lib.cursor_rect();
-    const indice = (global as any).backend.get_current_logical_monitor()?.get_number() ?? 0;
+    const indice = lib.active_monitor_index();
     const mon = (global as any).workspace_manager.get_active_workspace().get_work_area_for_monitor(indice);
 
     return mon ? cursor.intersects(mon) : false;
