@@ -453,6 +453,30 @@ export class Ext extends Ecs.System<ExtEvent> {
         };
     }
 
+    /** Disconnects all tracked meta-window signals (window_signals + size_signals) for
+     * an entity and destroys its ShellWindow. Shared by destroy() and ext_soft_disable()
+     * so the two teardown paths can't drift out of sync with each other. */
+    private teardown_window(entity: Entity) {
+        const win = this.windows.get(entity);
+        if (!win) return;
+
+        const win_sigs = this.window_signals.get(entity);
+        if (win_sigs) {
+            for (const sig of win_sigs) {
+                if (sig) win.meta.disconnect(sig);
+            }
+        }
+
+        const size_sigs = this.size_signals.get(entity);
+        if (size_sigs) {
+            for (const sig of size_sigs) {
+                if (sig) win.meta.disconnect(sig);
+            }
+        }
+
+        win.destroy();
+    }
+
     destroy() {
         this.unset_grab_op();
         this.executor.stop();
@@ -533,23 +557,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         const entities = Array.from(this.windows.iter()).map(([e]) => e);
         for (const entity of entities) {
-            const win = this.windows.get(entity);
-            if (win) {
-                const win_sigs = this.window_signals.get(entity);
-                if (win_sigs) {
-                    for (const sig of win_sigs) {
-                        if (sig) win.meta.disconnect(sig);
-                    }
-                }
-                const size_sigs = this.size_signals.get(entity);
-                if (size_sigs) {
-                    for (const sig of size_sigs) {
-                        if (sig) win.meta.disconnect(sig);
-                    }
-                }
-
-                win.destroy();
-            }
+            this.teardown_window(entity);
         }
 
         // Clean up all generic timeouts tracked in the property map
@@ -2907,23 +2915,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         // 2. Hide borders and disconnect window signals
         const entities = Array.from(this.windows.iter()).map(([e]) => e);
         for (const entity of entities) {
-            const win = this.windows.get(entity);
-            if (win) {
-                const win_sigs = this.window_signals.get(entity);
-                if (win_sigs) {
-                    for (const sig of win_sigs) {
-                        if (sig) win.meta.disconnect(sig);
-                    }
-                }
-                const size_sigs = this.size_signals.get(entity);
-                if (size_sigs) {
-                    for (const sig of size_sigs) {
-                        if (sig) win.meta.disconnect(sig);
-                    }
-                }
-
-                win.destroy();
-            }
+            this.teardown_window(entity);
             this.delete_entity(entity);
         }
 
