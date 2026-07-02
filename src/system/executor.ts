@@ -78,9 +78,6 @@ export class OnceExecutor<X, T extends Iterable<X>> {
 
             if (typeof next === 'undefined') {
                 if (then) {
-                    if (this.#signal !== null) {
-                        GLib.source_remove(this.#signal);
-                    }
                     const id2 = GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
                         if (this.#signal === id2) {
                             this.#signal = null;
