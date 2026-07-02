@@ -40,7 +40,6 @@ export class Indicator {
     border_radius: any;
 
     entry_gaps: any;
-    signals: Array<[any, number]> = [];
 
     constructor(ext: Ext) {
         this.ext = ext;
@@ -207,10 +206,6 @@ export class Indicator {
     }
 
     destroy() {
-        for (const [obj, id] of this.signals) {
-            obj.disconnect(id);
-        }
-        this.signals = [];
         this.button.destroy();
     }
 }
