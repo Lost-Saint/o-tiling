@@ -93,16 +93,16 @@ export default class OTilingPreferences extends ExtensionPreferences {
         appearanceGroup.add(themesConsistencyRow);
 
         // Bind the combo row index to our enum setting
-        themesConsistencyRow.connect('notify::selected', () => {
+        themesConsistencyRow.connect('notify::selected', async () => {
             const selected = themesConsistencyRow.selected;
             const style = selected === 0 ? 'default' : selected === 1 ? 'rounded' : 'sharp';
             settings.set_string('theme-consistency-style', style);
 
             // Apply GTK theme consistency immediately
             if (style !== 'default') {
-                applyThemeConsistency(style as 'rounded' | 'sharp');
+                await applyThemeConsistency(style as 'rounded' | 'sharp');
             } else {
-                restoreGtkDefaults();
+                await restoreGtkDefaults();
             }
         });
 
@@ -112,7 +112,7 @@ export default class OTilingPreferences extends ExtensionPreferences {
 
         // Ensure GTK consistency is applied if active
         if (currentStyle !== 'default') {
-            applyThemeConsistency(currentStyle as 'rounded' | 'sharp');
+            await applyThemeConsistency(currentStyle as 'rounded' | 'sharp');
         }
 
         // Overview Group

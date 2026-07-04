@@ -1,19 +1,51 @@
 import GLib from 'gi://GLib';
+import Gio from 'gi://Gio';
 import * as log from '../../utils/log.js';
 import { getGtkCss } from './gtk.js';
 
 const O_TILING_START = '/* === O-TILING START === */';
 const O_TILING_END   = '/* === O-TILING END === */';
 
+function readFileAsync(path: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const file = Gio.File.new_for_path(path);
+        file.load_contents_async(null, (obj, res) => {
+            try {
+                const [, bytes] = (obj as Gio.File).load_contents_finish(res);
+                resolve(new TextDecoder().decode(bytes));
+            } catch (e) {
+                reject(e);
+            }
+        });
+    });
+}
+
+function writeFileAsync(path: string, contents: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+        const file = Gio.File.new_for_path(path);
+        const bytes = new TextEncoder().encode(contents);
+        file.replace_contents_async(
+            bytes, null, false, Gio.FileCreateFlags.NONE, null,
+            (obj, res) => {
+                try {
+                    (obj as Gio.File).replace_contents_finish(res);
+                    resolve();
+                } catch (e) {
+                    reject(e);
+                }
+            }
+        );
+    });
+}
+
 /** Removes the O-Tiling block from a gtk.css file (leaves the rest intact). */
-function removeCssBlock(path: string): void {
+async function removeCssBlock(path: string): Promise<void> {
     let content = '';
     if (!GLib.file_test(path, GLib.FileTest.EXISTS)) {
         return; // File doesn't exist — nothing to remove.
     }
     try {
-        const [, bytes] = GLib.file_get_contents(path);
-        content = new TextDecoder().decode(bytes);
+        content = await readFileAsync(path);
     } catch (e) {
         log.warn(`Failed to read GTK CSS file at ${path}: ${e}`);
         return;
@@ -24,7 +56,7 @@ function removeCssBlock(path: string): void {
 
     if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
         content = content.slice(0, startIndex) + content.slice(endIndex + O_TILING_END.length);
-        GLib.file_set_contents(path, content.trim() + '\n');
+        await writeFileAsync(path, content.trim() + '\n');
     }
 }
 
@@ -33,11 +65,11 @@ function removeCssBlock(path: string): void {
  * CSS block that was previously injected into gtk-4.0/gtk.css and
  * gtk-3.0/gtk.css.  Safe to call even if no block is present.
  */
-export function restoreGtkDefaults(): void {
+export async function restoreGtkDefaults(): Promise<void> {
     try {
         const home = GLib.get_home_dir();
-        removeCssBlock(`${home}/.config/gtk-4.0/gtk.css`);
-        removeCssBlock(`${home}/.config/gtk-3.0/gtk.css`);
+        await removeCssBlock(`${home}/.config/gtk-4.0/gtk.css`);
+        await removeCssBlock(`${home}/.config/gtk-3.0/gtk.css`);
         log.info('ThemeConsistency: GTK css block removed — theme restored to default');
     } catch (e) {
         log.warn('Could not restore GTK default theme: ' + e);
@@ -52,7 +84,7 @@ export function restoreGtkDefaults(): void {
  * BUG-02 fix: writes CSS files directly instead of using a shell script.
  * BUG-03 fix: passes plain strings to GLib.file_set_contents (not Uint8Array).
  */
-export function applyThemeConsistency(style: 'rounded' | 'sharp' = 'rounded') {
+export async function applyThemeConsistency(style: 'rounded' | 'sharp' = 'rounded'): Promise<void> {
     const gtkCss = getGtkCss(style);
 
     try {
@@ -62,12 +94,11 @@ export function applyThemeConsistency(style: 'rounded' | 'sharp' = 'rounded') {
         GLib.mkdir_with_parents(gtk4Dir, 0o755);
         GLib.mkdir_with_parents(gtk3Dir, 0o755);
 
-        const updateCssFile = (path: string, newCss: string) => {
+        const updateCssFile = async (path: string, newCss: string) => {
             let content = '';
             if (GLib.file_test(path, GLib.FileTest.EXISTS)) {
                 try {
-                    const [, bytes] = GLib.file_get_contents(path);
-                    content = new TextDecoder().decode(bytes);
+                    content = await readFileAsync(path);
                 } catch (e) {
                     log.warn(`Failed to read GTK CSS file for update at ${path}: ${e}`);
                 }
@@ -81,11 +112,11 @@ export function applyThemeConsistency(style: 'rounded' | 'sharp' = 'rounded') {
             }
 
             content = content.trim() + '\n\n' + O_TILING_START + '\n' + newCss + '\n' + O_TILING_END + '\n';
-            GLib.file_set_contents(path, content.trimStart());
+            await writeFileAsync(path, content.trimStart());
         };
 
-        updateCssFile(`${gtk4Dir}/gtk.css`, gtkCss);
-        updateCssFile(`${gtk3Dir}/gtk.css`, gtkCss);
+        await updateCssFile(`${gtk4Dir}/gtk.css`, gtkCss);
+        await updateCssFile(`${gtk3Dir}/gtk.css`, gtkCss);
     } catch (e) {
         log.warn('Could not apply GTK theme consistency: ' + e);
     }

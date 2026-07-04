@@ -3885,7 +3885,6 @@ function _show_skip_taskbar_windows(ext: Ext) {
 
     // Handle switch-windows
     if (!default_getwindowlist_windowswitcher) {
-        if (true) {
             default_getwindowlist_windowswitcher = WindowSwitcherPopup.prototype._getWindowList;
             WindowSwitcherPopup.prototype._getWindowList = function () {
                 let workspace = null;
@@ -3913,9 +3912,6 @@ function _show_skip_taskbar_windows(ext: Ext) {
                         return true;
                     }) as Meta.Window[];
             };
-        } else {
-            (global as any).log('O-Tiling: WARNING - WindowSwitcherPopup._getWindowList not found. Alt-tab modifications skipped.');
-        }
     }
 }
 
