@@ -16,6 +16,7 @@ import {
     PopupSeparatorMenuItem,
 } from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import { Button } from 'resource:///org/gnome/shell/ui/panelMenu.js';
+import { QuickMenuToggle, SystemIndicator } from 'resource:///org/gnome/shell/ui/quickSettings.js';
 import GObject from 'gi://GObject';
 import GLib from 'gi://GLib';
 
@@ -596,3 +597,63 @@ export class WorkspaceNumberIndicator {
         this.button.destroy();
     }
 }
+
+export const QuickSettingsToggle = GObject.registerClass(
+class QuickSettingsToggle extends QuickMenuToggle {
+    constructor(ext: Ext) {
+        super({ title: _('O-Tiling'), iconName: 'view-grid-symbolic', toggleMode: true });
+        this.checked = !ext._ext_soft_disabled;
+
+        this.connect('clicked', () => {
+            if (this.checked) {
+                ext.ext_soft_enable();
+            } else {
+                ext.ext_soft_disable();
+            }
+        });
+
+        this.menu.setHeader('view-grid-symbolic', _('O-Tiling'), _('Tiling Window Management'));
+        this.menu.addMenuItem(workspace_tiled(ext));
+        this.menu.addMenuItem(lock_master_window(ext));
+        this.menu.addMenuItem(new PopupSeparatorMenuItem());
+        this.menu.addMenuItem(toggle(
+            _('Active Hint'),
+            ext.settings.active_hint(),
+            'focus-windows-symbolic',
+            (state) => ext.settings.set_active_hint(state),
+        ));
+        this.menu.addMenuItem(new PopupSeparatorMenuItem());
+        this.menu.addMenuItem(settings_button(this.menu));
+    }
+});
+
+export const QuickSettingsIndicator = GObject.registerClass(
+class QuickSettingsIndicator extends SystemIndicator {
+    quickSettingsItems: any[];
+
+    constructor(ext: Ext) {
+        super();
+        const indicatorIcon = this._addIndicator();
+        indicatorIcon.icon_name = 'view-grid-symbolic';
+        indicatorIcon.visible = !ext._ext_soft_disabled;
+
+        this.quickSettingsItems = [];
+        const toggleItem = new QuickSettingsToggle(ext);
+        this.quickSettingsItems.push(toggleItem);
+
+        toggleItem.bind_property(
+            'checked',
+            indicatorIcon,
+            'visible',
+            GObject.BindingFlags.SYNC_CREATE
+        );
+    }
+
+    destroy() {
+        for (const item of this.quickSettingsItems) {
+            item.destroy();
+        }
+        this.quickSettingsItems = [];
+        super.destroy();
+    }
+});

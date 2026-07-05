@@ -47,6 +47,16 @@
             <summary>Show a workspace number label (e.g. "2 / 4") in the panel instead of the dot indicator</summary>
         </key>
 
+        <key type="b" name="hide-panel-icon">
+            <default>false</default>
+            <summary>Hide the O-Tiling icon and menu from the top panel</summary>
+        </key>
+
+        <key type="b" name="quick-settings-toggle">
+            <default>false</default>
+            <summary>Show O-Tiling controls as a toggle in the GNOME Quick Settings menu instead of a dedicated panel icon</summary>
+        </key>
+
         <!-- Workspace Animation -->
         <key type="s" name="workspace-animation-style">
             <default>'none'</default>

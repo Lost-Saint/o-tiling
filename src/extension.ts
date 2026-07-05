@@ -66,6 +66,7 @@ const { GlobalEvent, WindowEvent } = Events;
 export let ext: Ext | null = null;
 export let indicator: Indicator | null = null;
 export let workspace_number_indicator: WorkspaceNumberIndicator | null = null;
+export let quick_settings_indicator: any = null;
 
 const { cursor_rect, is_keyboard_op, is_resize_op, is_move_op } = Lib;
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -356,6 +357,20 @@ export class Ext extends Ecs.System<ExtEvent> {
             _toggle_workspace_number_indicator(this.settings.workspace_number_indicator());
         });
         this._settings_signal_ids.push([this.settings.ext, id_ws_num]);
+
+        const id_hide_panel = this.settings.ext.connect('changed::hide-panel-icon', () => {
+            if (indicator) {
+                const sessionMode = (Main as any).sessionMode;
+                const isLocked = sessionMode ? sessionMode.isLocked : false;
+                indicator.button.visible = !isLocked && !this.settings.hide_panel_icon();
+            }
+        });
+        this._settings_signal_ids.push([this.settings.ext, id_hide_panel]);
+
+        const id_qs_toggle = this.settings.ext.connect('changed::quick-settings-toggle', () => {
+            _toggle_quick_settings_indicator(this.settings.quick_settings_toggle());
+        });
+        this._settings_signal_ids.push([this.settings.ext, id_qs_toggle]);
 
         // Workspace animation style — static wallpaper + window swing
         const id_ws_anim = this.settings.ext.connect('changed::workspace-animation-style', () => {
@@ -1045,7 +1060,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         if (sessionMode) {
             this._unlock_signal_id = sessionMode.connect('updated', () => {
                 if (indicator) {
-                    indicator.button.visible = !sessionMode.isLocked;
+                    indicator.button.visible = !sessionMode.isLocked && !this.settings.hide_panel_icon();
                 }
 
                 if (sessionMode.isLocked) {
@@ -3685,10 +3700,12 @@ export default class OTilingExtension extends Extension {
         if (!indicator && currentPanel) {
             indicator = new PanelSettings.Indicator(ext);
             currentPanel.addToStatusArea('o-tiling', indicator.button);
+            indicator.button.visible = !ext.settings.hide_panel_icon();
         }
 
         // Workspace-number indicator in panel
         _toggle_workspace_number_indicator(ext.settings.workspace_number_indicator());
+        _toggle_quick_settings_indicator(ext.settings.quick_settings_toggle());
 
         ext.keybindings.enable(ext.keybindings.global).enable(ext.keybindings.window_focus);
 
@@ -3722,6 +3739,11 @@ export default class OTilingExtension extends Extension {
             workspace_number_indicator = null;
         }
 
+        if (quick_settings_indicator) {
+            quick_settings_indicator.destroy();
+            quick_settings_indicator = null;
+        }
+
         enable_window_attention_handler();
         Window.cleanup_main_loop_sources();
         scheduler.destroy();
@@ -3742,6 +3764,19 @@ function disable_window_attention_handler() {
     if (handler && handler._windowDemandsAttentionId) {
         (global as any).display.disconnect(handler._windowDemandsAttentionId);
         handler._windowDemandsAttentionId = null;
+    }
+}
+
+function _toggle_quick_settings_indicator(enable: boolean): void {
+    const quickSettings = (Main as any).panel?.statusArea?.quickSettings;
+    if (!quickSettings) return;
+
+    if (enable && !quick_settings_indicator) {
+        quick_settings_indicator = new (PanelSettings.QuickSettingsIndicator as any)(ext);
+        quickSettings.addExternalIndicator(quick_settings_indicator);
+    } else if (!enable && quick_settings_indicator) {
+        quick_settings_indicator.destroy();
+        quick_settings_indicator = null;
     }
 }
 

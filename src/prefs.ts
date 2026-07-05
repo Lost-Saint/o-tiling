@@ -1,6 +1,5 @@
 import Gtk from 'gi://Gtk';
 import Adw from 'gi://Adw';
-// Gdk dynamically imported
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import { ExtensionPreferences, gettext as _ } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
@@ -180,6 +179,20 @@ export default class OTilingPreferences extends ExtensionPreferences {
         });
         panelGroup.add(panelTransRow);
         settings.bind('panel-transparency', panelTransRow as any, 'active', Gio.SettingsBindFlags.DEFAULT);
+
+        const hidePanelIconRow = new Adw.SwitchRow({
+            title: _('Hide Panel Icon'),
+            subtitle: _('Hide the O-Tiling icon and menu from the top panel'),
+        });
+        panelGroup.add(hidePanelIconRow);
+        settings.bind('hide-panel-icon', hidePanelIconRow as any, 'active', Gio.SettingsBindFlags.DEFAULT);
+
+        const quickSettingsRow = new Adw.SwitchRow({
+            title: _('Show in Quick Settings'),
+            subtitle: _('Add an O-Tiling toggle to the Quick Settings menu instead of a dedicated panel icon'),
+        });
+        panelGroup.add(quickSettingsRow);
+        settings.bind('quick-settings-toggle', quickSettingsRow as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
         const panelOpacityRow = new Adw.SpinRow({
             title: _('Panel Opacity (%)'),
