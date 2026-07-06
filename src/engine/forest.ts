@@ -6,7 +6,7 @@ import * as movement from '../window/movement.js';
 import * as Rect from '../utils/rectangle.js';
 import * as Node from './node.js';
 import * as Fork from './fork.js';
-import * as utils from '../utils/utils.js';
+
 import * as geom from '../utils/geom.js';
 
 import type { Entity } from '../core/ecs.js';

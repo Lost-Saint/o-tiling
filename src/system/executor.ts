@@ -1,5 +1,5 @@
 import * as Ecs from '../core/ecs.js';
-import * as utils from '../utils/utils.js';
+
 import * as Lib from '../utils/lib.js';
 import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';

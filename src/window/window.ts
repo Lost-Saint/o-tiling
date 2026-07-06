@@ -500,7 +500,7 @@ export class ShellWindow {
 
     xid(): string | null {
         return this.extra.xid_.get_or_init(() => {
-            if (utils.is_wayland()) return null;
+            if (this.meta.get_client_type() === Meta.WindowClientType.WAYLAND) return null;
             const desc = this.meta.get_description();
             if (!desc) return null;
             const match = desc.match(/0x[a-f0-9]+/i);
