@@ -1,62 +1,34 @@
 import GLib from 'gi://GLib';
-import Gio from 'gi://Gio';
 import * as log from '../../utils/log.js';
+import * as utils from '../../utils/utils.js';
+import * as result from '../../utils/result.js';
 import { getGtkCss } from './gtk.js';
 
 const O_TILING_START = '/* === O-TILING START === */';
 const O_TILING_END   = '/* === O-TILING END === */';
 
-function readFileAsync(path: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const file = Gio.File.new_for_path(path);
-        file.load_contents_async(null, (obj, res) => {
-            try {
-                const [, bytes] = (obj as Gio.File).load_contents_finish(res);
-                resolve(new TextDecoder().decode(bytes));
-            } catch (e) {
-                reject(e);
-            }
-        });
-    });
-}
-
-function writeFileAsync(path: string, contents: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-        const file = Gio.File.new_for_path(path);
-        const bytes = new TextEncoder().encode(contents);
-        file.replace_contents_async(
-            bytes, null, false, Gio.FileCreateFlags.NONE, null,
-            (obj, res) => {
-                try {
-                    (obj as Gio.File).replace_contents_finish(res);
-                    resolve();
-                } catch (e) {
-                    reject(e);
-                }
-            }
-        );
-    });
-}
-
 /** Removes the O-Tiling block from a gtk.css file (leaves the rest intact). */
 async function removeCssBlock(path: string): Promise<void> {
-    let content = '';
     if (!GLib.file_test(path, GLib.FileTest.EXISTS)) {
         return; // File doesn't exist — nothing to remove.
     }
-    try {
-        content = await readFileAsync(path);
-    } catch (e) {
-        log.warn(`Failed to read GTK CSS file at ${path}: ${e}`);
+
+    const read = await utils.read_to_string(path);
+    if (read.kind === result.ERR) {
+        log.warn(`Failed to read GTK CSS file at ${path}: ${read.value.format()}`);
         return;
     }
 
+    let content = read.value;
     const startIndex = content.indexOf(O_TILING_START);
     const endIndex   = content.indexOf(O_TILING_END);
 
     if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
         content = content.slice(0, startIndex) + content.slice(endIndex + O_TILING_END.length);
-        await writeFileAsync(path, content.trim() + '\n');
+        const write = await utils.write_string(path, content.trim() + '\n');
+        if (write.kind === result.ERR) {
+            log.warn(`Failed to write GTK CSS file at ${path}: ${write.value.format()}`);
+        }
     }
 }
 
@@ -97,10 +69,11 @@ export async function applyThemeConsistency(style: 'rounded' | 'sharp' = 'rounde
         const updateCssFile = async (path: string, newCss: string) => {
             let content = '';
             if (GLib.file_test(path, GLib.FileTest.EXISTS)) {
-                try {
-                    content = await readFileAsync(path);
-                } catch (e) {
-                    log.warn(`Failed to read GTK CSS file for update at ${path}: ${e}`);
+                const read = await utils.read_to_string(path);
+                if (read.kind === result.ERR) {
+                    log.warn(`Failed to read GTK CSS file for update at ${path}: ${read.value.format()}`);
+                } else {
+                    content = read.value;
                 }
             }
 
@@ -112,7 +85,10 @@ export async function applyThemeConsistency(style: 'rounded' | 'sharp' = 'rounde
             }
 
             content = content.trim() + '\n\n' + O_TILING_START + '\n' + newCss + '\n' + O_TILING_END + '\n';
-            await writeFileAsync(path, content.trimStart());
+            const write = await utils.write_string(path, content.trimStart());
+            if (write.kind === result.ERR) {
+                log.warn(`Failed to write GTK CSS file at ${path}: ${write.value.format()}`);
+            }
         };
 
         await updateCssFile(`${gtk4Dir}/gtk.css`, gtkCss);

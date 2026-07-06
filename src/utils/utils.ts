@@ -42,6 +42,21 @@ export function read_to_string(path: string): Promise<result.Result<string, erro
     });
 }
 
+export function write_string(path: string, contents: string): Promise<result.Result<void, error.Error>> {
+    const file = Gio.File.new_for_path(path);
+    const bytes = new TextEncoder().encode(contents);
+    return new Promise((resolve) => {
+        file.replace_contents_async(bytes, null, false, Gio.FileCreateFlags.NONE, null, (obj: any, res: any) => {
+            try {
+                obj.replace_contents_finish(res);
+                resolve(Ok(undefined));
+            } catch (e) {
+                resolve(Err(new Error(String(e)).context(`failed to write contents of ${path}`)));
+            }
+        });
+    });
+}
+
 export function source_remove(id: number | null): boolean {
     if (id === null || id <= 0) return false;
     GLib.source_remove(id);

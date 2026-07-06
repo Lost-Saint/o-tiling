@@ -3158,13 +3158,14 @@ export class Ext extends Ecs.System<ExtEvent> {
             }
             this.theme_consistency_handler.enable(style as any);
 
-            // Also apply GTK theme consistency
-            applyThemeConsistency(style as 'rounded' | 'sharp');
+            // Not awaited: runs from a settings-changed signal handler, not enable()/disable(),
+            // so there is no shell-lifecycle race. Errors are caught and logged inside.
+            void applyThemeConsistency(style as 'rounded' | 'sharp');
         } else {
             this.theme_consistency_handler?.disable();
             this.theme_consistency_handler = null;
-            // Restore GTK gtk.css files to stock (remove the O-Tiling block).
-            restoreGtkDefaults();
+            // Not awaited: same rationale as above — errors are caught and logged inside.
+            void restoreGtkDefaults();
         }
 
         if (save) {
