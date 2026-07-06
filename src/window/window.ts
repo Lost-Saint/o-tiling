@@ -106,7 +106,7 @@ function is_panel_actor(focused_actor: Clutter.Actor | null): boolean {
         ) {
             return true;
         }
-        actor = actor.get_parent?.() ?? null;
+        actor = actor.get_parent();
     }
     return false;
 }
@@ -116,15 +116,15 @@ export function clutter_focus_is_shell_panel(): boolean {
     if (!stage) return false;
 
     // Check if the keyboard focus is on a shell element
-    const key_actor: Clutter.Actor | null = stage.get_key_focus?.() ?? null;
+    const key_actor: Clutter.Actor | null = stage.get_key_focus();
     if (is_panel_actor(key_actor)) return true;
 
     // Check if the pointer is hovering over a shell element
-    const pointer = (global as any).get_pointer?.();
+    const pointer = (global as any).get_pointer();
     if (!pointer) return false;
 
     const [x, y] = pointer;
-    const pointer_actor = stage.get_actor_at_pos?.(1 /* Clutter.PickMode.REACTIVE */, x, y) ?? null;
+    const pointer_actor = stage.get_actor_at_pos(1 /* Clutter.PickMode.REACTIVE */, x, y);
     if (is_panel_actor(pointer_actor)) return true;
 
     return false;
@@ -628,7 +628,7 @@ export class ShellWindow {
             parent.set_child_above_sibling(border, actor);
 
             for (const above_actor of (global as any).get_window_actors()) {
-                const meta = above_actor?.get_meta_window?.();
+                const meta = above_actor.get_meta_window();
                 if (!meta || !meta.is_above()) continue;
                 const above_parent = above_actor.get_parent();
                 if (above_actor !== actor && above_parent === parent) {

@@ -159,7 +159,7 @@ export class Indicator {
 
     update_workspace_tiling_state() {
         const ext = this.ext;
-        if (!this.button || !this.button.visible || !this.button.get_stage?.()) {
+        if (!this.button || !this.button.visible || !this.button.get_stage()) {
             return;
         }
         if (ext && this.toggle_workspace_tiled) {
