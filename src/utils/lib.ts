@@ -136,3 +136,33 @@ export function round_to(n: number, digits: number): number {
 export function separator(): any {
     return new St.BoxLayout({ style_class: 'o-tiling-separator', x_expand: true });
 }
+
+// GNOME 48+: maximize/unmaximize always act on both axes.
+export function maximize(window: Meta.Window) {
+    window.maximize();
+}
+
+export function unmaximize(window: Meta.Window) {
+    window.unmaximize();
+}
+
+export function is_maximized(window: Meta.Window): boolean {
+    return window.maximized_horizontally || window.maximized_vertically;
+}
+
+/** Schedules a callback before the next compositor redraw (GNOME 45+ API). */
+export function later_add(type: Meta.LaterType, action: () => boolean | number): number {
+    return (global as any).compositor.get_laters().add(type, action);
+}
+
+/** Removes a previously scheduled later callback (GNOME 45+ API). */
+export function later_remove(id: number) {
+    (global as any).compositor.get_laters().remove(id);
+}
+
+/** Activates a window that is not an override-redirect window. */
+export function activate_window(window: Meta.Window) {
+    // override-redirect windows don't participate in normal focus management
+    if (window.is_override_redirect()) return;
+    window.activate(Clutter.get_current_event_time());
+}

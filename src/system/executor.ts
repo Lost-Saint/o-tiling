@@ -1,5 +1,6 @@
 import * as Ecs from '../core/ecs.js';
 import * as utils from '../utils/utils.js';
+import * as Lib from '../utils/lib.js';
 import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
 
@@ -39,7 +40,7 @@ export class GLibExecutor<T> implements Executor<T> {
         // Prefer Meta.Later for Shell extensions to avoid IN_PAINT crashes
         if ((global as any).compositor?.get_laters()) {
             this.#used_laters = true;
-            this.#event_loop = utils.later_add(Meta.LaterType.BEFORE_REDRAW, action);
+            this.#event_loop = Lib.later_add(Meta.LaterType.BEFORE_REDRAW, action);
         } else {
             this.#used_laters = false;
             this.#event_loop = GLib.idle_add(GLib.PRIORITY_DEFAULT, action);
@@ -50,7 +51,7 @@ export class GLibExecutor<T> implements Executor<T> {
         if (this.#event_loop !== null) {
             // Use the matching removal fn: later_remove for laters, source_remove for idle.
             if (this.#used_laters) {
-                utils.later_remove(this.#event_loop);
+                Lib.later_remove(this.#event_loop);
             } else {
                 GLib.source_remove(this.#event_loop);
             }

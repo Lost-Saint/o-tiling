@@ -361,7 +361,7 @@ export class ShellWindow {
     }
 
     is_maximized(): boolean {
-        return utils.is_maximized(this.meta);
+        return lib.is_maximized(this.meta);
     }
 
 
@@ -436,7 +436,7 @@ export class ShellWindow {
 
         if (actor) {
             if (this.is_maximized()) {
-                utils.unmaximize(this.meta);
+                lib.unmaximize(this.meta);
             }
             (actor as any).remove_all_transitions();
 
@@ -655,11 +655,11 @@ export class ShellWindow {
 
         const old_id = this._restack_id;
         this._restack_id = null;
-        if (old_id !== null) utils.later_remove(old_id);
+        if (old_id !== null) lib.later_remove(old_id);
         if (immediate) {
             action();
         } else {
-            id = utils.later_add(Meta.LaterType.BEFORE_REDRAW, action);
+            id = lib.later_add(Meta.LaterType.BEFORE_REDRAW, action);
             this._restack_id = id;
         }
     }
@@ -825,7 +825,7 @@ export class ShellWindow {
     destroy() {
         this.destroying = true;
         if (this._restack_id !== null) {
-            utils.later_remove(this._restack_id);
+            lib.later_remove(this._restack_id);
             this._restack_id = null;
         }
         if (this._border_settle_id !== null) {

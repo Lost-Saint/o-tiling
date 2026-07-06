@@ -1306,10 +1306,10 @@ export class Ext extends Ecs.System<ExtEvent> {
             ) {
                 if (prev.rect().contains(win.rect())) {
                     if (prev.is_maximized()) {
-                        utils.unmaximize(prev.meta);
+                        Lib.unmaximize(prev.meta);
                     }
                 } else if (prev.stack) {
-                    utils.unmaximize(prev.meta);
+                    Lib.unmaximize(prev.meta);
                     this.auto_tiler.forest.stacks.get(prev.stack)?.restack();
                 }
             }
@@ -1465,7 +1465,7 @@ export class Ext extends Ecs.System<ExtEvent> {
                     compare.is_maximized() &&
                     win.entity[0] !== compare.entity[0]
                 ) {
-                    utils.unmaximize(compare.meta);
+                    Lib.unmaximize(compare.meta);
                 }
             }
         }
@@ -1744,7 +1744,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
             if (this.auto_tiler) {
                 if (this.is_floating(win)) {
-                    utils.unmaximize(win.meta);
+                    Lib.unmaximize(win.meta);
                 }
 
                 this.register(Events.window_move(this, win, rect));
@@ -1752,7 +1752,7 @@ export class Ext extends Ecs.System<ExtEvent> {
                 win.move(this, rect, () => { });
                 // if the resulting dimensions of rect == next
                 if (rect.width == next_area.width && rect.height == next_area.height) {
-                    utils.maximize(win.meta);
+                    Lib.maximize(win.meta);
                 }
             }
         }
@@ -2594,7 +2594,7 @@ export class Ext extends Ecs.System<ExtEvent> {
                                 refocus_tiled_window();
                             } else {
                                 // This section fixes Steam's sub-menus.
-                                utils.activate_window(meta_window);
+                                Lib.activate_window(meta_window);
                             }
                         }
                     } else if (this.auto_tiler) {
