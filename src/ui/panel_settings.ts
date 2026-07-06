@@ -166,7 +166,9 @@ export class Indicator {
             const workspace = ext.active_workspace();
             const monitor = ext.active_monitor();
             const tiled = ext.is_workspace_tiled(workspace);
+            ext._indicator_updating = true;
             this.toggle_workspace_tiled.setToggleState(tiled);
+            ext._indicator_updating = false;
             if (this.toggle_workspace_tiled.updateIcon) {
                 this.toggle_workspace_tiled.updateIcon(tiled);
             }
@@ -395,6 +397,8 @@ function workspace_tiled(ext: Ext): any {
         ext.is_workspace_tiled(ext.active_workspace()),
         { on: 'view-grid-symbolic', off: 'view-list-symbolic' },
         (shouldTile) => {
+            if (ext._indicator_updating)
+                return;
             ext.workspace_tiling_set(ext.active_workspace(), shouldTile);
         }
     );

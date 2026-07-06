@@ -2997,7 +2997,9 @@ export class Ext extends Ecs.System<ExtEvent> {
             indicator.toggle_tiled.setToggleState(false);
             this._indicator_updating = false;
             if (indicator.toggle_tiled.updateIcon) indicator.toggle_tiled.updateIcon(false);
+            this._indicator_updating = true;
             indicator.toggle_workspace_tiled?.setToggleState(false);
+            this._indicator_updating = false;
         }
 
         this.prev_focused = [null, null];
