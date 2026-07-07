@@ -12,7 +12,7 @@ export class WindowAnimationManager {
     private _duration: number;
     private _enabled = false;
     private _origMapWindow: ((this: unknown, shellwm: any, actor: any) => any) | null = null;
-    private _origDestroyWindow: (this: unknown, shellwm: any, actor: any) => any) | null = null;
+    private _origDestroyWindow: ((this: unknown, shellwm: any, actor: any) => any) | null = null;
 
     constructor(style: WindowAnimationStyle = 'default', duration: number = 200) {
         this._style = style;
