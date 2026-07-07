@@ -4,9 +4,7 @@ import * as log from './log.js';
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
-import Meta from 'gi://Meta';
 import GObject from 'gi://GObject';
-import Clutter from 'gi://Clutter';
 const { Ok, Err } = result;
 const { Error } = error;
 
@@ -37,6 +35,21 @@ export function read_to_string(path: string): Promise<result.Result<string, erro
                 }
             } catch (e) {
                 resolve(Err(new Error(String(e)).context(`failed to load contents of ${path}`)));
+            }
+        });
+    });
+}
+
+export function write_string(path: string, contents: string): Promise<result.Result<void, error.Error>> {
+    const file = Gio.File.new_for_path(path);
+    const bytes = new TextEncoder().encode(contents);
+    return new Promise((resolve) => {
+        file.replace_contents_async(bytes, null, false, Gio.FileCreateFlags.NONE, null, (obj: any, res: any) => {
+            try {
+                obj.replace_contents_finish(res);
+                resolve(Ok(undefined));
+            } catch (e) {
+                resolve(Err(new Error(String(e)).context(`failed to write contents of ${path}`)));
             }
         });
     });
@@ -173,18 +186,6 @@ export function map_eq<K, V>(map1: Map<K, V>, map2: Map<K, V>) {
 }
 
 
-// GNOME 48+: maximize/unmaximize always act on both axes.
-export function maximize(window: Meta.Window) {
-    window.maximize();
-}
-
-export function unmaximize(window: Meta.Window) {
-    window.unmaximize();
-}
-
-export function is_maximized(window: Meta.Window): boolean {
-    return window.maximized_horizontally || window.maximized_vertically;
-}
 
 /** Sets the alpha component of a color string (rgba or hex). */
 export function set_alpha(color: string, alpha: number): string {
@@ -228,19 +229,3 @@ export function isValidColor(color: string): boolean {
     return false;
 }
 
-/** Schedules a callback before the next compositor redraw (GNOME 45+ API). */
-export function later_add(type: Meta.LaterType, action: () => boolean | number): number {
-    return (global as any).compositor.get_laters().add(type, action);
-}
-
-/** Removes a previously scheduled later callback (GNOME 45+ API). */
-export function later_remove(id: number) {
-    (global as any).compositor.get_laters().remove(id);
-}
-
-/** Activates a window that is not an override-redirect window. */
-export function activate_window(window: Meta.Window) {
-    // override-redirect windows don't participate in normal focus management
-    if (window.is_override_redirect()) return;
-    window.activate(Clutter.get_current_event_time());
-}

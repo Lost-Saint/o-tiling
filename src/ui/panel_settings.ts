@@ -16,6 +16,7 @@ import {
     PopupSeparatorMenuItem,
 } from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import { Button } from 'resource:///org/gnome/shell/ui/panelMenu.js';
+import { QuickMenuToggle, SystemIndicator } from 'resource:///org/gnome/shell/ui/quickSettings.js';
 import GObject from 'gi://GObject';
 import GLib from 'gi://GLib';
 
@@ -37,11 +38,9 @@ export class Indicator {
 
 
     toggle_active: any;
-    toggle_debug: any;
     border_radius: any;
 
     entry_gaps: any;
-    signals: Array<[any, number]> = [];
 
     constructor(ext: Ext) {
         this.ext = ext;
@@ -151,15 +150,6 @@ export class Indicator {
         bm.addMenuItem(settings_button(bm));
         bm.addMenuItem(floating_window_exceptions(ext, bm));
 
-        // ── Debug Mode ──────────────────────────────────────────
-        this.toggle_debug = toggle(
-            _('Debug Mode'),
-            ext.settings.log_level() === 4,
-            'utilities-terminal-symbolic',
-            (state) => ext.settings.set_log_level(state ? 4 : 0),
-        );
-        bm.addMenuItem(this.toggle_debug);
-
         bm.addMenuItem(new PopupSeparatorMenuItem());
 
         this.toggle_tiled = tiled(ext);
@@ -169,14 +159,16 @@ export class Indicator {
 
     update_workspace_tiling_state() {
         const ext = this.ext;
-        if (!this.button || !this.button.visible || !this.button.get_stage?.()) {
+        if (!this.button || !this.button.visible || !this.button.get_stage()) {
             return;
         }
         if (ext && this.toggle_workspace_tiled) {
             const workspace = ext.active_workspace();
             const monitor = ext.active_monitor();
             const tiled = ext.is_workspace_tiled(workspace);
+            ext._indicator_updating = true;
             this.toggle_workspace_tiled.setToggleState(tiled);
+            ext._indicator_updating = false;
             if (this.toggle_workspace_tiled.updateIcon) {
                 this.toggle_workspace_tiled.updateIcon(tiled);
             }
@@ -207,11 +199,6 @@ export class Indicator {
                     this.presets_item.setSensitive(false);
                 }
             }
-
-            if (this.toggle_debug) {
-                this.toggle_debug.setToggleState(ext.settings.log_level() === 4);
-            }
-
             // Update panel icon to reflect current workspace tiling state
             if (ext.auto_tiler && tiled) {
                 this.button.icon.gicon = ext.button_gio_icon_auto_on;
@@ -222,10 +209,6 @@ export class Indicator {
     }
 
     destroy() {
-        for (const [obj, id] of this.signals) {
-            obj.disconnect(id);
-        }
-        this.signals = [];
         this.button.destroy();
     }
 }
@@ -414,6 +397,8 @@ function workspace_tiled(ext: Ext): any {
         ext.is_workspace_tiled(ext.active_workspace()),
         { on: 'view-grid-symbolic', off: 'view-list-symbolic' },
         (shouldTile) => {
+            if (ext._indicator_updating)
+                return;
             ext.workspace_tiling_set(ext.active_workspace(), shouldTile);
         }
     );
@@ -523,13 +508,11 @@ export class WorkspaceNumberIndicator {
         this.button.add_child(this._box);
 
         // Overview toggle button — same pill style as workspace number buttons
-        const _ovIconPath = `${get_current_path()}/icons/o-tiling-ws-overview-symbolic.svg`;
-        const _ovGicon = Gio.icon_new_for_string(_ovIconPath);
         this._ovBtn = new St.Button({
             style_class: 'o-tiling-ws-overview-btn',
-            child: new St.Icon({
-                gicon: _ovGicon,
-                icon_size: 12,
+            child: new St.Label({
+                text: '...',
+                y_align: Clutter.ActorAlign.CENTER,
             }),
             y_align: Clutter.ActorAlign.CENTER,
         });
@@ -618,3 +601,63 @@ export class WorkspaceNumberIndicator {
         this.button.destroy();
     }
 }
+
+export const QuickSettingsToggle = GObject.registerClass(
+class QuickSettingsToggle extends QuickMenuToggle {
+    constructor(ext: Ext) {
+        super({ title: _('O-Tiling'), iconName: 'view-grid-symbolic', toggleMode: true });
+        this.checked = !ext._ext_soft_disabled;
+
+        this.connect('clicked', () => {
+            if (this.checked) {
+                ext.ext_soft_enable();
+            } else {
+                ext.ext_soft_disable();
+            }
+        });
+
+        this.menu.setHeader('view-grid-symbolic', _('O-Tiling'), _('Tiling Window Management'));
+        this.menu.addMenuItem(workspace_tiled(ext));
+        this.menu.addMenuItem(lock_master_window(ext));
+        this.menu.addMenuItem(new PopupSeparatorMenuItem());
+        this.menu.addMenuItem(toggle(
+            _('Active Hint'),
+            ext.settings.active_hint(),
+            'focus-windows-symbolic',
+            (state) => ext.settings.set_active_hint(state),
+        ));
+        this.menu.addMenuItem(new PopupSeparatorMenuItem());
+        this.menu.addMenuItem(settings_button(this.menu));
+    }
+});
+
+export const QuickSettingsIndicator = GObject.registerClass(
+class QuickSettingsIndicator extends SystemIndicator {
+    quickSettingsItems: any[];
+
+    constructor(ext: Ext) {
+        super();
+        const indicatorIcon = this._addIndicator();
+        indicatorIcon.icon_name = 'view-grid-symbolic';
+        indicatorIcon.visible = !ext._ext_soft_disabled;
+
+        this.quickSettingsItems = [];
+        const toggleItem = new QuickSettingsToggle(ext);
+        this.quickSettingsItems.push(toggleItem);
+
+        toggleItem.bind_property(
+            'checked',
+            indicatorIcon,
+            'visible',
+            GObject.BindingFlags.SYNC_CREATE
+        );
+    }
+
+    destroy() {
+        for (const item of this.quickSettingsItems) {
+            item.destroy();
+        }
+        this.quickSettingsItems = [];
+        super.destroy();
+    }
+});

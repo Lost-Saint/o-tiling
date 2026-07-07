@@ -6,7 +6,7 @@ import * as movement from '../window/movement.js';
 import * as Rect from '../utils/rectangle.js';
 import * as Node from './node.js';
 import * as Fork from './fork.js';
-import * as utils from '../utils/utils.js';
+
 import * as geom from '../utils/geom.js';
 
 import type { Entity } from '../core/ecs.js';
@@ -945,7 +945,7 @@ function move_window(ext: Ext, window: ShellWindow, rect: Rectangle, on_complete
 
     if (!actor) {
         if (retries < 10) {
-            utils.later_add(Meta.LaterType.BEFORE_REDRAW, () => {
+            Lib.later_add(Meta.LaterType.BEFORE_REDRAW, () => {
                 move_window(ext, window, rect, on_complete, retries + 1);
                 return GLib.SOURCE_REMOVE;
             });

@@ -1,6 +1,5 @@
 import Gtk from 'gi://Gtk';
 import Adw from 'gi://Adw';
-// Gdk dynamically imported
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import { ExtensionPreferences, gettext as _ } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
@@ -142,6 +141,31 @@ export default class OTilingPreferences extends ExtensionPreferences {
         overviewGroup.add(wsNumberIndicatorRow);
         settings.bind('workspace-number-indicator', wsNumberIndicatorRow as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
+        // Workspace Animation Style
+        const wsAnimRow = new Adw.ComboRow({
+            title: _('Workspace Switch Animation'),
+            subtitle: _('Wallpaper stays fixed; only windows animate. "Swing" mimics Hyprland elastic slide.'),
+            model: Gtk.StringList.new(['None (default GNOME)', 'Slide', 'Swing (Hyprland-style)']),
+        });
+        overviewGroup.add(wsAnimRow);
+        // Map setting value to combo index: 0=none, 1=slide, 2=swing
+        const wsAnimValues: string[] = ['none', 'slide', 'swing'];
+        wsAnimRow.set_selected(Math.max(0, wsAnimValues.indexOf(settings.get_string('workspace-animation-style'))));
+        wsAnimRow.connect('notify::selected', () => {
+            settings.set_string('workspace-animation-style', wsAnimValues[wsAnimRow.selected] ?? 'none');
+        });
+
+        const winAnimRow = new Adw.ComboRow({
+            title: _('Window Animations'),
+            subtitle: _('Open/close/move/resize animation style. "Hyprland" adds bouncy overshoot like Hyprland/niri.'),
+            model: Gtk.StringList.new(['Default (native GNOME)', 'Hyprland-style (bouncy)', 'Glide (smooth slide)']),
+        });
+        overviewGroup.add(winAnimRow);
+        const winAnimValues: string[] = ['default', 'hyprland', 'glide'];
+        winAnimRow.set_selected(Math.max(0, winAnimValues.indexOf(settings.get_string('window-animation-style'))));
+        winAnimRow.connect('notify::selected', () => {
+            settings.set_string('window-animation-style', winAnimValues[winAnimRow.selected] ?? 'default');
+        });
 
         // Panel Transparency Group
         const panelGroup = new Adw.PreferencesGroup({
@@ -155,6 +179,20 @@ export default class OTilingPreferences extends ExtensionPreferences {
         });
         panelGroup.add(panelTransRow);
         settings.bind('panel-transparency', panelTransRow as any, 'active', Gio.SettingsBindFlags.DEFAULT);
+
+        const hidePanelIconRow = new Adw.SwitchRow({
+            title: _('Hide Panel Icon'),
+            subtitle: _('Hide the O-Tiling icon and menu from the top panel'),
+        });
+        panelGroup.add(hidePanelIconRow);
+        settings.bind('hide-panel-icon', hidePanelIconRow as any, 'active', Gio.SettingsBindFlags.DEFAULT);
+
+        const quickSettingsRow = new Adw.SwitchRow({
+            title: _('Show in Quick Settings'),
+            subtitle: _('Add an O-Tiling toggle to the Quick Settings menu instead of a dedicated panel icon'),
+        });
+        panelGroup.add(quickSettingsRow);
+        settings.bind('quick-settings-toggle', quickSettingsRow as any, 'active', Gio.SettingsBindFlags.DEFAULT);
 
         const panelOpacityRow = new Adw.SpinRow({
             title: _('Panel Opacity (%)'),
@@ -410,6 +448,24 @@ export default class OTilingPreferences extends ExtensionPreferences {
         });
         behaviorGroup.add(stackingWithMouse);
         settings.bind('stacking-with-mouse', stackingWithMouse as any, 'active', Gio.SettingsBindFlags.DEFAULT);
+
+        const debugMode = new Adw.SwitchRow({
+            title: _('Debug Mode'),
+            subtitle: _('Enable detailed logging for debugging purposes'),
+        });
+        behaviorGroup.add(debugMode);
+        
+        debugMode.active = settings.get_uint('log-level') === 4;
+        debugMode.connect('notify::active', () => {
+            settings.set_uint('log-level', debugMode.active ? 4 : 0);
+        });
+        settings.connect('changed::log-level', () => {
+            const isDebug = settings.get_uint('log-level') === 4;
+            if (debugMode.active !== isDebug) {
+                debugMode.active = isDebug;
+            }
+        });
+
 
         // Gaps Group
         const gapsGroup = new Adw.PreferencesGroup({

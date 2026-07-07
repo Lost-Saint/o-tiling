@@ -320,12 +320,6 @@ export class WorkspaceSwitcherStyle {
 
     private _setupAutoScroll(): void {
         const workspace_manager = (global as any).workspace_manager;
-        workspace_manager.connectObject('active-workspace-changed', () => {
-            GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-                this._scrollToActiveWorkspace();
-                return GLib.SOURCE_REMOVE;
-            });
-        }, this);
 
         // 1. Rescale when workspaces are added/removed
         workspace_manager.connectObject('workspace-added', () => {
@@ -341,48 +335,7 @@ export class WorkspaceSwitcherStyle {
         }, this);
     }
 
-    private _scrollToActiveWorkspace(): void {
-        try {
-            const thumbnailsBox = this._getThumbnailsBox();
-            if (!thumbnailsBox) return;
 
-            const workspace_manager = (global as any).workspace_manager;
-            const activeIndex = workspace_manager.get_active_workspace_index();
-
-            if (typeof thumbnailsBox._scrollToActive === 'function') {
-                thumbnailsBox._scrollToActive();
-                return;
-            }
-
-            const children = thumbnailsBox.get_children();
-            const child = children[activeIndex];
-            if (!child) return;
-
-            // Guard: if the child hasn't been allocated yet, skip scrolling —
-            // unallocated boxes carry INT_MIN sentinel values (-2147483648)
-            // which propagate NaN through StDrawingArea/StBin assertions.
-            if (typeof child.has_allocation === 'function' && !child.has_allocation()) return;
-
-            const box = child.get_allocation_box();
-
-            // Sanity-check: reject sentinel / unallocated boxes
-            if (!Number.isFinite(box.x1) || !Number.isFinite(box.x2) ||
-                box.x1 < -1e9 || box.x2 < -1e9) return;
-
-            const childCenter = (box.x1 + box.x2) / 2;
-
-            const scroll = thumbnailsBox.get_parent();
-            if (!scroll) return;
-
-            const adjustment = scroll.get_hadjustment();
-            const pageSize = adjustment.page_size;
-            if (!Number.isFinite(pageSize) || pageSize <= 0) return;
-
-            adjustment.value = childCenter - pageSize / 2;
-        } catch (e) {
-            log.warn(`WorkspaceSwitcherStyle: _scrollToActiveWorkspace failed: ${e}`);
-        }
-    }
 
 
     private _teardownSignals(): void {

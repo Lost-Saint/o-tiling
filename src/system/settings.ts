@@ -88,6 +88,11 @@ const ACTIVE_HINT_OVERLAY_COLOR_RGBA = 'active-hint-overlay-color-rgba';
 const ACTIVE_HINT_OVERLAY_ALL_WINDOWS = 'active-hint-overlay-all-windows';
 const WORKSPACE_SWITCHER_STYLE = 'workspace-switcher-style';
 const WORKSPACE_NUMBER_INDICATOR = 'workspace-number-indicator';
+const HIDE_PANEL_ICON = 'hide-panel-icon';
+const QUICK_SETTINGS_TOGGLE = 'quick-settings-toggle';
+const WORKSPACE_ANIMATION_STYLE = 'workspace-animation-style';
+const WINDOW_ANIMATION_STYLE = 'window-animation-style';
+const WINDOW_ANIMATION_DURATION = 'window-animation-duration';
 
 const THEME_CONSISTENCY_STYLE = 'theme-consistency-style';
 const SKIP_OVERVIEW = 'skip-overview';
@@ -280,6 +285,26 @@ export class ExtensionSettings {
         return this.ext.get_boolean(WORKSPACE_NUMBER_INDICATOR);
     }
 
+    hide_panel_icon(): boolean {
+        return this.ext.get_boolean(HIDE_PANEL_ICON);
+    }
+
+    quick_settings_toggle(): boolean {
+        return this.ext.get_boolean(QUICK_SETTINGS_TOGGLE);
+    }
+
+    workspace_animation_style(): string {
+        return this.ext.get_string(WORKSPACE_ANIMATION_STYLE) ?? 'none';
+    }
+
+    window_animation_style(): string {
+        return this.ext.get_string(WINDOW_ANIMATION_STYLE) ?? 'default';
+    }
+
+    window_animation_duration(): number {
+        return this.ext.get_int(WINDOW_ANIMATION_DURATION);
+    }
+
 
 
 
@@ -440,6 +465,26 @@ export class ExtensionSettings {
 
     set_workspace_number_indicator(set: boolean) {
         this.ext.set_boolean(WORKSPACE_NUMBER_INDICATOR, set);
+    }
+
+    set_hide_panel_icon(set: boolean) {
+        this.ext.set_boolean(HIDE_PANEL_ICON, set);
+    }
+
+    set_quick_settings_toggle(set: boolean) {
+        this.ext.set_boolean(QUICK_SETTINGS_TOGGLE, set);
+    }
+
+    set_workspace_animation_style(style: string) {
+        this.ext.set_string(WORKSPACE_ANIMATION_STYLE, style);
+    }
+
+    set_window_animation_style(style: string) {
+        this.ext.set_string(WINDOW_ANIMATION_STYLE, style);
+    }
+
+    set_window_animation_duration(ms: number) {
+        this.ext.set_int(WINDOW_ANIMATION_DURATION, ms);
     }
 
 

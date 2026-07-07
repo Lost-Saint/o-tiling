@@ -33,6 +33,10 @@ import { Rectangle } from './utils/rectangle.js';
 import type { Indicator } from './ui/panel_settings.js';
 import type { WorkspaceNumberIndicator } from './ui/panel_settings.js';
 import { WorkspaceSwitcherStyle, isGnome50 } from './ui/workspace_switcher_style.js';
+import { WorkspaceAnimationManager } from './ui/workspace_animation.js';
+import type { AnimationStyle } from './ui/workspace_animation.js';
+import { WindowAnimationManager } from './ui/window_animation.js';
+import type { WindowAnimationStyle } from './ui/window_animation.js';
 import { ThemeConsistencyManager } from './ui/theme_consistency/index.js';
 import { PanelTransparencyManager } from './ui/panel_transparency.js';
 import { OverviewLayoutManager } from './ui/overview_layout.js';
@@ -62,6 +66,7 @@ const { GlobalEvent, WindowEvent } = Events;
 export let ext: Ext | null = null;
 export let indicator: Indicator | null = null;
 export let workspace_number_indicator: WorkspaceNumberIndicator | null = null;
+export let quick_settings_indicator: any = null;
 
 const { cursor_rect, is_keyboard_op, is_resize_op, is_move_op } = Lib;
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -111,7 +116,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     // State
 
-    animate_windows: boolean = true; // Animate window movements
+
 
     button: any = null;
     button_gio_icon_auto_on: any = null;
@@ -213,6 +218,8 @@ export class Ext extends Ecs.System<ExtEvent> {
     auto_tiler: auto_tiler.AutoTiler | null = null; // Manages automatic tiling behaviors in the shell
 
     workspace_switcher_style_handler: WorkspaceSwitcherStyle | null = null; // Optional workspace-switcher re-style (GNOME 50+ only)
+    workspace_animation_handler: WorkspaceAnimationManager | null = null; // Optional static-wallpaper + window-swing animation
+    window_animation_handler: WindowAnimationManager = new WindowAnimationManager();
 
     focus_selector: Focus.FocusSelector = new Focus.FocusSelector(); // Performs focus selections
 
@@ -351,11 +358,44 @@ export class Ext extends Ecs.System<ExtEvent> {
         });
         this._settings_signal_ids.push([this.settings.ext, id_ws_num]);
 
+        const id_hide_panel = this.settings.ext.connect('changed::hide-panel-icon', () => {
+            if (indicator) {
+                const sessionMode = (Main as any).sessionMode;
+                const isLocked = sessionMode ? sessionMode.isLocked : false;
+                indicator.button.visible = !isLocked && !this.settings.hide_panel_icon();
+            }
+        });
+        this._settings_signal_ids.push([this.settings.ext, id_hide_panel]);
 
+        const id_qs_toggle = this.settings.ext.connect('changed::quick-settings-toggle', () => {
+            _toggle_quick_settings_indicator(this.settings.quick_settings_toggle());
+        });
+        this._settings_signal_ids.push([this.settings.ext, id_qs_toggle]);
+
+        // Workspace animation style — static wallpaper + window swing
+        const id_ws_anim = this.settings.ext.connect('changed::workspace-animation-style', () => {
+            this.toggle_workspace_animation(this.settings.workspace_animation_style() as AnimationStyle);
+        });
+        this._settings_signal_ids.push([this.settings.ext, id_ws_anim]);
+
+        const id_win_anim = this.settings.ext.connect('changed::window-animation-style', () => {
+            this.toggle_window_animation(this.settings.window_animation_style() as WindowAnimationStyle);
+        });
+        this._settings_signal_ids.push([this.settings.ext, id_win_anim]);
+
+        const id_win_anim_dur = this.settings.ext.connect('changed::window-animation-duration', () => {
+            this.window_animation_handler.setDuration(this.settings.window_animation_duration());
+        });
+        this._settings_signal_ids.push([this.settings.ext, id_win_anim_dur]);
 
         // Initial application
         this.toggle_workspace_switcher_style(this.settings.workspace_switcher_style(), false);
-
+        this.toggle_workspace_animation(this.settings.workspace_animation_style() as AnimationStyle, false);
+        this.window_animation_handler = new WindowAnimationManager(
+            this.settings.window_animation_style() as WindowAnimationStyle,
+            this.settings.window_animation_duration(),
+        );
+        this.window_animation_handler.enable();
         this.toggle_theme_consistency(this.settings.theme_consistency_style(), false);
         this.toggle_panel_transparency(this.settings.panel_transparency(), false);
 
@@ -428,6 +468,30 @@ export class Ext extends Ecs.System<ExtEvent> {
         };
     }
 
+    /** Disconnects all tracked meta-window signals (window_signals + size_signals) for
+     * an entity and destroys its ShellWindow. Shared by destroy() and ext_soft_disable()
+     * so the two teardown paths can't drift out of sync with each other. */
+    private teardown_window(entity: Entity) {
+        const win = this.windows.get(entity);
+        if (!win) return;
+
+        const win_sigs = this.window_signals.get(entity);
+        if (win_sigs) {
+            for (const sig of win_sigs) {
+                if (sig) win.meta.disconnect(sig);
+            }
+        }
+
+        const size_sigs = this.size_signals.get(entity);
+        if (size_sigs) {
+            for (const sig of size_sigs) {
+                if (sig) win.meta.disconnect(sig);
+            }
+        }
+
+        win.destroy();
+    }
+
     destroy() {
         this.unset_grab_op();
         this.executor.stop();
@@ -479,6 +543,13 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.workspace_switcher_style_handler = null;
         }
 
+        if (this.workspace_animation_handler) {
+            this.workspace_animation_handler.disable();
+            this.workspace_animation_handler = null;
+        }
+
+        this.window_animation_handler.disable();
+
         if (this.theme_consistency_handler) {
             this.theme_consistency_handler.disable();
             this.theme_consistency_handler = null;
@@ -501,23 +572,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         const entities = Array.from(this.windows.iter()).map(([e]) => e);
         for (const entity of entities) {
-            const win = this.windows.get(entity);
-            if (win) {
-                const win_sigs = this.window_signals.get(entity);
-                if (win_sigs) {
-                    for (const sig of win_sigs) {
-                        if (sig) win.meta.disconnect(sig);
-                    }
-                }
-                const size_sigs = this.size_signals.get(entity);
-                if (size_sigs) {
-                    for (const sig of size_sigs) {
-                        if (sig) win.meta.disconnect(sig);
-                    }
-                }
-
-                win.destroy();
-            }
+            this.teardown_window(entity);
         }
 
         // Clean up all generic timeouts tracked in the property map
@@ -578,12 +633,11 @@ export class Ext extends Ecs.System<ExtEvent> {
                         return;
                     }
 
-                    (actor as any).remove_all_transitions();
                     const { x, y, width, height } = movement;
 
-                    // On GNOME 50/Mutter 18, move_resize_frame handles both position and size atomically
-                    // The additional move_frame call would cause redundant compositor commits
-                    window.meta.move_resize_frame(true, x, y, width, height);
+                    this.window_animation_handler.applyMove(actor as any, x, y, width, height, () =>
+                        window.meta.move_resize_frame(true, x, y, width, height),
+                    );
 
                     this.monitors.insert(window.entity, [win.meta.get_monitor(), win.workspace_id()]);
 
@@ -687,7 +741,7 @@ export class Ext extends Ecs.System<ExtEvent> {
     }
 
     active_monitor(): number {
-        return (global as any).backend.get_current_logical_monitor()?.get_number() ?? 0;
+        return Lib.active_monitor_index();
     }
 
     active_window_list(): Array<Window.ShellWindow> {
@@ -1006,7 +1060,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         if (sessionMode) {
             this._unlock_signal_id = sessionMode.connect('updated', () => {
                 if (indicator) {
-                    indicator.button.visible = !sessionMode.isLocked;
+                    indicator.button.visible = !sessionMode.isLocked && !this.settings.hide_panel_icon();
                 }
 
                 if (sessionMode.isLocked) {
@@ -1252,10 +1306,10 @@ export class Ext extends Ecs.System<ExtEvent> {
             ) {
                 if (prev.rect().contains(win.rect())) {
                     if (prev.is_maximized()) {
-                        utils.unmaximize(prev.meta);
+                        Lib.unmaximize(prev.meta);
                     }
                 } else if (prev.stack) {
-                    utils.unmaximize(prev.meta);
+                    Lib.unmaximize(prev.meta);
                     this.auto_tiler.forest.stacks.get(prev.stack)?.restack();
                 }
             }
@@ -1320,20 +1374,12 @@ export class Ext extends Ecs.System<ExtEvent> {
         } else {
             const focus = this.focus_window();
 
-            // Guard 1: focus is null and a panel/dock/popup actor holds Clutter key-focus
-            // (quick settings, calendar, notification centre, Dash-to-Dock) — preserve the
-            // existing border and do nothing.  The panel will dismiss and the window will
-            // regain focus naturally without us touching _bordered_entity.
+            // No focused window but a shell panel/popup holds key-focus — preserve existing border.
             if (!focus && Window.clutter_focus_is_shell_panel()) {
                 return;
             }
 
-            // Guard 2: same window already owns the active border — skip the full
-            // hide_all_borders + show_border cycle entirely.
-            // This covers two sub-cases:
-            //   a) focus entity matches _bordered_entity (normal same-window check).
-            //   b) focus is non-null, pointer is on panel/dock, and a border is already
-            //      active — panel hover should never steal or re-render the border.
+            // Same window already bordered, or panel hover with an active border — skip redraw.
             if (focus && this._bordered_entity === focus.entity) {
                 const b = focus.border;
                 if (b && b.visible) return;
@@ -1419,7 +1465,7 @@ export class Ext extends Ecs.System<ExtEvent> {
                     compare.is_maximized() &&
                     win.entity[0] !== compare.entity[0]
                 ) {
-                    utils.unmaximize(compare.meta);
+                    Lib.unmaximize(compare.meta);
                 }
             }
         }
@@ -1698,7 +1744,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
             if (this.auto_tiler) {
                 if (this.is_floating(win)) {
-                    utils.unmaximize(win.meta);
+                    Lib.unmaximize(win.meta);
                 }
 
                 this.register(Events.window_move(this, win, rect));
@@ -1706,7 +1752,7 @@ export class Ext extends Ecs.System<ExtEvent> {
                 win.move(this, rect, () => { });
                 // if the resulting dimensions of rect == next
                 if (rect.width == next_area.width && rect.height == next_area.height) {
-                    utils.maximize(win.meta);
+                    Lib.maximize(win.meta);
                 }
             }
         }
@@ -2453,11 +2499,6 @@ export class Ext extends Ecs.System<ExtEvent> {
                         _hide_skip_taskbar_windows();
                     }
                     break;
-                case 'log-level':
-                    if (indicator && indicator.toggle_debug) {
-                        indicator.toggle_debug.setToggleState(this.settings.log_level() === 4);
-                    }
-                    break;
 
             }
         });
@@ -2553,7 +2594,7 @@ export class Ext extends Ecs.System<ExtEvent> {
                                 refocus_tiled_window();
                             } else {
                                 // This section fixes Steam's sub-menus.
-                                utils.activate_window(meta_window);
+                                Lib.activate_window(meta_window);
                             }
                         }
                     } else if (this.auto_tiler) {
@@ -2889,23 +2930,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         // 2. Hide borders and disconnect window signals
         const entities = Array.from(this.windows.iter()).map(([e]) => e);
         for (const entity of entities) {
-            const win = this.windows.get(entity);
-            if (win) {
-                const win_sigs = this.window_signals.get(entity);
-                if (win_sigs) {
-                    for (const sig of win_sigs) {
-                        if (sig) win.meta.disconnect(sig);
-                    }
-                }
-                const size_sigs = this.size_signals.get(entity);
-                if (size_sigs) {
-                    for (const sig of size_sigs) {
-                        if (sig) win.meta.disconnect(sig);
-                    }
-                }
-
-                win.destroy();
-            }
+            this.teardown_window(entity);
             this.delete_entity(entity);
         }
 
@@ -2972,7 +2997,9 @@ export class Ext extends Ecs.System<ExtEvent> {
             indicator.toggle_tiled.setToggleState(false);
             this._indicator_updating = false;
             if (indicator.toggle_tiled.updateIcon) indicator.toggle_tiled.updateIcon(false);
+            this._indicator_updating = true;
             indicator.toggle_workspace_tiled?.setToggleState(false);
+            this._indicator_updating = false;
         }
 
         this.prev_focused = [null, null];
@@ -3097,6 +3124,33 @@ export class Ext extends Ecs.System<ExtEvent> {
 
 
 
+    /** Enables / updates the workspace animation style (static wallpaper + window swing). */
+    toggle_workspace_animation(style: AnimationStyle, save: boolean = true) {
+        if (style === 'none') {
+            this.workspace_animation_handler?.disable();
+            this.workspace_animation_handler = null;
+        } else {
+            if (!this.workspace_animation_handler) {
+                this.workspace_animation_handler = new WorkspaceAnimationManager(style);
+                this.workspace_animation_handler.enable();
+            } else {
+                this.workspace_animation_handler.setStyle(style);
+            }
+        }
+
+        if (save) {
+            this.settings.set_workspace_animation_style(style);
+        }
+    }
+
+    toggle_window_animation(style: WindowAnimationStyle, save: boolean = true) {
+        this.window_animation_handler.setStyle(style);
+
+        if (save) {
+            this.settings.set_window_animation_style(style);
+        }
+    }
+
     toggle_theme_consistency(style: string, save: boolean = true) {
         if (style !== 'default') {
             if (!this.theme_consistency_handler) {
@@ -3104,13 +3158,14 @@ export class Ext extends Ecs.System<ExtEvent> {
             }
             this.theme_consistency_handler.enable(style as any);
 
-            // Also apply GTK theme consistency
-            applyThemeConsistency(style as 'rounded' | 'sharp');
+            // Not awaited: runs from a settings-changed signal handler, not enable()/disable(),
+            // so there is no shell-lifecycle race. Errors are caught and logged inside.
+            void applyThemeConsistency(style as 'rounded' | 'sharp');
         } else {
             this.theme_consistency_handler?.disable();
             this.theme_consistency_handler = null;
-            // Restore GTK gtk.css files to stock (remove the O-Tiling block).
-            restoreGtkDefaults();
+            // Not awaited: same rationale as above — errors are caught and logged inside.
+            void restoreGtkDefaults();
         }
 
         if (save) {
@@ -3648,10 +3703,12 @@ export default class OTilingExtension extends Extension {
         if (!indicator && currentPanel) {
             indicator = new PanelSettings.Indicator(ext);
             currentPanel.addToStatusArea('o-tiling', indicator.button);
+            indicator.button.visible = !ext.settings.hide_panel_icon();
         }
 
         // Workspace-number indicator in panel
         _toggle_workspace_number_indicator(ext.settings.workspace_number_indicator());
+        _toggle_quick_settings_indicator(ext.settings.quick_settings_toggle());
 
         ext.keybindings.enable(ext.keybindings.global).enable(ext.keybindings.window_focus);
 
@@ -3685,6 +3742,11 @@ export default class OTilingExtension extends Extension {
             workspace_number_indicator = null;
         }
 
+        if (quick_settings_indicator) {
+            quick_settings_indicator.destroy();
+            quick_settings_indicator = null;
+        }
+
         enable_window_attention_handler();
         Window.cleanup_main_loop_sources();
         scheduler.destroy();
@@ -3705,6 +3767,19 @@ function disable_window_attention_handler() {
     if (handler && handler._windowDemandsAttentionId) {
         (global as any).display.disconnect(handler._windowDemandsAttentionId);
         handler._windowDemandsAttentionId = null;
+    }
+}
+
+function _toggle_quick_settings_indicator(enable: boolean): void {
+    const quickSettings = (Main as any).panel?.statusArea?.quickSettings;
+    if (!quickSettings) return;
+
+    if (enable && !quick_settings_indicator) {
+        quick_settings_indicator = new (PanelSettings.QuickSettingsIndicator as any)(ext);
+        quickSettings.addExternalIndicator(quick_settings_indicator);
+    } else if (!enable && quick_settings_indicator) {
+        quick_settings_indicator.destroy();
+        quick_settings_indicator = null;
     }
 }
 

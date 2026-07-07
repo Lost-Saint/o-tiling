@@ -106,7 +106,7 @@ function is_panel_actor(focused_actor: Clutter.Actor | null): boolean {
         ) {
             return true;
         }
-        actor = actor.get_parent?.() ?? null;
+        actor = actor.get_parent();
     }
     return false;
 }
@@ -116,15 +116,15 @@ export function clutter_focus_is_shell_panel(): boolean {
     if (!stage) return false;
 
     // Check if the keyboard focus is on a shell element
-    const key_actor: Clutter.Actor | null = stage.get_key_focus?.() ?? null;
+    const key_actor: Clutter.Actor | null = stage.get_key_focus();
     if (is_panel_actor(key_actor)) return true;
 
     // Check if the pointer is hovering over a shell element
-    const pointer = (global as any).get_pointer?.();
+    const pointer = (global as any).get_pointer();
     if (!pointer) return false;
 
     const [x, y] = pointer;
-    const pointer_actor = stage.get_actor_at_pos?.(1 /* Clutter.PickMode.REACTIVE */, x, y) ?? null;
+    const pointer_actor = stage.get_actor_at_pos(1 /* Clutter.PickMode.REACTIVE */, x, y);
     if (is_panel_actor(pointer_actor)) return true;
 
     return false;
@@ -361,7 +361,7 @@ export class ShellWindow {
     }
 
     is_maximized(): boolean {
-        return utils.is_maximized(this.meta);
+        return lib.is_maximized(this.meta);
     }
 
 
@@ -436,7 +436,7 @@ export class ShellWindow {
 
         if (actor) {
             if (this.is_maximized()) {
-                utils.unmaximize(this.meta);
+                lib.unmaximize(this.meta);
             }
             (actor as any).remove_all_transitions();
 
@@ -500,7 +500,7 @@ export class ShellWindow {
 
     xid(): string | null {
         return this.extra.xid_.get_or_init(() => {
-            if (utils.is_wayland()) return null;
+            if (this.meta.get_client_type() === Meta.WindowClientType.WAYLAND) return null;
             const desc = this.meta.get_description();
             if (!desc) return null;
             const match = desc.match(/0x[a-f0-9]+/i);
@@ -583,7 +583,7 @@ export class ShellWindow {
     }
 
     same_monitor() {
-        return this.meta.get_monitor() === ((global as any).backend.get_current_logical_monitor()?.get_number() ?? 0);
+        return this.meta.get_monitor() === lib.active_monitor_index();
     }
 
 
@@ -628,7 +628,7 @@ export class ShellWindow {
             parent.set_child_above_sibling(border, actor);
 
             for (const above_actor of (global as any).get_window_actors()) {
-                const meta = above_actor?.get_meta_window?.();
+                const meta = above_actor.get_meta_window();
                 if (!meta || !meta.is_above()) continue;
                 const above_parent = above_actor.get_parent();
                 if (above_actor !== actor && above_parent === parent) {
@@ -655,11 +655,11 @@ export class ShellWindow {
 
         const old_id = this._restack_id;
         this._restack_id = null;
-        if (old_id !== null) utils.later_remove(old_id);
+        if (old_id !== null) lib.later_remove(old_id);
         if (immediate) {
             action();
         } else {
-            id = utils.later_add(Meta.LaterType.BEFORE_REDRAW, action);
+            id = lib.later_add(Meta.LaterType.BEFORE_REDRAW, action);
             this._restack_id = id;
         }
     }
@@ -825,7 +825,7 @@ export class ShellWindow {
     destroy() {
         this.destroying = true;
         if (this._restack_id !== null) {
-            utils.later_remove(this._restack_id);
+            lib.later_remove(this._restack_id);
             this._restack_id = null;
         }
         if (this._border_settle_id !== null) {
@@ -875,7 +875,7 @@ export function activate(ext: Ext, move_mouse: boolean, win: Meta.Window) {
 
 function pointer_in_work_area(): boolean {
     const cursor = lib.cursor_rect();
-    const indice = (global as any).backend.get_current_logical_monitor()?.get_number() ?? 0;
+    const indice = lib.active_monitor_index();
     const mon = (global as any).workspace_manager.get_active_workspace().get_work_area_for_monitor(indice);
 
     return mon ? cursor.intersects(mon) : false;
