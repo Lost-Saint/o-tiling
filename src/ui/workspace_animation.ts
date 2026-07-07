@@ -24,7 +24,9 @@ export class WorkspaceAnimationManager {
         if (this._enabled) return;
         this._enabled = true;
 
-        (WorkspaceAnimation as any).WorkspaceBackground.prototype._createBackground = function (this: any) { };
+        (WorkspaceAnimation as any).WorkspaceBackground.prototype._createBackground = function (this: any) {
+            this._bgManager = { destroy: () => {} };
+        };
 
         this._patchStaticBackground();
 
