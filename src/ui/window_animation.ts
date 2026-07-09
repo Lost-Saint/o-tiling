@@ -27,7 +27,7 @@ export class WindowAnimationManager {
 
         const manager = this;
 
-        wm._mapWindow = async function (shellwm: any, actor: any) {
+        wm._mapWindow = function (shellwm: any, actor: any) {
             if (manager._style === 'default')
                 return manager._origMapWindow.call(this, shellwm, actor);
 
@@ -140,7 +140,8 @@ export class WindowAnimationManager {
     }
 
     applyMove(actor: Clutter.Actor, x: number, y: number, width: number, height: number, commit: () => void): void {
-        actor.remove_all_transitions();
+        actor.remove_transition('translation-x');
+        actor.remove_transition('translation-y');
 
         if (actor.width !== width || actor.height !== height) {
             commit();
