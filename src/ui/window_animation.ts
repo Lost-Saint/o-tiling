@@ -11,8 +11,8 @@ export class WindowAnimationManager {
     private _style: WindowAnimationStyle;
     private _duration: number;
     private _enabled = false;
-    private _origMapWindow: ((this: unknown, shellwm: any, actor: any) => any) | null = null;
-    private _origDestroyWindow: ((this: unknown, shellwm: any, actor: any) => any) | null = null;
+    private _origMapWindow = (Main.wm as any)._mapWindow;
+    private _origDestroyWindow = (Main.wm as any)._destroyWindow;
 
     constructor(style: WindowAnimationStyle = 'default', duration: number = 200) {
         this._style = style;
@@ -24,14 +24,12 @@ export class WindowAnimationManager {
         this._enabled = true;
 
         const wm = Main.wm as any;
-        this._origMapWindow = wm._mapWindow;
-        this._origDestroyWindow = wm._destroyWindow;
 
         const manager = this;
 
         wm._mapWindow = async function (shellwm: any, actor: any) {
             if (manager._style === 'default')
-                return manager._origMapWindow!.call(this, shellwm, actor);
+                return manager._origMapWindow.call(this, shellwm, actor);
 
             actor._windowType = actor.meta_window.get_window_type();
             actor.meta_window.connectObject('notify::window-type', () => {
@@ -64,7 +62,7 @@ export class WindowAnimationManager {
 
             const animType = (wm as any)._getAnimationWindowType(actor);
             if (animType !== Meta.WindowType.NORMAL) {
-                return manager._origMapWindow!.call(this, shellwm, actor);
+                return manager._origMapWindow.call(this, shellwm, actor);
             }
 
             const { duration, mode, initProps } = manager._getMapParams();
@@ -86,7 +84,7 @@ export class WindowAnimationManager {
 
         wm._destroyWindow = function (shellwm: any, actor: any) {
             if (manager._style === 'default')
-                return manager._origDestroyWindow!.call(this, shellwm, actor);
+                return manager._origDestroyWindow.call(this, shellwm, actor);
 
             const window = actor.meta_window;
             window.disconnectObject(actor);
@@ -106,7 +104,7 @@ export class WindowAnimationManager {
 
             const animType = (wm as any)._getAnimationWindowType(actor);
             if (animType !== Meta.WindowType.NORMAL) {
-                return manager._origDestroyWindow!.call(this, shellwm, actor);
+                return manager._origDestroyWindow.call(this, shellwm, actor);
             }
 
             const { duration, mode, targetProps } = manager._getDestroyParams();
@@ -123,13 +121,10 @@ export class WindowAnimationManager {
     }
 
     disable(): void {
-        if (!this._enabled) return;
         this._enabled = false;
         const wm = Main.wm as any;
         wm._mapWindow = this._origMapWindow;
         wm._destroyWindow = this._origDestroyWindow;
-        this._origMapWindow = null;
-        this._origDestroyWindow = null;
     }
 
     setStyle(style: WindowAnimationStyle): void {
