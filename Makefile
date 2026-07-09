@@ -18,6 +18,7 @@ schemas/gschemas.compiled: schemas/org.gnome.shell.extensions.$(NAME).gschema.xm
 	glib-compile-schemas schemas
 
 $(UUID).zip: $(DIST)/extension.js $(DIST)/prefs.js schemas/gschemas.compiled
+	@node -e "const fs=require('fs');const m=JSON.parse(fs.readFileSync('metadata.json'));m['version-name']=JSON.parse(fs.readFileSync('package.json')).version;fs.writeFileSync('metadata.json',JSON.stringify(m,null,4)+'\n');"
 	@cp -r schemas $(DIST)/
 	@cp metadata.json $(DIST)/
 	@cp *.css $(DIST)/ 2>/dev/null || true

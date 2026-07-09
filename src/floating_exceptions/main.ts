@@ -183,7 +183,6 @@ class App {
             title_widget: new Adw.WindowTitle({
                 title: 'Floating Window Exceptions',
             }),
-            decoration_layout: 'close',
         });
         header.pack_start(back);
 
