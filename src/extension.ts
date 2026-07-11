@@ -1288,12 +1288,12 @@ export class Ext extends Ecs.System<ExtEvent> {
             const is_attached = this.auto_tiler.attached.contains(this.prev_focused[0]);
 
             if (
-                prev &&
-                prev !== win &&
-                is_attached &&
-                prev.actor_exists() &&
-                prev.name(this) !== win.name(this) &&
-                prev.workspace_id() === win.workspace_id()
+                prev
+                && prev !== win
+                && is_attached
+                && prev.actor_exists()
+                && prev.name(this) !== win.name(this)
+                && prev.workspace_id() === win.workspace_id()
             ) {
                 if (prev.rect().contains(win.rect())) {
                     if (prev.is_maximized()) {
@@ -1308,15 +1308,15 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         if (this.conf.log_on_focus) {
             win.cmdline().then((cmd: any) => {
-                let msg = `focused Window(${win.entity}) {\n` +
-                    `  class: "${win.meta.get_wm_class()}",\n` +
-                    `  cmdline: ${cmd},\n` +
-                    `  monitor: ${win.meta.get_monitor()},\n` +
-                    `  name: ${win.name(this)},\n` +
-                    `  rect: ${win.rect().fmt()},\n` +
-                    `  workspace: ${win.workspace_id()},\n` +
-                    `  xid: ${win.xid()},\n` +
-                    `  stack: ${win.stack},\n`;
+                let msg = `focused Window(${win.entity}) {\n`
+                    + `  class: "${win.meta.get_wm_class()}",\n`
+                    + `  cmdline: ${cmd},\n`
+                    + `  monitor: ${win.meta.get_monitor()},\n`
+                    + `  name: ${win.name(this)},\n`
+                    + `  rect: ${win.rect().fmt()},\n`
+                    + `  workspace: ${win.workspace_id()},\n`
+                    + `  xid: ${win.xid()},\n`
+                    + `  stack: ${win.stack},\n`;
 
                 if (this.auto_tiler) {
                     msg += `  fork: (${this.auto_tiler.attached.get(win.entity)}),\n`;
@@ -1375,8 +1375,8 @@ export class Ext extends Ecs.System<ExtEvent> {
                 if (b && b.visible) return;
             }
             if (
-                focus && Window.clutter_focus_is_shell_panel() &&
-                this._bordered_entity !== null
+                focus && Window.clutter_focus_is_shell_panel()
+                && this._bordered_entity !== null
             ) {
                 return;
             }
@@ -1448,14 +1448,14 @@ export class Ext extends Ecs.System<ExtEvent> {
             work = win.meta.get_workspace().index();
 
             for (const [, compare] of this.windows.iter()) {
-                const is_same_space = compare.meta.get_monitor() === mon &&
-                    compare.meta.get_workspace().index() === work;
+                const is_same_space = compare.meta.get_monitor() === mon
+                    && compare.meta.get_workspace().index() === work;
 
                 if (
-                    is_same_space &&
-                    !this.contains_tag(compare.entity, Tags.Floating) &&
-                    compare.is_maximized() &&
-                    win.entity[0] !== compare.entity[0]
+                    is_same_space
+                    && !this.contains_tag(compare.entity, Tags.Floating)
+                    && compare.is_maximized()
+                    && win.entity[0] !== compare.entity[0]
                 ) {
                     Lib.unmaximize(compare.meta);
                 }
@@ -1479,8 +1479,8 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     /** Recompute gap_top based on panel transparency state */
     compute_gap_top() {
-        const is_fully_transparent = this.settings.panel_transparency() &&
-            this.settings.panel_transparency_opacity() === 0;
+        const is_fully_transparent = this.settings.panel_transparency()
+            && this.settings.panel_transparency_opacity() === 0;
         if (is_fully_transparent) {
             this.gap_top = this.settings.panel_top_gap() * 4 * this.dpi;
         } else {
@@ -1804,10 +1804,10 @@ export class Ext extends Ecs.System<ExtEvent> {
                     const other_monitor = window.meta.get_monitor();
                     const other_index = window.meta.get_workspace().index();
                     if (
-                        !this.contains_tag(entity, Tags.Floating) &&
-                        other_monitor == monitor &&
-                        other_index === index &&
-                        !Ecs.entity_eq(win.entity, window.entity)
+                        !this.contains_tag(entity, Tags.Floating)
+                        && other_monitor == monitor
+                        && other_index === index
+                        && !Ecs.entity_eq(win.entity, window.entity)
                     ) {
                         const other_rect = window.rect();
                         const other_coord: [number, number] = [other_rect.x, other_rect.y];
@@ -1965,8 +1965,8 @@ export class Ext extends Ecs.System<ExtEvent> {
                     } else if (attach_to) {
                         const is_sibling = this.auto_tiler.windows_are_siblings(entity, attach_to.entity);
 
-                        [area, monitor_attachment] = (win.stack === null && attach_to.stack === null && is_sibling) ||
-                                (win.stack === null && is_sibling)
+                        [area, monitor_attachment] = (win.stack === null && attach_to.stack === null && is_sibling)
+                                || (win.stack === null && is_sibling)
                             ? [fork.area, false]
                             : [attach_to.meta.get_frame_rect(), false];
                     } else {
@@ -2052,9 +2052,9 @@ export class Ext extends Ecs.System<ExtEvent> {
                         const fork = this.auto_tiler.forest.forks.get(fork_ent);
                         if (fork) this.auto_tiler.tile(this, fork, fork.area);
                     } else if (
-                        win.is_tilable(this) &&
-                        !this.contains_tag(win.entity, Tags.Floating) &&
-                        this.is_workspace_tiled(win.workspace_id())
+                        win.is_tilable(this)
+                        && !this.contains_tag(win.entity, Tags.Floating)
+                        && this.is_workspace_tiled(win.workspace_id())
                     ) {
                         // Window was detached during maximize — re-tile it
                         this.auto_tiler.auto_tile(this, win, false);
@@ -3587,8 +3587,8 @@ export class Ext extends Ecs.System<ExtEvent> {
             };
 
             if (
-                this.auto_tiler && !win.meta.minimized && win.is_tilable(this) &&
-                this.is_workspace_tiled(win.workspace_id())
+                this.auto_tiler && !win.meta.minimized && win.is_tilable(this)
+                && this.is_workspace_tiled(win.workspace_id())
             ) {
                 const id = actor.connect('first-frame', () => {
                     // Recover prev_focused from workspace_active if empty before tiling.
@@ -3598,10 +3598,10 @@ export class Ext extends Ecs.System<ExtEvent> {
                         if (entity && !Ecs.entity_eq(entity, win.entity)) {
                             const candidate = this.windows.get(entity);
                             if (
-                                candidate &&
-                                candidate.is_tilable(this) &&
-                                this.auto_tiler.attached.contains(entity) &&
-                                candidate.meta.get_monitor() === win.meta.get_monitor()
+                                candidate
+                                && candidate.is_tilable(this)
+                                && this.auto_tiler.attached.contains(entity)
+                                && candidate.meta.get_monitor() === win.meta.get_monitor()
                             ) {
                                 this.prev_focused[0] = this.prev_focused[1];
                                 this.prev_focused[1] = entity;
@@ -3810,9 +3810,10 @@ function _toggle_workspace_number_indicator(enable: boolean): void {
     if (!currentPanel) return;
 
     // Show/hide GNOME's built-in workspace indicator (the dot strip)
-    const builtinIndicator = currentPanel.statusArea?.['activities'] ??
-        currentPanel.statusArea?.['workspace-indicator'] ??
-        currentPanel._leftBox?.get_children()?.find((c: any) => c.style_class?.includes('workspace-indicator')) ?? null;
+    const builtinIndicator = currentPanel.statusArea?.['activities']
+        ?? currentPanel.statusArea?.['workspace-indicator']
+        ?? currentPanel._leftBox?.get_children()?.find((c: any) => c.style_class?.includes('workspace-indicator'))
+        ?? null;
 
     if (enable) {
         if (!workspace_number_indicator) {
@@ -4026,12 +4027,12 @@ function is_valid_minimize_to_tray(meta_win: Meta.Window, ext: Ext) {
     const gnome_shell_wm_class = meta_win.get_wm_class() === 'Gjs' || meta_win.get_wm_class() === 'Gnome-shell';
     const show_skiptb = !cfg.skiptaskbar_shall_hide(meta_win);
 
-    valid_min_to_tray = valid_min_to_tray &&
-        !meta_win.is_attached_dialog() &&
-        show_skiptb &&
-        meta_win.skip_taskbar &&
-        meta_win.get_wm_class() !== null &&
-        !gnome_shell_wm_class;
+    valid_min_to_tray = valid_min_to_tray
+        && !meta_win.is_attached_dialog()
+        && show_skiptb
+        && meta_win.skip_taskbar
+        && meta_win.get_wm_class() !== null
+        && !gnome_shell_wm_class;
 
     return valid_min_to_tray;
 }

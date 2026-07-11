@@ -17,9 +17,9 @@ function formatSource(src) {
         if (line.trim() === '' || next.trim() === '') continue;
 
         // Blank line BEFORE top-level export function / export class / export const (function expr)
-        const isTopLevelDecl = /^export\s+(function|class|async\s+function)/.test(next) ||
-            /^export\s+const\s+\w+\s*=\s*(async\s*)?\(/.test(next) ||
-            /^export\s+const\s+\w+\s*=\s*(async\s*)?function/.test(next);
+        const isTopLevelDecl = /^export\s+(function|class|async\s+function)/.test(next)
+            || /^export\s+const\s+\w+\s*=\s*(async\s*)?\(/.test(next)
+            || /^export\s+const\s+\w+\s*=\s*(async\s*)?function/.test(next);
 
         // Blank line BEFORE JSDoc block at top level
         const isJsDoc = /^\/\*\*/.test(next) && !/^\s/.test(next);

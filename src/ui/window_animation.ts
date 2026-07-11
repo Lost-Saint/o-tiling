@@ -37,8 +37,8 @@ export class WindowAnimationManager {
                 const type = actor.meta_window.get_window_type();
                 if (type === actor._windowType) return;
                 if (
-                    type === Meta.WindowType.MODAL_DIALOG ||
-                    actor._windowType === Meta.WindowType.MODAL_DIALOG
+                    type === Meta.WindowType.MODAL_DIALOG
+                    || actor._windowType === Meta.WindowType.MODAL_DIALOG
                 ) {
                     const parent = actor.get_meta_window().get_transient_for();
                     if (parent) (wm as any)._checkDimming(parent);

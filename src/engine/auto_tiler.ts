@@ -192,8 +192,8 @@ export class AutoTiler {
 
                 const focus = ext.focus_window();
                 if (
-                    uniform_sizes && focus && focus.known_workspace === id[1] && focus.is_tilable(ext) &&
-                    this.attached.contains(focus.entity)
+                    uniform_sizes && focus && focus.known_workspace === id[1] && focus.is_tilable(ext)
+                    && this.attached.contains(focus.entity)
                 ) {
                     onto = focus;
                 } else {
@@ -739,7 +739,7 @@ export class AutoTiler {
 
         const fork = this.forest.forks.get(fork_entity);
         if (!fork) {
-            return Err('window\'s fork attachment does not exist');
+            return Err("window's fork attachment does not exist");
         }
 
         if (!fork.right) return Ok(void 0);

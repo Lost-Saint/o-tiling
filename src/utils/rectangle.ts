@@ -72,10 +72,10 @@ export class Rectangle {
 
     contains(other: Rectangular): boolean {
         return (
-            this.x <= other.x &&
-            this.y <= other.y &&
-            this.x + this.width >= other.x + other.width &&
-            this.y + this.height >= other.y + other.height
+            this.x <= other.x
+            && this.y <= other.y
+            && this.x + this.width >= other.x + other.width
+            && this.y + this.height >= other.y + other.height
         );
     }
 
@@ -98,10 +98,10 @@ export class Rectangle {
 
     intersects(other: Rectangular): boolean {
         return (
-            this.x < other.x + other.width &&
-            this.x + this.width > other.x &&
-            this.y < other.y + other.height &&
-            this.y + this.height > other.y
+            this.x < other.x + other.width
+            && this.x + this.width > other.x
+            && this.y < other.y + other.height
+            && this.y + this.height > other.y
         );
     }
 }

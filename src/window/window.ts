@@ -74,32 +74,32 @@ function is_panel_actor(focused_actor: Clutter.Actor | null): boolean {
 
         if (
             // ── Top panel buttons / corners (GNOME 48–50) ─────────────────────────
-            style_class.includes('panel-button') ||
-            style_class.includes('panel-corner') ||
-            style_class.includes('panel-status-button') ||
-            style_class.includes('activities') ||
+            style_class.includes('panel-button')
+            || style_class.includes('panel-corner')
+            || style_class.includes('panel-status-button')
+            || style_class.includes('activities')
             // ── System status / indicator area ─────────────────────────────────────
-            style_class.includes('panel-status-indicators-box') ||
-            style_class.includes('aggregate-menu') ||
-            style_class.includes('system-status-area') ||
-            style_class.includes('quick-settings') ||
-            style_class.includes('quick-settings-system-item') ||
-            name === 'quickSettings' ||
-            name === 'quickSettingsBox' ||
-            style_class.includes('clock-display') ||
-            name === 'dateMenu' ||
+            || style_class.includes('panel-status-indicators-box')
+            || style_class.includes('aggregate-menu')
+            || style_class.includes('system-status-area')
+            || style_class.includes('quick-settings')
+            || style_class.includes('quick-settings-system-item')
+            || name === 'quickSettings'
+            || name === 'quickSettingsBox'
+            || style_class.includes('clock-display')
+            || name === 'dateMenu'
             // ── Dock / Dash-to-Dock / Ubuntu dock ─────────────────────────────────
-            style_class.includes('dash-item') ||
-            style_class.includes('dash-container') ||
-            style_class.includes('dashtodock') ||
-            name === 'dashtodockContainer' ||
-            name === 'dash' ||
+            || style_class.includes('dash-item')
+            || style_class.includes('dash-container')
+            || style_class.includes('dashtodock')
+            || name === 'dashtodockContainer'
+            || name === 'dash'
             // ── Direct panel actor references ──────────────────────────────────────
-            actor === (Main as any).panel ||
-            actor === (Main as any).panel?.statusArea?.activities ||
-            (actor as any) === (Main as any).panel?._centerBox ||
-            (actor as any) === (Main as any).panel?._leftBox ||
-            (actor as any) === (Main as any).panel?._rightBox
+            || actor === (Main as any).panel
+            || actor === (Main as any).panel?.statusArea?.activities
+            || (actor as any) === (Main as any).panel?._centerBox
+            || (actor as any) === (Main as any).panel?._leftBox
+            || (actor as any) === (Main as any).panel?._rightBox
         ) {
             return true;
         }
@@ -240,13 +240,13 @@ export class ShellWindow {
         const change_id = settings.ext.connect('changed', (_, key) => {
             if (this.border) {
                 if (
-                    key === 'hint-color-rgba' ||
-                    key === 'active-hint-overlay-enabled' ||
-                    key === 'active-hint-overlay-color-rgba' ||
-                    key === 'active-hint-border-radius' ||
-                    key === 'active-hint-border-width' ||
-                    key === 'active-hint-overlay-opacity' ||
-                    key === 'active-hint-overlay-all-windows'
+                    key === 'hint-color-rgba'
+                    || key === 'active-hint-overlay-enabled'
+                    || key === 'active-hint-overlay-color-rgba'
+                    || key === 'active-hint-border-radius'
+                    || key === 'active-hint-border-width'
+                    || key === 'active-hint-overlay-opacity'
+                    || key === 'active-hint-overlay-all-windows'
                 ) {
                     this.update_hint_colors();
                     this.update_border_layout();
@@ -397,9 +397,9 @@ export class ShellWindow {
         }
 
         return (
-            this.meta.window_type == Meta.WindowType.NORMAL &&
-            !this.is_transient() &&
-            wm_class !== null
+            this.meta.window_type == Meta.WindowType.NORMAL
+            && !this.is_transient()
+            && wm_class !== null
         );
     }
 
@@ -520,13 +520,13 @@ export class ShellWindow {
             const border = this.border;
 
             const permitted = () =>
-                this.actor_exists() &&
-                this.ext.focus_window() == this &&
-                !this.meta.is_fullscreen() &&
-                (!this.is_maximized() || this.is_snap_edge()) &&
-                !this.meta.minimized &&
-                this.meta.appears_focused &&
-                !this.smart_gapped;
+                this.actor_exists()
+                && this.ext.focus_window() == this
+                && !this.meta.is_fullscreen()
+                && (!this.is_maximized() || this.is_snap_edge())
+                && !this.meta.minimized
+                && this.meta.appears_focused
+                && !this.smart_gapped;
 
             if (permitted()) {
                 this.restack();
@@ -563,10 +563,10 @@ export class ShellWindow {
             this._border_settle_id = null;
             // Show only if the border/actor still exist and this window is still focused.
             if (
-                this.border && this.actor_exists() && this.ext.focus_window() === this &&
-                !this.meta.is_fullscreen() &&
-                (!this.is_maximized() || this.is_snap_edge()) &&
-                !this.smart_gapped
+                this.border && this.actor_exists() && this.ext.focus_window() === this
+                && !this.meta.is_fullscreen()
+                && (!this.is_maximized() || this.is_snap_edge())
+                && !this.smart_gapped
             ) {
                 this.show_border();
             }
@@ -591,9 +591,9 @@ export class ShellWindow {
     restack(_updateState: RESTACK_STATE = RESTACK_STATE.NORMAL, immediate: boolean = false) {
         this.update_border_layout();
         if (
-            this.meta.is_fullscreen() ||
-            (this.is_maximized() && !this.is_snap_edge()) ||
-            this.meta.minimized
+            this.meta.is_fullscreen()
+            || (this.is_maximized() && !this.is_snap_edge())
+            || this.meta.minimized
         ) {
             this.hide_border();
             return;
@@ -754,8 +754,8 @@ export class ShellWindow {
             }
 
             // show_tint: overlay enabled + not maximized + (focused-only mode requires focus)
-            const show_tint = overlay_opacity > 0 && !is_maximized_os &&
-                (only_active ? is_focused : true);
+            const show_tint = overlay_opacity > 0 && !is_maximized_os
+                && (only_active ? is_focused : true);
 
             if (is_focused) {
                 const total_radius = current_radius + width_value;
@@ -858,12 +858,12 @@ export function activate(ext: Ext, move_mouse: boolean, win: Meta.Window) {
         workspace.activate_with_focus(win, Clutter.get_current_event_time());
         win.raise();
 
-        const pointer_placement_permitted = move_mouse &&
-            !(Main as any).isModal &&
-            !(Main as any).layoutManager?.modalDialogGroup?.get_children()?.length &&
-            ext.settings.mouse_cursor_follows_active_window() &&
-            !pointer_already_on_window(win) &&
-            pointer_in_work_area();
+        const pointer_placement_permitted = move_mouse
+            && !(Main as any).isModal
+            && !(Main as any).layoutManager?.modalDialogGroup?.get_children()?.length
+            && ext.settings.mouse_cursor_follows_active_window()
+            && !pointer_already_on_window(win)
+            && pointer_in_work_area();
 
         if (pointer_placement_permitted) {
             place_pointer_on(ext, win);

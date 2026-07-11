@@ -55,8 +55,8 @@ export class OverviewLayoutManager {
                 // Guard: if container or monitor has zero dimensions, skip to
                 // avoid NaN propagating into Clutter allocation (GNOME 50 crash)
                 if (
-                    !containerWidth || !containerHeight ||
-                    !monitorArea.width || !monitorArea.height
+                    !containerWidth || !containerHeight
+                    || !monitorArea.width || !monitorArea.height
                 ) return;
 
                 for (const preview of previews) {
@@ -90,8 +90,8 @@ export class OverviewLayoutManager {
                     // Guard: reject any rect containing NaN or Infinity before
                     // it reaches Clutter's allocation pipeline
                     if (
-                        !Number.isFinite(targetRect.x) || !Number.isFinite(targetRect.y) ||
-                        !Number.isFinite(targetRect.width) || !Number.isFinite(targetRect.height)
+                        !Number.isFinite(targetRect.x) || !Number.isFinite(targetRect.y)
+                        || !Number.isFinite(targetRect.width) || !Number.isFinite(targetRect.height)
                     ) {
                         continue;
                     }

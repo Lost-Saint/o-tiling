@@ -99,11 +99,11 @@ export function is_keyboard_op(op: number): boolean {
 
 export function is_resize_op(op: number): boolean {
     const window_dir_mask =
-        (Meta.GrabOp.RESIZING_N | Meta.GrabOp.RESIZING_E | Meta.GrabOp.RESIZING_S | Meta.GrabOp.RESIZING_W) &
-        ~Meta.GrabOp.WINDOW_BASE;
+        (Meta.GrabOp.RESIZING_N | Meta.GrabOp.RESIZING_E | Meta.GrabOp.RESIZING_S | Meta.GrabOp.RESIZING_W)
+        & ~Meta.GrabOp.WINDOW_BASE;
     return (
-        (op & window_dir_mask) != 0 ||
-        (op & Meta.GrabOp.KEYBOARD_RESIZING_UNKNOWN) == Meta.GrabOp.KEYBOARD_RESIZING_UNKNOWN
+        (op & window_dir_mask) != 0
+        || (op & Meta.GrabOp.KEYBOARD_RESIZING_UNKNOWN) == Meta.GrabOp.KEYBOARD_RESIZING_UNKNOWN
     );
 }
 

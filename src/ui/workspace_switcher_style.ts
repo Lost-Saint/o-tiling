@@ -305,9 +305,9 @@ export class WorkspaceSwitcherStyle {
     }
 
     private _getWorkspacesDisplay(): any {
-        return (Main as any).overview?._controls?._workspacesDisplay ||
-            (Main as any).overview?._overview?._controls?._workspacesDisplay ||
-            null;
+        return (Main as any).overview?._controls?._workspacesDisplay
+            || (Main as any).overview?._overview?._controls?._workspacesDisplay
+            || null;
     }
 
     private _setupAutoScroll(): void {
