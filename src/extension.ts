@@ -1946,9 +1946,9 @@ export class Ext extends Ecs.System<ExtEvent> {
 
                     if (attach_to === null) {
                         if (fork.left.inner.kind === 2 && fork.right?.inner.kind === 2) {
-                            const attaching = fork.left.is_window(entity) ?
-                                fork.right.inner.entity :
-                                fork.left.inner.entity;
+                            const attaching = fork.left.is_window(entity)
+                                ? fork.right.inner.entity
+                                : fork.left.inner.entity;
 
                             attach_to = this.windows.get(attaching);
                         }
@@ -1966,9 +1966,9 @@ export class Ext extends Ecs.System<ExtEvent> {
                         const is_sibling = this.auto_tiler.windows_are_siblings(entity, attach_to.entity);
 
                         [area, monitor_attachment] = (win.stack === null && attach_to.stack === null && is_sibling) ||
-                                (win.stack === null && is_sibling) ?
-                            [fork.area, false] :
-                            [attach_to.meta.get_frame_rect(), false];
+                                (win.stack === null && is_sibling)
+                            ? [fork.area, false]
+                            : [attach_to.meta.get_frame_rect(), false];
                     } else {
                         return true;
                     }
@@ -2000,13 +2000,13 @@ export class Ext extends Ecs.System<ExtEvent> {
                         half_height = Lib.round_increment(half_height, grid_h);
                     }
 
-                    const new_area: [number, number, number, number] = orientation === Lib.Orientation.HORIZONTAL ?
-                        swap ?
-                            [area.x, area.y, half_width, area.height] :
-                            [area.x + area.width - half_width, area.y, half_width, area.height] :
-                        swap ?
-                        [area.x, area.y, area.width, half_height] :
-                        [area.x, area.y + area.height - half_height, area.width, half_height];
+                    const new_area: [number, number, number, number] = orientation === Lib.Orientation.HORIZONTAL
+                        ? swap
+                            ? [area.x, area.y, half_width, area.height]
+                            : [area.x + area.width - half_width, area.y, half_width, area.height]
+                        : swap
+                        ? [area.x, area.y, area.width, half_height]
+                        : [area.x, area.y + area.height - half_height, area.width, half_height];
 
                     this.overlay.x = new_area[0];
                     this.overlay.y = new_area[1];
@@ -3058,9 +3058,9 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         // 7. Update panel icon to on/off based on auto_tiler state
         if (this.button) {
-            this.button.icon.gicon = this.auto_tiler ?
-                this.button_gio_icon_auto_on :
-                this.button_gio_icon_auto_off;
+            this.button.icon.gicon = this.auto_tiler
+                ? this.button_gio_icon_auto_on
+                : this.button_gio_icon_auto_off;
         }
 
         if (indicator) {
@@ -3648,9 +3648,9 @@ export class Ext extends Ecs.System<ExtEvent> {
     }
 
     workspace_id(window: Window.ShellWindow | null = null): [number, number] {
-        const id: [number, number] = window ?
-            [window.meta.get_monitor(), window.workspace_id()] :
-            [this.active_monitor(), this.active_workspace()];
+        const id: [number, number] = window
+            ? [window.meta.get_monitor(), window.workspace_id()]
+            : [this.active_monitor(), this.active_workspace()];
 
         id[0] = Math.max(0, id[0]);
         id[1] = Math.max(0, id[1]);
@@ -3870,17 +3870,17 @@ let default_isoverviewwindow_ws: any = null;
 let default_isoverviewwindow_ws_thumbnail: any = null;
 
 // Determine method name once (works for GNOME 46-48 and 49-50).
-const WS_OVERVIEW_KEY: string | null = '_isOverviewWindow' in (Workspace.prototype as any) ?
-    '_isOverviewWindow' :
-    'isOverviewWindow' in (Workspace.prototype as any) ?
-    'isOverviewWindow' :
-    null;
+const WS_OVERVIEW_KEY: string | null = '_isOverviewWindow' in (Workspace.prototype as any)
+    ? '_isOverviewWindow'
+    : 'isOverviewWindow' in (Workspace.prototype as any)
+    ? 'isOverviewWindow'
+    : null;
 
-const WST_OVERVIEW_KEY: string | null = '_isOverviewWindow' in (WorkspaceThumbnail.prototype as any) ?
-    '_isOverviewWindow' :
-    'isOverviewWindow' in (WorkspaceThumbnail.prototype as any) ?
-    'isOverviewWindow' :
-    null;
+const WST_OVERVIEW_KEY: string | null = '_isOverviewWindow' in (WorkspaceThumbnail.prototype as any)
+    ? '_isOverviewWindow'
+    : 'isOverviewWindow' in (WorkspaceThumbnail.prototype as any)
+    ? 'isOverviewWindow'
+    : null;
 let default_init_appswitcher: any;
 let default_getwindowlist_windowswitcher: any;
 let default_getcaption_windowpreview: any;
@@ -3894,9 +3894,9 @@ function _show_skip_taskbar_windows(ext: Ext) {
         (Workspace.prototype as any)[WS_OVERVIEW_KEY] = function(win: any) {
             const meta_win = win;
             // Guard: call original only if it actually existed
-            const base = default_isoverviewwindow_ws ?
-                default_isoverviewwindow_ws.call(this, win) :
-                false;
+            const base = default_isoverviewwindow_ws
+                ? default_isoverviewwindow_ws.call(this, win)
+                : false;
             return is_valid_minimize_to_tray(meta_win, ext) || base;
         };
     } else if (!WS_OVERVIEW_KEY) {
@@ -3927,9 +3927,9 @@ function _show_skip_taskbar_windows(ext: Ext) {
         if (default_isoverviewwindow_ws_thumbnail) {
             (WorkspaceThumbnail.prototype as any)[WST_OVERVIEW_KEY] = function(win: any) {
                 const meta_win = win.get_meta_window();
-                const base = default_isoverviewwindow_ws_thumbnail ?
-                    default_isoverviewwindow_ws_thumbnail.call(this, win) :
-                    false;
+                const base = default_isoverviewwindow_ws_thumbnail
+                    ? default_isoverviewwindow_ws_thumbnail.call(this, win)
+                    : false;
                 return is_valid_minimize_to_tray(meta_win, ext) || base;
             };
         }

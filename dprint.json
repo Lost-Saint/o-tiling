@@ -26,6 +26,7 @@
     "semiColons": "always",
     "trailingCommas": "onlyMultiLine",
     "operatorPosition": "sameLine",
+    "conditionalExpression.operatorPosition": "nextLine",
     "arrowFunction.useParentheses": "force",
     "enumDeclaration.memberSpacing": "newLine"
   },

@@ -252,12 +252,12 @@ export class Forest extends Ecs.World {
             const { x, y, width, height } = fork.area;
 
             const [left, right]: [[number, number, number, number], [number, number, number, number]] =
-                fork.is_horizontal() ?
-                    [
+                fork.is_horizontal()
+                    ? [
                         [x, y, width / 2, height],
                         [x + width / 2, y, width / 2, height],
-                    ] :
-                    [
+                    ]
+                    : [
                         [x, y, width, height / 2],
                         [x, y + height / 2, width, height / 2],
                     ];

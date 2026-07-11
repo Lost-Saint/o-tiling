@@ -8,6 +8,7 @@
   "scripts": {
     "build": "tsc && prettier --write 'dist/**/*.js' && node scripts/format-dist.mjs",
     "lint": "eslint src",
+    "format": "dprint fmt",
     "type-check": "tsc --noEmit",
     "deploy": "pnpm run lint && pnpm run type-check && pnpm run build",
     "lint:dist": "../GER/ego-lint ./dist",

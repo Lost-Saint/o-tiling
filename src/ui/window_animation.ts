@@ -154,9 +154,9 @@ export class WindowAnimationManager {
             return;
         }
 
-        const mode = this._style === 'hyprland' ?
-            Clutter.AnimationMode.EASE_OUT_EXPO :
-            Clutter.AnimationMode.EASE_OUT_CUBIC;
+        const mode = this._style === 'hyprland'
+            ? Clutter.AnimationMode.EASE_OUT_EXPO
+            : Clutter.AnimationMode.EASE_OUT_CUBIC;
 
         commit();
         actor.translation_x = actor.x - x;

@@ -70,10 +70,9 @@ export class WindowButtonsManager {
 
         // If buttons are currently on the left, keep them left.
         // If on the right (or not present yet), default to right.
-        const isRight = !leftHasButtons && !rightHasButtons ?
-            true // no buttons anywhere yet → default right
-             :
-            rightHasButtons; // honour current placement
+        const isRight = !leftHasButtons && !rightHasButtons
+            ? true // no buttons anywhere yet → default right
+            : rightHasButtons; // honour current placement
 
         const BtnRight = (right ?? '').split(',').filter((s) => !BTN.includes(s.trim()));
         const BtnLeft = (left ?? '').split(',').filter((s) => !BTN.includes(s.trim()));

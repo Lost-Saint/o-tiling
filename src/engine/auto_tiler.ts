@@ -432,9 +432,9 @@ export class AutoTiler {
         const is_sibling = this.windows_are_siblings(win.entity, attach_to.entity);
 
         const attach_area: Rectangular =
-            (win.stack === null && attach_to.stack === null && is_sibling) || (win.stack === null && is_sibling) ?
-                fork.area :
-                attach_to.meta.get_frame_rect();
+            (win.stack === null && attach_to.stack === null && is_sibling) || (win.stack === null && is_sibling)
+                ? fork.area
+                : attach_to.meta.get_frame_rect();
 
         let placement: null | MoveBy = cursor_placement(ext, attach_area, cursor);
         const stack = ext.auto_tiler?.find_stack(attach_to.entity);
@@ -460,13 +460,13 @@ export class AutoTiler {
                 return true;
             }
 
-            const direction = placement.orientation === lib.Orientation.HORIZONTAL ?
-                placement.swap ?
-                    Left :
-                    Right :
-                placement.swap ?
-                Up :
-                Down;
+            const direction = placement.orientation === lib.Orientation.HORIZONTAL
+                ? placement.swap
+                    ? Left
+                    : Right
+                : placement.swap
+                ? Up
+                : Down;
 
             if (stack) {
                 if (matching_stack) {
@@ -722,9 +722,9 @@ export class AutoTiler {
             return Err('focused window is not attached');
         }
 
-        return onto.meta.get_monitor() == win.meta.get_monitor() && onto.workspace_id() == win.workspace_id() ?
-            Ok(onto) :
-            Err('window is not on the same monitor or workspace');
+        return onto.meta.get_monitor() == win.meta.get_monitor() && onto.workspace_id() == win.workspace_id()
+            ? Ok(onto)
+            : Err('window is not on the same monitor or workspace');
     }
 
     private toggle_orientation_(ext: Ext, focused: ShellWindow): Result<void, string> {
@@ -788,15 +788,15 @@ export function cursor_placement(ext: Ext, area: Rectangular, cursor: Rectangula
 
     const [, side] = geom.nearest_side(ext, [cursor.x, cursor.y], area);
 
-    const res: null | [lib.Orientation, boolean] = side === LEFT ?
-        [HORIZONTAL, true] :
-        side === RIGHT ?
-        [HORIZONTAL, false] :
-        side === TOP ?
-        [VERTICAL, true] :
-        side === BOTTOM ?
-        [VERTICAL, false] :
-        null;
+    const res: null | [lib.Orientation, boolean] = side === LEFT
+        ? [HORIZONTAL, true]
+        : side === RIGHT
+        ? [HORIZONTAL, false]
+        : side === TOP
+        ? [VERTICAL, true]
+        : side === BOTTOM
+        ? [VERTICAL, false]
+        : null;
 
     return res ? { orientation: res[0], swap: res[1] } : null;
 }

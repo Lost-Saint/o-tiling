@@ -31,9 +31,9 @@ function buildCss(accentColor: string): string {
     const radius = 3;
     const border = 3;
     const innerRadius = radius - border;
-    const activeColor = (accentColor === 'auto' || !Utils.isValidColor(accentColor)) ?
-        '#3584e4' :
-        accentColor;
+    const activeColor = (accentColor === 'auto' || !Utils.isValidColor(accentColor))
+        ? '#3584e4'
+        : accentColor;
 
     return `
         .workspace-thumbnails,

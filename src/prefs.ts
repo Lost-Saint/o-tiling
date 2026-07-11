@@ -361,9 +361,9 @@ export default class OTilingPreferences extends ExtensionPreferences {
         try {
             const initialOverlayColor = new Gdk.RGBA();
             // Fall back to hint-color-rgba which already resolves 'auto' → accent
-            const colorStringToParse = overlayIsCustom ?
-                currentOverlayVal :
-                settings.get_string('hint-color-rgba');
+            const colorStringToParse = overlayIsCustom
+                ? currentOverlayVal
+                : settings.get_string('hint-color-rgba');
             if (initialOverlayColor.parse(colorStringToParse)) {
                 overlayColorButton.rgba = initialOverlayColor;
             }

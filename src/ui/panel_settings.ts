@@ -323,9 +323,9 @@ function toggle(
     const item = new PopupSwitchMenuItem(desc, active);
 
     if (icon_names) {
-        const icon_name = typeof icon_names === 'string' ?
-            icon_names :
-            (active ? icon_names.on : icon_names.off);
+        const icon_name = typeof icon_names === 'string'
+            ? icon_names
+            : (active ? icon_names.on : icon_names.off);
 
         const icon = new St.Icon({
             icon_name: icon_name,

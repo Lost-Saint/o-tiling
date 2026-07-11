@@ -679,9 +679,9 @@ export class ShellWindow {
 
         const border = this.border;
         // Read live from theme node to avoid cache staleness during rapid window_changed events.
-        let borderSize = (border?.get_stage()) ?
-            border.get_theme_node().get_border_width(St.Side.TOP) :
-            this.border_size;
+        let borderSize = (border?.get_stage())
+            ? border.get_theme_node().get_border_width(St.Side.TOP)
+            : this.border_size;
 
         if (border) {
             if (!(this.is_maximized() || this.is_snap_edge())) {

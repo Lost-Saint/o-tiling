@@ -41,9 +41,9 @@ function settings_new_schema(schema: string): Settings {
 
     const defaultSource = GioSSS.get_default();
 
-    const schemaSource = (schemaDir.query_exists(null) && defaultSource) ?
-        GioSSS.new_from_directory(schemaDir.get_path()!, defaultSource, false) :
-        defaultSource;
+    const schemaSource = (schemaDir.query_exists(null) && defaultSource)
+        ? GioSSS.new_from_directory(schemaDir.get_path()!, defaultSource, false)
+        : defaultSource;
 
     if (!schemaSource) {
         throw new Error('Could not load GSettings schema source for o-tiling.');

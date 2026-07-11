@@ -195,9 +195,9 @@ export class World {
     ///
     /// Find the first available slot, and increment the generation.
     create_entity(): Entity {
-        const slot = this.free_slots.size > 0 ?
-            this.free_slots.values().next().value :
-            undefined;
+        const slot = this.free_slots.size > 0
+            ? this.free_slots.values().next().value
+            : undefined;
 
         if (slot !== undefined) {
             this.free_slots.delete(slot);
