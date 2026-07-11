@@ -41,9 +41,9 @@ function settings_new_schema(schema: string): Settings {
 
     const defaultSource = GioSSS.get_default();
 
-    const schemaSource = (schemaDir.query_exists(null) && defaultSource)
-        ? GioSSS.new_from_directory(schemaDir.get_path()!, defaultSource, false)
-        : defaultSource;
+    const schemaSource = (schemaDir.query_exists(null) && defaultSource) ?
+        GioSSS.new_from_directory(schemaDir.get_path()!, defaultSource, false) :
+        defaultSource;
 
     if (!schemaSource) {
         throw new Error('Could not load GSettings schema source for o-tiling.');
@@ -102,9 +102,6 @@ const PANEL_TRANSPARENCY = 'panel-transparency';
 const PANEL_TRANSPARENCY_OPACITY = 'panel-transparency-opacity';
 const PANEL_TOP_GAP = 'panel-top-gap';
 
-
-
-
 export class ExtensionSettings {
     ext: Settings = settings_new_schema('org.gnome.shell.extensions.o-tiling');
     int: Settings | null = settings_new_id('org.gnome.desktop.interface');
@@ -137,7 +134,6 @@ export class ExtensionSettings {
     dynamic_workspaces(): boolean {
         return this.mutter ? this.mutter.get_boolean('dynamic-workspaces') : false;
     }
-
 
     gap_inner(): number {
         return this.ext.get_uint(GAP_INNER);
@@ -211,8 +207,6 @@ export class ExtensionSettings {
         return this.ext.get_boolean(TILE_BY_DEFAULT);
     }
 
-
-
     workspaces_only_on_primary(): boolean {
         return this.mutter ? this.mutter.get_boolean('workspaces-only-on-primary') : false;
     }
@@ -220,7 +214,6 @@ export class ExtensionSettings {
     focus_change_on_pointer_rest(): boolean {
         return this.mutter ? this.mutter.get_boolean('focus-change-on-pointer-rest') : false;
     }
-
 
     log_level(): number {
         return this.ext.get_uint(LOG_LEVEL);
@@ -305,13 +298,6 @@ export class ExtensionSettings {
         return this.ext.get_int(WINDOW_ANIMATION_DURATION);
     }
 
-
-
-
-
-
-
-
     theme_consistency_style(): string {
         return this.ext.get_string(THEME_CONSISTENCY_STYLE);
     }
@@ -328,8 +314,6 @@ export class ExtensionSettings {
         return this.ext.get_boolean(SHOW_CLOSE_BUTTON);
     }
 
-
-
     panel_transparency(): boolean {
         return this.ext.get_boolean(PANEL_TRANSPARENCY);
     }
@@ -341,9 +325,6 @@ export class ExtensionSettings {
     panel_top_gap(): number {
         return this.ext.get_uint(PANEL_TOP_GAP);
     }
-
-
-
 
     // Setters
 
@@ -374,8 +355,6 @@ export class ExtensionSettings {
     set_focus_change_on_pointer_rest(enable: boolean) {
         this.mutter?.set_boolean('focus-change-on-pointer-rest', enable);
     }
-
-
 
     set_gap_inner(gap: number) {
         this.ext.set_uint(GAP_INNER, gap);
@@ -414,8 +393,6 @@ export class ExtensionSettings {
     set_tile_by_default(set: boolean) {
         this.ext.set_boolean(TILE_BY_DEFAULT, set);
     }
-
-
 
     set_log_level(set: number) {
         this.ext.set_uint(LOG_LEVEL, set);
@@ -487,13 +464,6 @@ export class ExtensionSettings {
         this.ext.set_int(WINDOW_ANIMATION_DURATION, ms);
     }
 
-
-
-
-
-
-
-
     set_theme_consistency_style(style: string) {
         this.ext.set_string(THEME_CONSISTENCY_STYLE, style);
     }
@@ -501,7 +471,6 @@ export class ExtensionSettings {
     set_skip_overview(set: boolean) {
         this.ext.set_boolean(SKIP_OVERVIEW, set);
     }
-
 
     set_panel_transparency(v: boolean) {
         this.ext.set_boolean(PANEL_TRANSPARENCY, v);
@@ -514,11 +483,6 @@ export class ExtensionSettings {
     set_panel_top_gap(v: number) {
         this.ext.set_uint(PANEL_TOP_GAP, v);
     }
-
-
-
-
-
 
     reset_all() {
         const keys = this.ext.list_keys();

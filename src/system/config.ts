@@ -1,7 +1,6 @@
-import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 import * as log from '../utils/log.js';
-
 
 const CONF_DIR: string = GLib.get_user_config_dir() + '/o-tiling';
 export let CONF_FILE: string = CONF_DIR + '/config.json';
@@ -81,8 +80,6 @@ export const SKIPTASKBAR_EXCEPTIONS: Array<WindowRule> = [
     { class: 'plank' },
 ];
 
-
-
 /** Compiled rule with pre-built RegExp for hot-path matching. */
 interface CompiledRule {
     classRe: RegExp | null;
@@ -91,7 +88,7 @@ interface CompiledRule {
 }
 
 function compile_rules(rules: Array<FloatRule | WindowRule>): CompiledRule[] {
-    return rules.map(rule => ({
+    return rules.map((rule) => ({
         classRe: rule.class ? new RegExp(rule.class, 'i') : null,
         titleRe: rule.title ? new RegExp(rule.title, 'i') : null,
         disabled: rule.disabled,
@@ -168,7 +165,9 @@ export class Config {
         const wmclass = meta_window.get_wm_class();
         const wmtitle = meta_window.get_title();
 
-        const isSkip = typeof meta_window.is_skip_taskbar === 'function' ? meta_window.is_skip_taskbar() : !!meta_window.skip_taskbar;
+        const isSkip = typeof meta_window.is_skip_taskbar === 'function' ?
+            meta_window.is_skip_taskbar() :
+            !!meta_window.skip_taskbar;
         if (!isSkip) return false;
 
         for (const rule of this._compiled_skip) {
@@ -200,7 +199,6 @@ export class Config {
         } else {
             log.error(`error loading conf: ${conf.why}`);
         }
-
 
         this._rebuild_caches();
     }

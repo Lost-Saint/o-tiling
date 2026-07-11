@@ -1,7 +1,6 @@
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import * as log from '../utils/log.js';
 import type { Ext } from '../extension.js';
-
+import * as log from '../utils/log.js';
 
 /**
  * Manages the layout of window previews in the overview to match the tiled desktop layout.
@@ -31,7 +30,7 @@ export class OverviewLayoutManager {
             this._origUpdateWindowPositions = proto._updateWindowPositions;
 
             const self = this;
-            proto._updateWindowPositions = function (this: any, ...args: any[]) {
+            proto._updateWindowPositions = function(this: any, ...args: any[]) {
                 // Always call original logic first to handle non-tiled windows
                 // and maintain internal Shell state.
                 self._origUpdateWindowPositions.apply(this, args);
@@ -55,8 +54,10 @@ export class OverviewLayoutManager {
 
                 // Guard: if container or monitor has zero dimensions, skip to
                 // avoid NaN propagating into Clutter allocation (GNOME 50 crash)
-                if (!containerWidth || !containerHeight ||
-                    !monitorArea.width || !monitorArea.height) return;
+                if (
+                    !containerWidth || !containerHeight ||
+                    !monitorArea.width || !monitorArea.height
+                ) return;
 
                 for (const preview of previews) {
                     const metaWin = preview.metaWindow;
@@ -88,8 +89,10 @@ export class OverviewLayoutManager {
 
                     // Guard: reject any rect containing NaN or Infinity before
                     // it reaches Clutter's allocation pipeline
-                    if (!Number.isFinite(targetRect.x) || !Number.isFinite(targetRect.y) ||
-                        !Number.isFinite(targetRect.width) || !Number.isFinite(targetRect.height)) {
+                    if (
+                        !Number.isFinite(targetRect.x) || !Number.isFinite(targetRect.y) ||
+                        !Number.isFinite(targetRect.width) || !Number.isFinite(targetRect.height)
+                    ) {
                         continue;
                     }
 
@@ -107,12 +110,10 @@ export class OverviewLayoutManager {
         }
     }
 
-
     disable(): void {
         this._enabled = false;
         if (this._origUpdateWindowPositions) {
             (import('resource:///org/gnome/shell/ui/workspace.js') as Promise<any>).then(({ WorkspaceLayout }) => {
-
                 if (WorkspaceLayout) {
                     (WorkspaceLayout.prototype as any)._updateWindowPositions = this._origUpdateWindowPositions;
                     this._origUpdateWindowPositions = null;

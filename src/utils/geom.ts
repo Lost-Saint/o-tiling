@@ -1,5 +1,5 @@
-import type { Ext } from '../extension.js';
 import Meta from 'gi://Meta';
+import type { Ext } from '../extension.js';
 
 export enum Side {
     LEFT,
@@ -91,8 +91,9 @@ export function nearest_side(ext: Ext, origin: [number, number], rect: Rectangul
         bottom_distance = distance(origin, bottom),
         center_distance = distance(origin, ctr);
 
-    let nearest: [number, Side] =
-        left_distance < right_distance ? [left_distance, Side.LEFT] : [right_distance, Side.RIGHT];
+    let nearest: [number, Side] = left_distance < right_distance ?
+        [left_distance, Side.LEFT] :
+        [right_distance, Side.RIGHT];
 
     if (top_distance < nearest[0]) nearest = [top_distance, Side.TOP];
     if (bottom_distance < nearest[0]) nearest = [bottom_distance, Side.BOTTOM];

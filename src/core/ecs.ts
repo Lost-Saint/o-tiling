@@ -195,9 +195,9 @@ export class World {
     ///
     /// Find the first available slot, and increment the generation.
     create_entity(): Entity {
-        const slot = this.free_slots.size > 0
-            ? this.free_slots.values().next().value
-            : undefined;
+        const slot = this.free_slots.size > 0 ?
+            this.free_slots.values().next().value :
+            undefined;
 
         if (slot !== undefined) {
             this.free_slots.delete(slot);
@@ -265,7 +265,6 @@ function swap_remove<T>(array: Array<T>, index: number): T | undefined {
 /** A system registers events, and handles their execution.
  *
  * An executor must be provided for registering events onto.
- *
  */
 export class System<T> extends World {
     #executor: Executor<T>;

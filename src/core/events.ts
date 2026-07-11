@@ -1,5 +1,5 @@
-import * as Window from '../window/window.js';
 import Meta from 'gi://Meta';
+import * as Window from '../window/window.js';
 
 import type { Ext } from '../extension.js';
 import type { Rectangle } from '../utils/rectangle.js';

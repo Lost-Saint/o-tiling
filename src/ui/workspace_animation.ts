@@ -1,7 +1,7 @@
 import Clutter from 'gi://Clutter';
 import Meta from 'gi://Meta';
-import * as WorkspaceAnimation from 'resource:///org/gnome/shell/ui/workspaceAnimation.js';
 import * as Background from 'resource:///org/gnome/shell/ui/background.js';
+import * as WorkspaceAnimation from 'resource:///org/gnome/shell/ui/workspaceAnimation.js';
 
 export type AnimationStyle = 'slide' | 'swing' | 'none';
 
@@ -14,7 +14,8 @@ export class WorkspaceAnimationManager {
 
     private _origCreateBackground = (WorkspaceAnimation as any).WorkspaceBackground.prototype._createBackground;
     private _origEaseProperty = (WorkspaceAnimation as any).MonitorGroup.prototype.ease_property;
-    private _origPrepareWorkspaceSwitch = (WorkspaceAnimation as any).WorkspaceAnimationController.prototype._prepareWorkspaceSwitch;
+    private _origPrepareWorkspaceSwitch =
+        (WorkspaceAnimation as any).WorkspaceAnimationController.prototype._prepareWorkspaceSwitch;
 
     constructor(style: AnimationStyle = 'swing') {
         this._style = style;
@@ -24,7 +25,7 @@ export class WorkspaceAnimationManager {
         if (this._enabled) return;
         this._enabled = true;
 
-        (WorkspaceAnimation as any).WorkspaceBackground.prototype._createBackground = function (this: any) {
+        (WorkspaceAnimation as any).WorkspaceBackground.prototype._createBackground = function(this: any) {
             this._bgManager = { destroy: () => {} };
         };
 
@@ -38,7 +39,8 @@ export class WorkspaceAnimationManager {
 
         (WorkspaceAnimation as any).WorkspaceBackground.prototype._createBackground = this._origCreateBackground;
         (WorkspaceAnimation as any).MonitorGroup.prototype.ease_property = this._origEaseProperty;
-        (WorkspaceAnimation as any).WorkspaceAnimationController.prototype._prepareWorkspaceSwitch = this._origPrepareWorkspaceSwitch;
+        (WorkspaceAnimation as any).WorkspaceAnimationController.prototype._prepareWorkspaceSwitch =
+            this._origPrepareWorkspaceSwitch;
     }
 
     setStyle(style: AnimationStyle): void {
@@ -60,7 +62,7 @@ export class WorkspaceAnimationManager {
     private _patchSwing(): void {
         const original = this._origEaseProperty;
 
-        (WorkspaceAnimation as any).MonitorGroup.prototype.ease_property = function (
+        (WorkspaceAnimation as any).MonitorGroup.prototype.ease_property = function(
             this: any,
             propertyName: string,
             target: number,
@@ -91,7 +93,7 @@ export class WorkspaceAnimationManager {
 
     private _patchStaticBackground(): void {
         const origPrepare = this._origPrepareWorkspaceSwitch;
-        (WorkspaceAnimation as any).WorkspaceAnimationController.prototype._prepareWorkspaceSwitch = function (
+        (WorkspaceAnimation as any).WorkspaceAnimationController.prototype._prepareWorkspaceSwitch = function(
             this: any,
             ...args: any[]
         ) {

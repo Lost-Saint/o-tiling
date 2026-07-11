@@ -2,22 +2,22 @@ import * as arena from '../core/arena.js';
 import * as Ecs from '../core/ecs.js';
 import * as Lib from '../utils/lib.js';
 import * as log from '../utils/log.js';
-import * as movement from '../window/movement.js';
 import * as Rect from '../utils/rectangle.js';
-import * as Node from './node.js';
+import * as movement from '../window/movement.js';
 import * as Fork from './fork.js';
+import * as Node from './node.js';
 
 import * as geom from '../utils/geom.js';
 
 import type { Entity } from '../core/ecs.js';
+import type { Ext } from '../extension.js';
 import type { Rectangle } from '../utils/rectangle.js';
 import type { ShellWindow } from '../window/window.js';
-import type { Ext } from '../extension.js';
 import { Stack } from './stack.js';
 
 const { Arena } = arena;
-import Meta from 'gi://Meta';
 import GLib from 'gi://GLib';
+import Meta from 'gi://Meta';
 const { Movement } = movement;
 
 const { DOWN, UP, LEFT, RIGHT } = Movement;
@@ -105,8 +105,9 @@ export class Forest extends Ecs.World {
             // Skip windows not on target workspace; -1 arranges all.
             // Secondary monitors (ignore-workspace) always pass through.
             if (workspace >= 0 && window.workspace_id() !== workspace) {
-                if (!ext.should_ignore_workspace(window.meta.get_monitor()))
+                if (!ext.should_ignore_workspace(window.meta.get_monitor())) {
                     continue;
+                }
             }
 
             let on_complete = () => {
@@ -251,15 +252,15 @@ export class Forest extends Ecs.World {
             const { x, y, width, height } = fork.area;
 
             const [left, right]: [[number, number, number, number], [number, number, number, number]] =
-                fork.is_horizontal()
-                    ? [
-                          [x, y, width / 2, height],
-                          [x + width / 2, y, width / 2, height],
-                      ]
-                    : [
-                          [x, y, width, height / 2],
-                          [x, y + height / 2, width, height / 2],
-                      ];
+                fork.is_horizontal() ?
+                    [
+                        [x, y, width / 2, height],
+                        [x + width / 2, y, width / 2, height],
+                    ] :
+                    [
+                        [x, y, width, height / 2],
+                        [x, y + height / 2, width, height / 2],
+                    ];
 
             return [new Rect.Rectangle(left), new Rect.Rectangle(right)];
         }
@@ -902,9 +903,9 @@ export class Forest extends Ecs.World {
                 return fork ? this.display_fork(ext, branch.inner.entity, fork, scope + 1) : 'Missing Fork';
             case 2:
                 const window = ext.windows.get(branch.inner.entity);
-                return `Window(${branch.inner.entity}) (${
-                    window ? window.rect().fmt() : 'unknown area'
-                }; parent: ${ext.auto_tiler?.attached.get(branch.inner.entity)})`;
+                return `Window(${branch.inner.entity}) (${window ? window.rect().fmt() : 'unknown area'}; parent: ${
+                    ext.auto_tiler?.attached.get(branch.inner.entity)
+                })`;
             case 3:
                 let fmt = 'Stack(';
 
@@ -950,7 +951,9 @@ function move_window(ext: Ext, window: ShellWindow, rect: Rectangle, on_complete
                 return GLib.SOURCE_REMOVE;
             });
         } else {
-            log.warn(`Window(${window.entity}) does not have an actor after ${retries} retries, and therefore cannot be moved`);
+            log.warn(
+                `Window(${window.entity}) does not have an actor after ${retries} retries, and therefore cannot be moved`,
+            );
         }
         return;
     }

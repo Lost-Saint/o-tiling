@@ -1,11 +1,11 @@
 import GLib from 'gi://GLib';
 import * as log from '../../utils/log.js';
-import * as utils from '../../utils/utils.js';
 import * as result from '../../utils/result.js';
+import * as utils from '../../utils/utils.js';
 import { getGtkCss } from './gtk.js';
 
 const O_TILING_START = '/* === O-TILING START === */';
-const O_TILING_END   = '/* === O-TILING END === */';
+const O_TILING_END = '/* === O-TILING END === */';
 
 /** Removes the O-Tiling block from a gtk.css file (leaves the rest intact). */
 async function removeCssBlock(path: string): Promise<void> {
@@ -21,7 +21,7 @@ async function removeCssBlock(path: string): Promise<void> {
 
     let content = read.value;
     const startIndex = content.indexOf(O_TILING_START);
-    const endIndex   = content.indexOf(O_TILING_END);
+    const endIndex = content.indexOf(O_TILING_END);
 
     if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
         content = content.slice(0, startIndex) + content.slice(endIndex + O_TILING_END.length);
@@ -78,7 +78,7 @@ export async function applyThemeConsistency(style: 'rounded' | 'sharp' = 'rounde
             }
 
             const startIndex = content.indexOf(O_TILING_START);
-            const endIndex   = content.indexOf(O_TILING_END);
+            const endIndex = content.indexOf(O_TILING_END);
 
             if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
                 content = content.slice(0, startIndex) + content.slice(endIndex + O_TILING_END.length);

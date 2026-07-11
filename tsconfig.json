@@ -1,25 +1,25 @@
 {
-    "compilerOptions": {
-        "module": "NodeNext",
-        "moduleResolution": "NodeNext",
-        "outDir": "./dist",
-        "sourceMap": false,
-        "strict": true,
-        "skipLibCheck": true,
-        "target": "ES2022",
-        "lib": [
-            "ES2022"
-        ],
-        "allowJs": true,
-        "rootDir": "src"
-    },
-    "include": [
-        "src/ambient.d.ts",
-        "src/stubs.d.ts",
-        "src/**/*.ts"
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "./dist",
+    "sourceMap": false,
+    "strict": true,
+    "skipLibCheck": true,
+    "target": "ES2022",
+    "lib": [
+      "ES2022"
     ],
-    "exclude": [
-        "node_modules",
-        "dist"
-    ]
+    "allowJs": true,
+    "rootDir": "src"
+  },
+  "include": [
+    "src/ambient.d.ts",
+    "src/stubs.d.ts",
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

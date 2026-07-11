@@ -1,6 +1,6 @@
-import * as result from './result.js';
 import * as error from './error.js';
 import * as log from './log.js';
+import * as result from './result.js';
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
@@ -185,8 +185,6 @@ export function map_eq<K, V>(map1: Map<K, V>, map2: Map<K, V>) {
     return true;
 }
 
-
-
 /** Sets the alpha component of a color string (rgba or hex). */
 export function set_alpha(color: string, alpha: number): string {
     // Handle rgba(r, g, b, a)
@@ -210,7 +208,7 @@ export function set_alpha(color: string, alpha: number): string {
         }
         return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     }
-    
+
     // Named/unparseable colors are returned as-is (using a temp actor to parse alpha would be overkill).
     return color;
 }
@@ -228,4 +226,3 @@ export function isValidColor(color: string): boolean {
 
     return false;
 }
-

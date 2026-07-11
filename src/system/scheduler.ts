@@ -5,7 +5,7 @@ import GLib from 'gi://GLib';
 import type Meta from 'gi://Meta';
 
 let _failed: boolean = false;
-let _checked: boolean = false;   // whether we've checked service existence
+let _checked: boolean = false; // whether we've checked service existence
 let _pending: boolean = false;
 let _foreground: number = 0;
 
@@ -17,10 +17,15 @@ export function setForeground(win: Meta.Window) {
         _checked = true;
         _pending = true;
         Gio.DBus.system.call(
-            'org.freedesktop.DBus', '/org/freedesktop/DBus',
-            'org.freedesktop.DBus', 'NameHasOwner',
+            'org.freedesktop.DBus',
+            '/org/freedesktop/DBus',
+            'org.freedesktop.DBus',
+            'NameHasOwner',
             new GLib.Variant('(s)', ['com.system76.Scheduler']) as any,
-            null, Gio.DBusCallFlags.NONE, 500, null,
+            null,
+            Gio.DBusCallFlags.NONE,
+            500,
+            null,
             (_conn: any, result: any) => {
                 _pending = false;
                 try {
@@ -31,7 +36,7 @@ export function setForeground(win: Meta.Window) {
                     log.debug(`Scheduler DBus NameHasOwner check failed: ${e}`);
                     _failed = true;
                 }
-            }
+            },
         );
     }
 
@@ -70,7 +75,6 @@ export function destroy() {
     _checked = false;
     _pending = false;
 }
-
 
 function errorHandler(error: any) {
     log.debug(`system76-scheduler may not be installed and running: ${error}`);

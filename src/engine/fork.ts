@@ -1,15 +1,15 @@
-import type { Forest } from './forest.js';
 import type { Entity } from '../core/ecs.js';
 import type { Ext } from '../extension.js';
 import type { Rectangle } from '../utils/rectangle.js';
+import type { Forest } from './forest.js';
 import type { Node } from './node.js';
 
+import Meta from 'gi://Meta';
 import * as Ecs from '../core/ecs.js';
 import * as Lib from '../utils/lib.js';
-import * as node from './node.js';
 import * as Rect from '../utils/rectangle.js';
 import { ShellWindow } from '../window/window.js';
-import Meta from 'gi://Meta';
+import * as node from './node.js';
 
 export function get_primary_monitor_index(): number {
     return (global as any).display.get_primary_monitor();
@@ -74,9 +74,9 @@ export class Fork {
     /** The calculated left area of this fork */
     area_of_left(ext: Ext): Rect.Rectangle {
         return new Rect.Rectangle(
-            this.is_horizontal()
-                ? [this.area.x, this.area.y, this.length_left - ext.gap_inner_half, this.area.height]
-                : [this.area.x, this.area.y, this.area.width, this.length_left - ext.gap_inner_half],
+            this.is_horizontal() ?
+                [this.area.x, this.area.y, this.length_left - ext.gap_inner_half, this.area.height] :
+                [this.area.x, this.area.y, this.area.width, this.length_left - ext.gap_inner_half],
         );
     }
 
@@ -383,8 +383,9 @@ export class Fork {
 
     /** Toggles the orientation of this fork */
     toggle_orientation() {
-        this.orientation =
-            Lib.Orientation.HORIZONTAL === this.orientation ? Lib.Orientation.VERTICAL : Lib.Orientation.HORIZONTAL;
+        this.orientation = Lib.Orientation.HORIZONTAL === this.orientation ?
+            Lib.Orientation.VERTICAL :
+            Lib.Orientation.HORIZONTAL;
 
         this.orientation_changed = true;
         if (this.n_toggled === 1) {

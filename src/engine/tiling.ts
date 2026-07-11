@@ -1,20 +1,19 @@
-import * as GrabOp from '../window/grab_op.js';
+import * as exec from '../system/executor.js';
+import * as geom from '../utils/geom.js';
 import * as Lib from '../utils/lib.js';
 import * as Log from '../utils/log.js';
-import * as Node from './node.js';
 import * as Rect from '../utils/rectangle.js';
 import * as Tags from '../utils/tags.js';
+import * as GrabOp from '../window/grab_op.js';
 import * as window from '../window/window.js';
-import * as geom from '../utils/geom.js';
-import * as exec from '../system/executor.js';
-
+import * as Node from './node.js';
 
 import type { Entity } from '../core/ecs.js';
-import type { Rectangle } from '../utils/rectangle.js';
 import type { Ext } from '../extension.js';
-import type { NodeStack } from './node.js';
+import type { Rectangle } from '../utils/rectangle.js';
 import { AutoTiler } from './auto_tiler.js';
 import { Fork } from './fork.js';
+import type { NodeStack } from './node.js';
 
 import Meta from 'gi://Meta';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -147,8 +146,9 @@ export class Tiler {
             changed.y < min_y ||
             // Prevent moving too far down
             changed.y + changed.height > max_y
-        )
+        ) {
             return this;
+        }
 
         overlay.x = changed.x;
         overlay.y = changed.y;
@@ -925,9 +925,9 @@ function move_window_or_monitor(
             if (!next_monitor || focus.meta.get_monitor() == next_window.meta.get_monitor()) return next_window;
 
             // If the next window is not contained within the next display, return the display.
-            return Rect.Rectangle.from_meta(next_monitor[1]).contains(next_window.rect())
-                ? next_window
-                : next_monitor[0];
+            return Rect.Rectangle.from_meta(next_monitor[1]).contains(next_window.rect()) ?
+                next_window :
+                next_monitor[0];
         }
 
         return next_window;

@@ -1,14 +1,13 @@
-import St from 'gi://St';
+import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
-import Clutter from 'gi://Clutter';
 import Shell from 'gi://Shell';
+import St from 'gi://St';
 import { PACKAGE_VERSION } from 'resource:///org/gnome/shell/misc/config.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import * as Utils from '../utils/utils.js';
-import * as log from '../utils/log.js';
 import type { Ext } from '../extension.js';
-
+import * as log from '../utils/log.js';
+import * as Utils from '../utils/utils.js';
 
 // ── Version gate ─────────────────────────────────────────────────────────────
 
@@ -32,9 +31,9 @@ function buildCss(accentColor: string): string {
     const radius = 3;
     const border = 3;
     const innerRadius = radius - border;
-    const activeColor = (accentColor === 'auto' || !Utils.isValidColor(accentColor))
-        ? '#3584e4'
-        : accentColor;
+    const activeColor = (accentColor === 'auto' || !Utils.isValidColor(accentColor)) ?
+        '#3584e4' :
+        accentColor;
 
     return `
         .workspace-thumbnails,
@@ -86,7 +85,6 @@ function buildCss(accentColor: string): string {
     `.replace(/\s+/g, ' ').trim();
 }
 
-
 // ── WorkspaceSwitcherStyle ────────────────────────────────────────────────────
 
 export class WorkspaceSwitcherStyle {
@@ -96,7 +94,6 @@ export class WorkspaceSwitcherStyle {
     private _origMinThumbnailScale: number | null = null;
 
     private _origUpdateMaxThumbnailScale: any = null;
-
 
     constructor(
         accentColor: string,
@@ -126,7 +123,6 @@ export class WorkspaceSwitcherStyle {
             this._file = null;
         }
     }
-
 
     /** Removes the injected CSS from the Shell theme. */
     disable(): void {
@@ -159,10 +155,6 @@ export class WorkspaceSwitcherStyle {
         this._accentColor = rgba;
         this._refresh();
     }
-
-
-
-
 
     private _refresh(): void {
         if (this._file) {
@@ -243,7 +235,7 @@ export class WorkspaceSwitcherStyle {
                 this._origUpdateMaxThumbnailScale = thumbnailsBox._updateMaxThumbnailScale;
 
                 const self = this;
-                thumbnailsBox._updateMaxThumbnailScale = function (this: any, ...args: any[]) {
+                thumbnailsBox._updateMaxThumbnailScale = function(this: any, ...args: any[]) {
                     // Call original to let Shell do its thing (calculating its own internal _maxThumbnailScale)
                     self._origUpdateMaxThumbnailScale.apply(this, args);
 
@@ -281,7 +273,6 @@ export class WorkspaceSwitcherStyle {
         }
     }
 
-
     /** Restores the original _maxThumbnailScale on disable. */
     private _restoreThumbnailScale(): void {
         if (!isGnome50()) return;
@@ -293,10 +284,12 @@ export class WorkspaceSwitcherStyle {
                     this._origUpdateMaxThumbnailScale = null;
                 }
 
-                if (this._origMaxThumbnailScale !== null)
+                if (this._origMaxThumbnailScale !== null) {
                     thumbnailsBox._maxThumbnailScale = this._origMaxThumbnailScale;
-                if (this._origMinThumbnailScale !== null)
+                }
+                if (this._origMinThumbnailScale !== null) {
                     thumbnailsBox._minThumbnailScale = this._origMinThumbnailScale;
+                }
 
                 // Restore alignment
                 thumbnailsBox.set_x_expand(true);
@@ -317,7 +310,6 @@ export class WorkspaceSwitcherStyle {
             null;
     }
 
-
     private _setupAutoScroll(): void {
         const workspace_manager = (global as any).workspace_manager;
 
@@ -334,9 +326,6 @@ export class WorkspaceSwitcherStyle {
             this._applyThumbnailScale();
         }, this);
     }
-
-
-
 
     private _teardownSignals(): void {
         this._teardownAutoScroll();

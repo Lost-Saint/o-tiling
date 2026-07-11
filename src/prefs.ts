@@ -1,11 +1,11 @@
-import Gtk from 'gi://Gtk';
 import Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import Gtk from 'gi://Gtk';
 import { ExtensionPreferences, gettext as _ } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
-import * as log from './utils/log.js';
 import { applyThemeConsistency, restoreGtkDefaults } from './ui/theme_consistency/apply.js';
+import * as log from './utils/log.js';
 
 export default class OTilingPreferences extends ExtensionPreferences {
     async fillPreferencesWindow(window: Adw.PreferencesWindow) {
@@ -35,7 +35,6 @@ export default class OTilingPreferences extends ExtensionPreferences {
         });
         tilingGroup.add(tileByDefault);
         settings.bind('tile-by-default', tileByDefault as any, 'active', Gio.SettingsBindFlags.DEFAULT);
-
 
         const snapToGrid = new Adw.SwitchRow({
             title: _('Snap to Grid (Floating Mode)'),
@@ -139,7 +138,12 @@ export default class OTilingPreferences extends ExtensionPreferences {
             subtitle: _('Show workspace number (e.g. "2 / 4") in the panel instead of the dot indicator'),
         });
         overviewGroup.add(wsNumberIndicatorRow);
-        settings.bind('workspace-number-indicator', wsNumberIndicatorRow as any, 'active', Gio.SettingsBindFlags.DEFAULT);
+        settings.bind(
+            'workspace-number-indicator',
+            wsNumberIndicatorRow as any,
+            'active',
+            Gio.SettingsBindFlags.DEFAULT,
+        );
 
         // Workspace Animation Style
         const wsAnimRow = new Adw.ComboRow({
@@ -204,7 +208,9 @@ export default class OTilingPreferences extends ExtensionPreferences {
 
         const panelTopGapRow = new Adw.SpinRow({
             title: _('Top Smart Gap'),
-            subtitle: _('Gap between the transparent panel and window top edge (replaces top outer gap when panel is fully transparent)'),
+            subtitle: _(
+                'Gap between the transparent panel and window top edge (replaces top outer gap when panel is fully transparent)',
+            ),
             adjustment: new Gtk.Adjustment({ lower: 0, upper: 100, step_increment: 1 }),
         });
         panelGroup.add(panelTopGapRow);
@@ -219,8 +225,6 @@ export default class OTilingPreferences extends ExtensionPreferences {
         panelOpacityRow.connect('notify::value', updatePanelTopGapVisibility);
         // Set initial state
         updatePanelTopGapVisibility();
-
-
 
         // Aura Master Group
         const auraMasterGroup = new Adw.PreferencesGroup({
@@ -357,9 +361,9 @@ export default class OTilingPreferences extends ExtensionPreferences {
         try {
             const initialOverlayColor = new Gdk.RGBA();
             // Fall back to hint-color-rgba which already resolves 'auto' → accent
-            const colorStringToParse = overlayIsCustom
-                ? currentOverlayVal
-                : settings.get_string('hint-color-rgba');
+            const colorStringToParse = overlayIsCustom ?
+                currentOverlayVal :
+                settings.get_string('hint-color-rgba');
             if (initialOverlayColor.parse(colorStringToParse)) {
                 overlayColorButton.rgba = initialOverlayColor;
             }
@@ -440,7 +444,12 @@ export default class OTilingPreferences extends ExtensionPreferences {
             subtitle: _('Automatically move the mouse pointer when focus changes'),
         });
         behaviorGroup.add(mouseFollows);
-        settings.bind('mouse-cursor-follows-active-window', mouseFollows as any, 'active', Gio.SettingsBindFlags.DEFAULT);
+        settings.bind(
+            'mouse-cursor-follows-active-window',
+            mouseFollows as any,
+            'active',
+            Gio.SettingsBindFlags.DEFAULT,
+        );
 
         const stackingWithMouse = new Adw.SwitchRow({
             title: _('Allow Stacking with Mouse'),
@@ -454,7 +463,7 @@ export default class OTilingPreferences extends ExtensionPreferences {
             subtitle: _('Enable detailed logging for debugging purposes'),
         });
         behaviorGroup.add(debugMode);
-        
+
         debugMode.active = settings.get_uint('log-level') === 4;
         debugMode.connect('notify::active', () => {
             settings.set_uint('log-level', debugMode.active ? 4 : 0);
@@ -465,7 +474,6 @@ export default class OTilingPreferences extends ExtensionPreferences {
                 debugMode.active = isDebug;
             }
         });
-
 
         // Gaps Group
         const gapsGroup = new Adw.PreferencesGroup({
@@ -580,7 +588,7 @@ export default class OTilingPreferences extends ExtensionPreferences {
 
         resetButton.connect('clicked', () => {
             const keys = settings.list_keys();
-            keys.forEach(key => settings.reset(key));
+            keys.forEach((key) => settings.reset(key));
 
             // Manual overrides from original indicator logic
             settings.set_uint('gap-inner', 4);
@@ -603,7 +611,7 @@ export default class OTilingPreferences extends ExtensionPreferences {
         // Update settings when text changes
         row.connect('notify::text', () => {
             const text = row.text;
-            const values = text.split(',').map(s => s.trim()).filter(s => s.length > 0);
+            const values = text.split(',').map((s) => s.trim()).filter((s) => s.length > 0);
             settings.set_strv(key, values);
         });
     }

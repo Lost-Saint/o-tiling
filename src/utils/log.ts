@@ -19,7 +19,9 @@ export function init_log_level(settings: any): () => void {
     const id = settings.connect('changed::log-level', () => {
         _level = settings.get_uint('log-level');
     });
-    return () => { if (id) settings.disconnect(id); };
+    return () => {
+        if (id) settings.disconnect(id);
+    };
 }
 
 /**

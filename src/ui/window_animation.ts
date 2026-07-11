@@ -27,16 +27,19 @@ export class WindowAnimationManager {
 
         const manager = this;
 
-        wm._mapWindow = function (shellwm: any, actor: any) {
-            if (manager._style === 'default')
+        wm._mapWindow = function(shellwm: any, actor: any) {
+            if (manager._style === 'default') {
                 return manager._origMapWindow.call(this, shellwm, actor);
+            }
 
             actor._windowType = actor.meta_window.get_window_type();
             actor.meta_window.connectObject('notify::window-type', () => {
                 const type = actor.meta_window.get_window_type();
                 if (type === actor._windowType) return;
-                if (type === Meta.WindowType.MODAL_DIALOG ||
-                    actor._windowType === Meta.WindowType.MODAL_DIALOG) {
+                if (
+                    type === Meta.WindowType.MODAL_DIALOG ||
+                    actor._windowType === Meta.WindowType.MODAL_DIALOG
+                ) {
                     const parent = actor.get_meta_window().get_transient_for();
                     if (parent) (wm as any)._checkDimming(parent);
                 }
@@ -47,8 +50,9 @@ export class WindowAnimationManager {
                 if (parent) (wm as any)._checkDimming(parent);
             });
 
-            if (actor.meta_window.is_attached_dialog())
+            if (actor.meta_window.is_attached_dialog()) {
                 (wm as any)._checkDimming(actor.get_meta_window().get_transient_for());
+            }
 
             const types = [
                 Meta.WindowType.NORMAL,
@@ -82,15 +86,17 @@ export class WindowAnimationManager {
             });
         };
 
-        wm._destroyWindow = function (shellwm: any, actor: any) {
-            if (manager._style === 'default')
+        wm._destroyWindow = function(shellwm: any, actor: any) {
+            if (manager._style === 'default') {
                 return manager._origDestroyWindow.call(this, shellwm, actor);
+            }
 
             const window = actor.meta_window;
             window.disconnectObject(actor);
 
-            if (window.is_attached_dialog())
+            if (window.is_attached_dialog()) {
                 (wm as any)._checkDimming(window.get_transient_for());
+            }
 
             const types = [
                 Meta.WindowType.NORMAL,
@@ -148,9 +154,9 @@ export class WindowAnimationManager {
             return;
         }
 
-        const mode = this._style === 'hyprland'
-            ? Clutter.AnimationMode.EASE_OUT_EXPO
-            : Clutter.AnimationMode.EASE_OUT_CUBIC;
+        const mode = this._style === 'hyprland' ?
+            Clutter.AnimationMode.EASE_OUT_EXPO :
+            Clutter.AnimationMode.EASE_OUT_CUBIC;
 
         commit();
         actor.translation_x = actor.x - x;

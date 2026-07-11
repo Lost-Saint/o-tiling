@@ -1,0 +1,46 @@
+{
+  "$schema": "https://dprint.dev/schemas/v0.json",
+  "lineWidth": 120,
+  "indentWidth": 4,
+  "useTabs": false,
+  "newLineKind": "lf",
+  "includes": [
+    "src/**/*.ts",
+    "scripts/**/*.mjs",
+    "eslint.config.js",
+    "dprint.json",
+    "package.json",
+    "tsconfig.json",
+    "metadata.json",
+    "README.md"
+  ],
+  "excludes": [
+    "dist/**",
+    "node_modules/**",
+    "pnpm-lock.yaml",
+    "schemas/gschemas.compiled"
+  ],
+  "typescript": {
+    "quoteStyle": "alwaysSingle",
+    "jsx.quoteStyle": "preferSingle",
+    "semiColons": "always",
+    "trailingCommas": "onlyMultiLine",
+    "operatorPosition": "sameLine",
+    "arrowFunction.useParentheses": "force",
+    "enumDeclaration.memberSpacing": "newLine"
+  },
+  "json": {
+    "indentWidth": 2,
+    "trailingCommas": "never"
+  },
+  "markdown": {
+    "textWrap": "maintain",
+    "emphasisKind": "asterisks",
+    "strongKind": "asterisks"
+  },
+  "plugins": [
+    "https://plugins.dprint.dev/typescript-0.96.1.wasm",
+    "https://plugins.dprint.dev/json-0.21.3.wasm",
+    "https://plugins.dprint.dev/markdown-0.22.1.wasm"
+  ]
+}

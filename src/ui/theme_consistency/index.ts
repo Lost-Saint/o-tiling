@@ -1,7 +1,7 @@
-import GLib from 'gi://GLib';
-import Gio from 'gi://Gio';
-import St from 'gi://St';
 import Clutter from 'gi://Clutter';
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
+import St from 'gi://St';
 import * as log from '../../utils/log.js';
 import { getGnomeShellCss } from './gnome_shell.js';
 
@@ -15,7 +15,7 @@ export class ThemeConsistencyManager {
 
     enable(style: 'rounded' | 'sharp' = 'rounded'): void {
         if (this._file && this._currentStyle === style) return;
-        
+
         if (this._file) {
             this.disable();
         }

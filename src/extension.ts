@@ -1,48 +1,45 @@
-import * as Config from './system/config.js';
-import * as Forest from './engine/forest.js';
 import * as Ecs from './core/ecs.js';
 import * as Events from './core/events.js';
-import * as Focus from './window/focus.js';
-import * as Geom from './utils/geom.js';
-import * as GrabOp from './window/grab_op.js';
+import * as auto_tiler from './engine/auto_tiler.js';
+import * as Forest from './engine/forest.js';
+import * as node from './engine/node.js';
+import * as Tiling from './engine/tiling.js';
+import * as Config from './system/config.js';
+import * as Executor from './system/executor.js';
 import * as Keybindings from './system/keybindings.js';
+import * as Settings from './system/settings.js';
+import * as add_exception from './ui/dialog_add_exception.js';
+import * as PanelSettings from './ui/panel_settings.js';
+import * as Geom from './utils/geom.js';
 import * as Lib from './utils/lib.js';
 import * as log from './utils/log.js';
-import * as PanelSettings from './ui/panel_settings.js';
 import * as Rect from './utils/rectangle.js';
-import * as Settings from './system/settings.js';
-import * as Tiling from './engine/tiling.js';
-import * as Window from './window/window.js';
-import * as auto_tiler from './engine/auto_tiler.js';
-import * as node from './engine/node.js';
 import * as utils from './utils/utils.js';
-import * as add_exception from './ui/dialog_add_exception.js';
-import * as Executor from './system/executor.js';
+import * as Focus from './window/focus.js';
+import * as GrabOp from './window/grab_op.js';
+import * as Window from './window/window.js';
 const exec = Executor;
-import * as movement from './window/movement.js';
 import * as stack from './engine/stack.js';
 import { WindowButtonsManager } from './system/window_buttons.js';
+import * as movement from './window/movement.js';
 
-
-import * as dbus_service from './system/dbus_service.js';
-import * as scheduler from './system/scheduler.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import type { Entity } from './core/ecs.js';
 import type { ExtEvent } from './core/events.js';
-import { Rectangle } from './utils/rectangle.js';
+import * as dbus_service from './system/dbus_service.js';
+import * as scheduler from './system/scheduler.js';
+import { OverviewLayoutManager } from './ui/overview_layout.js';
 import type { Indicator } from './ui/panel_settings.js';
 import type { WorkspaceNumberIndicator } from './ui/panel_settings.js';
-import { WorkspaceSwitcherStyle, isGnome50 } from './ui/workspace_switcher_style.js';
-import { WorkspaceAnimationManager } from './ui/workspace_animation.js';
-import type { AnimationStyle } from './ui/workspace_animation.js';
+import { PanelTransparencyManager } from './ui/panel_transparency.js';
+import { applyThemeConsistency, restoreGtkDefaults } from './ui/theme_consistency/apply.js';
+import { ThemeConsistencyManager } from './ui/theme_consistency/index.js';
 import { WindowAnimationManager } from './ui/window_animation.js';
 import type { WindowAnimationStyle } from './ui/window_animation.js';
-import { ThemeConsistencyManager } from './ui/theme_consistency/index.js';
-import { PanelTransparencyManager } from './ui/panel_transparency.js';
-import { OverviewLayoutManager } from './ui/overview_layout.js';
-import { applyThemeConsistency, restoreGtkDefaults } from './ui/theme_consistency/apply.js';
-
-
+import { WorkspaceAnimationManager } from './ui/workspace_animation.js';
+import type { AnimationStyle } from './ui/workspace_animation.js';
+import { isGnome50, WorkspaceSwitcherStyle } from './ui/workspace_switcher_style.js';
+import { Rectangle } from './utils/rectangle.js';
 
 import { Fork } from './engine/fork.js';
 
@@ -52,13 +49,13 @@ const wom = (global as any).workspace_manager;
 
 const Movement = movement.Movement;
 
-import GLib from 'gi://GLib';
-import Gio from 'gi://Gio';
-import St from 'gi://St';
-import Shell from 'gi://Shell';
-import Meta from 'gi://Meta';
-import GObject from 'gi://GObject';
 import Clutter from 'gi://Clutter';
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
+import GObject from 'gi://GObject';
+import Meta from 'gi://Meta';
+import Shell from 'gi://Shell';
+import St from 'gi://St';
 // Mtk is available in GNOME 45+; all our supported versions (46-50) have it
 import Mtk from 'gi://Mtk';
 const { GlobalEvent, WindowEvent } = Events;
@@ -80,11 +77,11 @@ const {
 import { WindowSwitcherPopup } from 'resource:///org/gnome/shell/ui/altTab.js';
 import { Workspace } from 'resource:///org/gnome/shell/ui/workspace.js';
 // @ts-ignore
-import { WorkspaceThumbnail } from 'resource:///org/gnome/shell/ui/workspaceThumbnail.js';
-import { WindowPreview } from 'resource:///org/gnome/shell/ui/windowPreview.js';
 import { PACKAGE_VERSION } from 'resource:///org/gnome/shell/misc/config.js';
-import * as Tags from './utils/tags.js';
+import { WindowPreview } from 'resource:///org/gnome/shell/ui/windowPreview.js';
+import { WorkspaceThumbnail } from 'resource:///org/gnome/shell/ui/workspaceThumbnail.js';
 import { get_current_path } from './utils/paths.js';
+import * as Tags from './utils/tags.js';
 
 const STYLESHEET_PATH = stylesheet_path('stylesheet');
 const STYLESHEET = Gio.File.new_for_path(STYLESHEET_PATH);
@@ -116,8 +113,6 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     // State
 
-
-
     button: any = null;
     button_gio_icon_auto_on: any = null;
     button_gio_icon_auto_off: any = null;
@@ -128,8 +123,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     column_size: number = 32; // Column sizes in snap-to-grid
 
-
-    _timeouts: { [key: string]: number | null } = {};
+    _timeouts: { [key: string]: number | null; } = {};
 
     row_size: number = 32; // Row size in snap-to-grid
 
@@ -144,12 +138,11 @@ export class Ext extends Ecs.System<ExtEvent> {
     private _settings_signal_ids: Array<[any, number]> = [];
     private _log_level_cleanup: (() => void) | null = null;
 
-
     displays: [number, Map<number, Display>] = [0, new Map()]; // The known display configuration, for tracking monitor removals and changes
 
     disabled_workspaces: Set<number> = new Set(); // Workspaces where tiling is manually disabled
 
-    dpi: number = St.ThemeContext.get_for_stage(((global as any).stage as any)).scale_factor; // The current scaling factor in GNOME Shell
+    dpi: number = St.ThemeContext.get_for_stage((global as any).stage as any).scale_factor; // The current scaling factor in GNOME Shell
 
     drag_signal: null | SignalID = null;
 
@@ -226,8 +219,6 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     tiler: Tiling.Tiler = new Tiling.Tiler(this); // Calculates window placements when tiling and focus-switching
 
-
-
     theme_consistency_handler: ThemeConsistencyManager | null = null; // Manages theme consistency (session injection)
 
     panel_transparency_handler: PanelTransparencyManager | null = null; // Manages panel transparency CSS injection
@@ -235,7 +226,6 @@ export class Ext extends Ecs.System<ExtEvent> {
     overview_layout_manager: OverviewLayoutManager | null = null; // Manages overview window positioning to match tiling
 
     window_buttons_manager: WindowButtonsManager | null = null; // Manages window management buttons (min/max/close)
-
 
     _indicator_updating: boolean = false;
     _resume_timeout_source: number | null = null;
@@ -273,7 +263,9 @@ export class Ext extends Ecs.System<ExtEvent> {
                     if (original) {
                         this._original_focus_change_on_pointer_rest = true;
                         this.settings.set_focus_change_on_pointer_rest(false);
-                        log.info('Auto-disabled Mutter focus-change-on-pointer-rest to prevent Wayland compositor crashes');
+                        log.info(
+                            'Auto-disabled Mutter focus-change-on-pointer-rest to prevent Wayland compositor crashes',
+                        );
                     }
                 }
             } catch (e) {
@@ -282,7 +274,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         }
         this._log_level_cleanup = log.init_log_level(this.settings.ext);
         this.overlay = new St.BoxLayout({
-            style_class: "o-tiling-overlay",
+            style_class: 'o-tiling-overlay',
             visible: false,
             reactive: false,
         });
@@ -296,19 +288,19 @@ export class Ext extends Ecs.System<ExtEvent> {
         this.conf.reload().catch((e: any) => log.error(e));
 
         if (this.settings.int) {
-            const id1 = this.settings.int.connect("changed::gtk-theme", () => {
+            const id1 = this.settings.int.connect('changed::gtk-theme', () => {
                 this.register(Events.global(GlobalEvent.GtkThemeChanged));
             });
             this._settings_signal_ids.push([this.settings.int, id1]);
 
-            const id2 = this.settings.int.connect("changed::accent-color", () => {
+            const id2 = this.settings.int.connect('changed::accent-color', () => {
                 this.register(Events.global(GlobalEvent.GtkThemeChanged));
             });
             this._settings_signal_ids.push([this.settings.int, id2]);
         }
 
         if (this.settings.shell) {
-            const id3 = this.settings.shell.connect("changed::name", () => {
+            const id3 = this.settings.shell.connect('changed::name', () => {
                 this.register(Events.global(GlobalEvent.GtkShellChanged));
             });
             this._settings_signal_ids.push([this.settings.shell, id3]);
@@ -325,8 +317,6 @@ export class Ext extends Ecs.System<ExtEvent> {
         });
         this._settings_signal_ids.push([this.settings.ext, id_ws_accent]);
 
-
-
         const id_theme_style = this.settings.ext.connect('changed::theme-consistency-style', () => {
             this.toggle_theme_consistency(this.settings.theme_consistency_style());
         });
@@ -342,7 +332,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         const id_panel_opacity = this.settings.ext.connect('changed::panel-transparency-opacity', () => {
             this.panel_transparency_handler?.updateOpacity(
-                this.settings.panel_transparency_opacity()
+                this.settings.panel_transparency_opacity(),
             );
             // Recompute top gap — opacity=0 enables the smart top gap
             this.on_gap_top();
@@ -399,8 +389,6 @@ export class Ext extends Ecs.System<ExtEvent> {
         this.window_animation_handler.enable();
         this.toggle_theme_consistency(this.settings.theme_consistency_style(), false);
         this.toggle_panel_transparency(this.settings.panel_transparency(), false);
-
-
 
         this.overview_layout_manager = new OverviewLayoutManager(this);
         this.overview_layout_manager.enable();
@@ -507,7 +495,6 @@ export class Ext extends Ecs.System<ExtEvent> {
             }
             this._original_focus_change_on_pointer_rest = null;
         }
-
 
         for (const key of Object.keys(this._timeouts)) {
             const id = this._timeouts[key];
@@ -636,8 +623,13 @@ export class Ext extends Ecs.System<ExtEvent> {
 
                     const { x, y, width, height } = movement;
 
-                    this.window_animation_handler.applyMove(actor as any, x, y, width, height, () =>
-                        window.meta.move_resize_frame(true, x, y, width, height),
+                    this.window_animation_handler.applyMove(
+                        actor as any,
+                        x,
+                        y,
+                        width,
+                        height,
+                        () => window.meta.move_resize_frame(true, x, y, width, height),
                     );
 
                     this.monitors.insert(window.entity, [win.meta.get_monitor(), win.workspace_id()]);
@@ -907,7 +899,6 @@ export class Ext extends Ecs.System<ExtEvent> {
             ipc.stdout.read_line_async(0, ipc.cancellable, generator);
         }
     }
-
 
     exception_select() {
         if (this._timeouts['exception_select_timeout'] != null) {
@@ -1213,7 +1204,6 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         const stack = window.stack;
 
-
         this.window_signals.take_with(win, (signals) => {
             for (const signal of signals) {
                 if (window.meta && signal) {
@@ -1318,8 +1308,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         if (this.conf.log_on_focus) {
             win.cmdline().then((cmd: any) => {
-                let msg =
-                    `focused Window(${win.entity}) {\n` +
+                let msg = `focused Window(${win.entity}) {\n` +
                     `  class: "${win.meta.get_wm_class()}",\n` +
                     `  cmdline: ${cmd},\n` +
                     `  monitor: ${win.meta.get_monitor()},\n` +
@@ -1385,8 +1374,10 @@ export class Ext extends Ecs.System<ExtEvent> {
                 const b = focus.border;
                 if (b && b.visible) return;
             }
-            if (focus && Window.clutter_focus_is_shell_panel() &&
-                this._bordered_entity !== null) {
+            if (
+                focus && Window.clutter_focus_is_shell_panel() &&
+                this._bordered_entity !== null
+            ) {
                 return;
             }
 
@@ -1457,8 +1448,8 @@ export class Ext extends Ecs.System<ExtEvent> {
             work = win.meta.get_workspace().index();
 
             for (const [, compare] of this.windows.iter()) {
-                const is_same_space =
-                    compare.meta.get_monitor() === mon && compare.meta.get_workspace().index() === work;
+                const is_same_space = compare.meta.get_monitor() === mon &&
+                    compare.meta.get_workspace().index() === work;
 
                 if (
                     is_same_space &&
@@ -1488,8 +1479,8 @@ export class Ext extends Ecs.System<ExtEvent> {
 
     /** Recompute gap_top based on panel transparency state */
     compute_gap_top() {
-        const is_fully_transparent = this.settings.panel_transparency()
-            && this.settings.panel_transparency_opacity() === 0;
+        const is_fully_transparent = this.settings.panel_transparency() &&
+            this.settings.panel_transparency_opacity() === 0;
         if (is_fully_transparent) {
             this.gap_top = this.settings.panel_top_gap() * 4 * this.dpi;
         } else {
@@ -1514,7 +1505,10 @@ export class Ext extends Ecs.System<ExtEvent> {
                 const fork = this.auto_tiler.forest.forks.get(entity);
                 if (fork) {
                     this.auto_tiler.update_toplevel(
-                        this, fork, fork.monitor, this.settings.smart_gaps()
+                        this,
+                        fork,
+                        fork.monitor,
+                        this.settings.smart_gaps(),
                     );
                 }
             }
@@ -1750,7 +1744,7 @@ export class Ext extends Ecs.System<ExtEvent> {
 
                 this.register(Events.window_move(this, win, rect));
             } else {
-                win.move(this, rect, () => { });
+                win.move(this, rect, () => {});
                 // if the resulting dimensions of rect == next
                 if (rect.width == next_area.width && rect.height == next_area.height) {
                     Lib.maximize(win.meta);
@@ -1952,9 +1946,9 @@ export class Ext extends Ecs.System<ExtEvent> {
 
                     if (attach_to === null) {
                         if (fork.left.inner.kind === 2 && fork.right?.inner.kind === 2) {
-                            const attaching = fork.left.is_window(entity)
-                                ? fork.right.inner.entity
-                                : fork.left.inner.entity;
+                            const attaching = fork.left.is_window(entity) ?
+                                fork.right.inner.entity :
+                                fork.left.inner.entity;
 
                             attach_to = this.windows.get(attaching);
                         }
@@ -1971,11 +1965,10 @@ export class Ext extends Ecs.System<ExtEvent> {
                     } else if (attach_to) {
                         const is_sibling = this.auto_tiler.windows_are_siblings(entity, attach_to.entity);
 
-                        [area, monitor_attachment] =
-                            (win.stack === null && attach_to.stack === null && is_sibling) ||
-                                (win.stack === null && is_sibling)
-                                ? [fork.area, false]
-                                : [attach_to.meta.get_frame_rect(), false];
+                        [area, monitor_attachment] = (win.stack === null && attach_to.stack === null && is_sibling) ||
+                                (win.stack === null && is_sibling) ?
+                            [fork.area, false] :
+                            [attach_to.meta.get_frame_rect(), false];
                     } else {
                         return true;
                     }
@@ -2007,14 +2000,13 @@ export class Ext extends Ecs.System<ExtEvent> {
                         half_height = Lib.round_increment(half_height, grid_h);
                     }
 
-                    const new_area: [number, number, number, number] =
-                        orientation === Lib.Orientation.HORIZONTAL
-                            ? swap
-                                ? [area.x, area.y, half_width, area.height]
-                                : [area.x + area.width - half_width, area.y, half_width, area.height]
-                            : swap
-                                ? [area.x, area.y, area.width, half_height]
-                                : [area.x, area.y + area.height - half_height, area.width, half_height];
+                    const new_area: [number, number, number, number] = orientation === Lib.Orientation.HORIZONTAL ?
+                        swap ?
+                            [area.x, area.y, half_width, area.height] :
+                            [area.x + area.width - half_width, area.y, half_width, area.height] :
+                        swap ?
+                        [area.x, area.y, area.width, half_height] :
+                        [area.x, area.y + area.height - half_height, area.width, half_height];
 
                     this.overlay.x = new_area[0];
                     this.overlay.y = new_area[1];
@@ -2183,7 +2175,6 @@ export class Ext extends Ecs.System<ExtEvent> {
     on_show_window_titles() {
         const show_title = this.settings.show_title();
 
-
         for (const window of this.windows.values()) {
             if (window.is_client_decorated()) continue;
 
@@ -2211,8 +2202,6 @@ export class Ext extends Ecs.System<ExtEvent> {
         const win = this.get_window(window);
         if (win) {
             const entity = win.entity;
-
-
 
             actor.connect('destroy', () => {
                 this.on_destroy(entity);
@@ -2500,7 +2489,6 @@ export class Ext extends Ecs.System<ExtEvent> {
                         _hide_skip_taskbar_windows();
                     }
                     break;
-
             }
         });
 
@@ -2539,7 +2527,11 @@ export class Ext extends Ecs.System<ExtEvent> {
                     return;
                 }
 
-                log.debug(`notify::focus-window fired, get_focus_window=${(global as any).display.get_focus_window()?.get_wm_class() ?? 'null'}`);
+                log.debug(
+                    `notify::focus-window fired, get_focus_window=${
+                        (global as any).display.get_focus_window()?.get_wm_class() ?? 'null'
+                    }`,
+                );
 
                 const refocus_tiled_window = () => {
                     // Re-focus a window that was unfocused.
@@ -2556,7 +2548,9 @@ export class Ext extends Ecs.System<ExtEvent> {
 
                     // Transient null-focus (mouse in gap) — window still owns focus, just refresh border.
                     if (window && window.meta.appears_focused) {
-                        log.debug(`refocus_tiled_window: gap-hover guard — ${window.meta.get_wm_class()} still appears_focused, skipping activate()`);
+                        log.debug(
+                            `refocus_tiled_window: gap-hover guard — ${window.meta.get_wm_class()} still appears_focused, skipping activate()`,
+                        );
                         this.show_border_on_focused();
                         return;
                     }
@@ -2600,14 +2594,18 @@ export class Ext extends Ecs.System<ExtEvent> {
                     } else if (this.auto_tiler) {
                         // Skip refocusing if a panel popup (calendar/notifications) temporarily hijacks focus.
                         if (Window.clutter_focus_is_shell_panel()) {
-                            log.debug(`focus-window null: shell-panel/popup actor holds Clutter focus — skipping refocus`);
+                            log.debug(
+                                `focus-window null: shell-panel/popup actor holds Clutter focus — skipping refocus`,
+                            );
                             return;
                         }
                         // Skip refocus if the bordered window still appears focused (transient null-focus, e.g. gap hover).
                         if (this._bordered_entity !== null) {
                             const _bw = this.windows.get(this._bordered_entity);
                             if (_bw?.meta.appears_focused) {
-                                log.debug(`focus-window null: bordered entity ${_bw.meta.get_wm_class()} still appears_focused — skipping refocus`);
+                                log.debug(
+                                    `focus-window null: bordered entity ${_bw.meta.get_wm_class()} still appears_focused — skipping refocus`,
+                                );
                                 return;
                             }
                         }
@@ -2674,10 +2672,13 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.prev_focused = [null, null];
         });
 
-        this.connect(St.ThemeContext.get_for_stage(((global as any).stage as any)) as any, 'notify::scale-factor', () => this.update_scale());
+        this.connect(
+            St.ThemeContext.get_for_stage((global as any).stage as any) as any,
+            'notify::scale-factor',
+            () => this.update_scale(),
+        );
 
         // Modes
-
 
         // Post-init
 
@@ -3057,9 +3058,9 @@ export class Ext extends Ecs.System<ExtEvent> {
 
         // 7. Update panel icon to on/off based on auto_tiler state
         if (this.button) {
-            this.button.icon.gicon = this.auto_tiler
-                ? this.button_gio_icon_auto_on
-                : this.button_gio_icon_auto_off;
+            this.button.icon.gicon = this.auto_tiler ?
+                this.button_gio_icon_auto_on :
+                this.button_gio_icon_auto_off;
         }
 
         if (indicator) {
@@ -3121,8 +3122,6 @@ export class Ext extends Ecs.System<ExtEvent> {
             this.settings.set_workspace_switcher_style(enabled);
         }
     }
-
-
 
     /** Enables / updates the workspace animation style (static wallpaper + window swing). */
     toggle_workspace_animation(style: AnimationStyle, save: boolean = true) {
@@ -3277,7 +3276,7 @@ export class Ext extends Ecs.System<ExtEvent> {
         this.moved_by_mouse = false;
     }
 
-    update_display_configuration_before() { }
+    update_display_configuration_before() {}
 
     update_display_configuration(workareas_only: boolean) {
         if (!this.auto_tiler || sessionMode.isLocked) return;
@@ -3419,7 +3418,12 @@ export class Ext extends Ecs.System<ExtEvent> {
         for (const monitor of layoutManager.monitors) {
             const mon = monitor as unknown as Monitor;
 
-            const m_rect = new Rectangle([(monitor as any).x, (monitor as any).y, (monitor as any).width, (monitor as any).height]);
+            const m_rect = new Rectangle([
+                (monitor as any).x,
+                (monitor as any).y,
+                (monitor as any).width,
+                (monitor as any).height,
+            ]);
             const ws = this.monitor_work_area(mon.index);
 
             updated.set(mon.index, { area: m_rect, ws });
@@ -3508,7 +3512,7 @@ export class Ext extends Ecs.System<ExtEvent> {
     }
 
     update_scale() {
-        const new_dpi = St.ThemeContext.get_for_stage(((global as any).stage as any)).scale_factor;
+        const new_dpi = St.ThemeContext.get_for_stage((global as any).stage as any).scale_factor;
         this.dpi = new_dpi;
 
         // Reload gap and grid values using the new DPI to avoid scaling errors.
@@ -3582,7 +3586,10 @@ export class Ext extends Ecs.System<ExtEvent> {
                 });
             };
 
-            if (this.auto_tiler && !win.meta.minimized && win.is_tilable(this) && this.is_workspace_tiled(win.workspace_id())) {
+            if (
+                this.auto_tiler && !win.meta.minimized && win.is_tilable(this) &&
+                this.is_workspace_tiled(win.workspace_id())
+            ) {
                 const id = actor.connect('first-frame', () => {
                     // Recover prev_focused from workspace_active if empty before tiling.
                     if (this.auto_tiler && !this.previously_focused(win)) {
@@ -3641,9 +3648,9 @@ export class Ext extends Ecs.System<ExtEvent> {
     }
 
     workspace_id(window: Window.ShellWindow | null = null): [number, number] {
-        const id: [number, number] = window
-            ? [window.meta.get_monitor(), window.workspace_id()]
-            : [this.active_monitor(), this.active_workspace()];
+        const id: [number, number] = window ?
+            [window.meta.get_monitor(), window.workspace_id()] :
+            [this.active_monitor(), this.active_workspace()];
 
         id[0] = Math.max(0, id[0]);
         id[1] = Math.max(0, id[1]);
@@ -3769,9 +3776,12 @@ const handler = windowAttentionHandler;
 
 function enable_window_attention_handler() {
     if (handler && !handler._windowDemandsAttentionId) {
-        handler._windowDemandsAttentionId = (global as any).display.connect('window-demands-attention', (display: any, window: any) => {
-            handler._onWindowDemandsAttention(display, window);
-        });
+        handler._windowDemandsAttentionId = (global as any).display.connect(
+            'window-demands-attention',
+            (display: any, window: any) => {
+                handler._onWindowDemandsAttention(display, window);
+            },
+        );
     }
 }
 
@@ -3795,7 +3805,6 @@ function _toggle_quick_settings_indicator(enable: boolean): void {
     }
 }
 
-
 function _toggle_workspace_number_indicator(enable: boolean): void {
     const currentPanel = (Main as any).panel;
     if (!currentPanel) return;
@@ -3803,9 +3812,7 @@ function _toggle_workspace_number_indicator(enable: boolean): void {
     // Show/hide GNOME's built-in workspace indicator (the dot strip)
     const builtinIndicator = currentPanel.statusArea?.['activities'] ??
         currentPanel.statusArea?.['workspace-indicator'] ??
-        currentPanel._leftBox?.get_children()?.find((c: any) =>
-            c.style_class?.includes('workspace-indicator')
-        ) ?? null;
+        currentPanel._leftBox?.get_children()?.find((c: any) => c.style_class?.includes('workspace-indicator')) ?? null;
 
     if (enable) {
         if (!workspace_number_indicator) {
@@ -3831,7 +3838,7 @@ function stylesheet_path(name: string) {
 // Supplements the loaded theme with the extension's theme.
 function load_theme(): string | any {
     try {
-        const theme_context = St.ThemeContext.get_for_stage(((global as any).stage as any));
+        const theme_context = St.ThemeContext.get_for_stage((global as any).stage as any);
         const existing_theme: null | any = theme_context.get_theme();
 
         // get_theme() returns null if no custom theme — use new St.Theme()
@@ -3863,15 +3870,17 @@ let default_isoverviewwindow_ws: any = null;
 let default_isoverviewwindow_ws_thumbnail: any = null;
 
 // Determine method name once (works for GNOME 46-48 and 49-50).
-const WS_OVERVIEW_KEY: string | null =
-    '_isOverviewWindow' in (Workspace.prototype as any) ? '_isOverviewWindow'
-        : 'isOverviewWindow' in (Workspace.prototype as any) ? 'isOverviewWindow'
-            : null;
+const WS_OVERVIEW_KEY: string | null = '_isOverviewWindow' in (Workspace.prototype as any) ?
+    '_isOverviewWindow' :
+    'isOverviewWindow' in (Workspace.prototype as any) ?
+    'isOverviewWindow' :
+    null;
 
-const WST_OVERVIEW_KEY: string | null =
-    '_isOverviewWindow' in (WorkspaceThumbnail.prototype as any) ? '_isOverviewWindow'
-        : 'isOverviewWindow' in (WorkspaceThumbnail.prototype as any) ? 'isOverviewWindow'
-            : null;
+const WST_OVERVIEW_KEY: string | null = '_isOverviewWindow' in (WorkspaceThumbnail.prototype as any) ?
+    '_isOverviewWindow' :
+    'isOverviewWindow' in (WorkspaceThumbnail.prototype as any) ?
+    'isOverviewWindow' :
+    null;
 let default_init_appswitcher: any;
 let default_getwindowlist_windowswitcher: any;
 let default_getcaption_windowpreview: any;
@@ -3881,14 +3890,13 @@ let default_getcaption_workspace: any;
 function _show_skip_taskbar_windows(ext: Ext) {
     // Handle the overview
     if (WS_OVERVIEW_KEY && default_isoverviewwindow_ws === null) {
-        default_isoverviewwindow_ws =
-            (Workspace.prototype as any)[WS_OVERVIEW_KEY] ?? null;
-        (Workspace.prototype as any)[WS_OVERVIEW_KEY] = function (win: any) {
+        default_isoverviewwindow_ws = (Workspace.prototype as any)[WS_OVERVIEW_KEY] ?? null;
+        (Workspace.prototype as any)[WS_OVERVIEW_KEY] = function(win: any) {
             const meta_win = win;
             // Guard: call original only if it actually existed
-            const base = default_isoverviewwindow_ws
-                ? default_isoverviewwindow_ws.call(this, win)
-                : false;
+            const base = default_isoverviewwindow_ws ?
+                default_isoverviewwindow_ws.call(this, win) :
+                false;
             return is_valid_minimize_to_tray(meta_win, ext) || base;
         };
     } else if (!WS_OVERVIEW_KEY) {
@@ -3901,7 +3909,7 @@ function _show_skip_taskbar_windows(ext: Ext) {
         default_getcaption_windowpreview = (WindowPreview.prototype as any)._getCaption;
         log.debug(`override (workspace as any)._getCaption`);
         // 3.38+ _getCaption
-        (WindowPreview.prototype as any)._getCaption = function () {
+        (WindowPreview.prototype as any)._getCaption = function() {
             if ((this as any).metaWindow.title) return (this as any).metaWindow.title;
 
             const tracker = Shell.WindowTracker.get_default();
@@ -3914,26 +3922,23 @@ function _show_skip_taskbar_windows(ext: Ext) {
 
     // Handle the workspace thumbnail
     if (WST_OVERVIEW_KEY && default_isoverviewwindow_ws_thumbnail === null) {
-        default_isoverviewwindow_ws_thumbnail =
-            (WorkspaceThumbnail.prototype as any)[WST_OVERVIEW_KEY] ?? null;
+        default_isoverviewwindow_ws_thumbnail = (WorkspaceThumbnail.prototype as any)[WST_OVERVIEW_KEY] ?? null;
 
         if (default_isoverviewwindow_ws_thumbnail) {
-            (WorkspaceThumbnail.prototype as any)[WST_OVERVIEW_KEY] = function (win: any) {
+            (WorkspaceThumbnail.prototype as any)[WST_OVERVIEW_KEY] = function(win: any) {
                 const meta_win = win.get_meta_window();
-                const base = default_isoverviewwindow_ws_thumbnail
-                    ? default_isoverviewwindow_ws_thumbnail.call(this, win)
-                    : false;
+                const base = default_isoverviewwindow_ws_thumbnail ?
+                    default_isoverviewwindow_ws_thumbnail.call(this, win) :
+                    false;
                 return is_valid_minimize_to_tray(meta_win, ext) || base;
             };
         }
     }
 
-
-
     // Handle switch-windows
     if (!default_getwindowlist_windowswitcher) {
         default_getwindowlist_windowswitcher = WindowSwitcherPopup.prototype._getWindowList;
-        WindowSwitcherPopup.prototype._getWindowList = function () {
+        WindowSwitcherPopup.prototype._getWindowList = function() {
             let workspace = null;
 
             if ((this as any)._settings.get_boolean('current-workspace-only')) {
@@ -3984,8 +3989,7 @@ function _hide_skip_taskbar_windows() {
 
     if (WST_OVERVIEW_KEY && default_isoverviewwindow_ws_thumbnail !== null) {
         if (default_isoverviewwindow_ws_thumbnail) {
-            (WorkspaceThumbnail.prototype as any)[WST_OVERVIEW_KEY] =
-                default_isoverviewwindow_ws_thumbnail;
+            (WorkspaceThumbnail.prototype as any)[WST_OVERVIEW_KEY] = default_isoverviewwindow_ws_thumbnail;
         } else {
             // Only delete if it's not null/undefined to avoid setting 'null' as a property
             if (WST_OVERVIEW_KEY) {
@@ -4022,8 +4026,7 @@ function is_valid_minimize_to_tray(meta_win: Meta.Window, ext: Ext) {
     const gnome_shell_wm_class = meta_win.get_wm_class() === 'Gjs' || meta_win.get_wm_class() === 'Gnome-shell';
     const show_skiptb = !cfg.skiptaskbar_shall_hide(meta_win);
 
-    valid_min_to_tray =
-        valid_min_to_tray &&
+    valid_min_to_tray = valid_min_to_tray &&
         !meta_win.is_attached_dialog() &&
         show_skiptb &&
         meta_win.skip_taskbar &&
